@@ -37,11 +37,11 @@ export class UserSeedService {
       await data.save();
     }
 
-    const user = await this.model.findOne({
+    const owner = await this.model.findOne({
       email: 'john.doe@example.com',
     });
 
-    if (!user) {
+    if (!owner) {
       const salt = await bcrypt.genSalt();
       const password = await bcrypt.hash('secret', salt);
 
@@ -51,7 +51,31 @@ export class UserSeedService {
         firstName: 'John',
         lastName: 'Doe',
         role: {
-          _id: RoleEnum.user.toString(),
+          _id: RoleEnum.owner.toString(),
+        },
+        status: {
+          _id: StatusEnum.active.toString(),
+        },
+      });
+
+      await data.save();
+    }
+
+    const driver = await this.model.findOne({
+      email: 'driver@example.com',
+    });
+
+    if (!driver) {
+      const salt = await bcrypt.genSalt();
+      const password = await bcrypt.hash('secret', salt);
+
+      const data = new this.model({
+        email: 'driver@example.com',
+        password: password,
+        firstName: 'Demo',
+        lastName: 'Driver',
+        role: {
+          _id: RoleEnum.driver.toString(),
         },
         status: {
           _id: StatusEnum.active.toString(),

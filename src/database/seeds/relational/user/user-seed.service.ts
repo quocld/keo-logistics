@@ -45,15 +45,15 @@ export class UserSeedService {
       );
     }
 
-    const countUser = await this.repository.count({
+    const countOwner = await this.repository.count({
       where: {
         role: {
-          id: RoleEnum.user,
+          id: RoleEnum.owner,
         },
       },
     });
 
-    if (!countUser) {
+    if (!countOwner) {
       const salt = await bcrypt.genSalt();
       const password = await bcrypt.hash('secret', salt);
 
@@ -64,8 +64,38 @@ export class UserSeedService {
           email: 'john.doe@example.com',
           password,
           role: {
-            id: RoleEnum.user,
-            name: 'Admin',
+            id: RoleEnum.owner,
+            name: 'Owner',
+          },
+          status: {
+            id: StatusEnum.active,
+            name: 'Active',
+          },
+        }),
+      );
+    }
+
+    const countDriver = await this.repository.count({
+      where: {
+        role: {
+          id: RoleEnum.driver,
+        },
+      },
+    });
+
+    if (!countDriver) {
+      const salt = await bcrypt.genSalt();
+      const password = await bcrypt.hash('secret', salt);
+
+      await this.repository.save(
+        this.repository.create({
+          firstName: 'Demo',
+          lastName: 'Driver',
+          email: 'driver@example.com',
+          password,
+          role: {
+            id: RoleEnum.driver,
+            name: 'Driver',
           },
           status: {
             id: StatusEnum.active,
