@@ -2,7 +2,7 @@
   "info": {
     "name": "KeoTram Ops API (Local)",
     "_postman_id": "c4e0d7ab-9e53-43a6-9120-4cc296ec4a65",
-    "description": "Collection for APIs currently mapped by the running NestJS app.",
+    "description": "Collection for APIs currently mapped by the running NestJS app.\n\n**Seed users** (`pnpm run seed:run:relational` hoặc Railway `seed:run:relational:admin` + tạo owner qua admin):\n- **Admin:** admin@example.com / secret\n- **Owner:** john.doe@example.com / secret\n- **Driver:** driver@example.com / secret\n\nBiến `adminEmail` / `ownerEmail` / `driverEmail` và mật khẩu tương ứng nằm trong **Variables** (Collection).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -26,7 +26,7 @@
     },
     {
       "name": "Setup – Ops tokens",
-      "description": "Chạy login theo role trước khi test Harvest Areas / Weighing Stations / Trips / Receipts. Test script lưu token vào collection variables adminAccessToken, ownerAccessToken, driverAccessToken. Sau **POST /trips** (có test script) sẽ có `tripId`.",
+      "description": "Chạy login theo role trước khi test Harvest Areas / Weighing Stations / Trips / Receipts. Tài khoản seed: Admin `{{adminEmail}}`, Owner `{{ownerEmail}}`, Driver `{{driverEmail}}` (mật khẩu trong biến collection). Test script lưu token vào adminAccessToken, ownerAccessToken, driverAccessToken. Sau **POST /trips** (có test script) sẽ có `tripId`.",
       "item": [
         {
           "name": "POST /auth/email/login (admin → adminAccessToken)",
@@ -47,7 +47,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"secret\"\n}"
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/email/login",
@@ -76,7 +76,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"secret\"\n}"
+              "raw": "{\n  \"email\": \"{{ownerEmail}}\",\n  \"password\": \"{{ownerPassword}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/email/login",
@@ -105,7 +105,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"driver@example.com\",\n  \"password\": \"secret\"\n}"
+              "raw": "{\n  \"email\": \"{{driverEmail}}\",\n  \"password\": \"{{driverPassword}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/email/login",
@@ -144,7 +144,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"driver1@example.com\",\n  \"password\": \"12345678\"\n}"
+              "raw": "{\n  \"email\": \"{{driverEmail}}\",\n  \"password\": \"{{driverPassword}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/email/login",
@@ -195,7 +195,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"driver1@example.com\"\n}"
+              "raw": "{\n  \"email\": \"{{driverEmail}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/forgot/password",
@@ -1306,6 +1306,12 @@
   "variable": [
     { "key": "baseUrlRoot", "value": "http://localhost:3000" },
     { "key": "baseUrl", "value": "http://localhost:3000/api/v1" },
+    { "key": "adminEmail", "value": "admin@example.com" },
+    { "key": "adminPassword", "value": "secret" },
+    { "key": "ownerEmail", "value": "john.doe@example.com" },
+    { "key": "ownerPassword", "value": "secret" },
+    { "key": "driverEmail", "value": "driver@example.com" },
+    { "key": "driverPassword", "value": "secret" },
     { "key": "accessToken", "value": "" },
     { "key": "refreshToken", "value": "" },
     { "key": "userId", "value": "" },
