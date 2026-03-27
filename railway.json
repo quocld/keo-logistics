@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "npm run start:prod",
+    "startCommand": "npm run migration:run && npm run seed:run:relational:roles-status && npm run start:prod",
     "healthcheckPath": "/",
     "healthcheckTimeout": 120
   }
