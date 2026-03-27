@@ -1,14 +1,19 @@
 import {
   ForbiddenException,
   Injectable,
+  NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import { JwtPayloadType } from '../../../auth/strategies/types/jwt-payload.type';
 import { HarvestAreaEntity } from '../../infrastructure/persistence/relational/entities/harvest-area.entity';
 import { CreateHarvestAreaDto } from '../../dto/create-harvest-area.dto';
+import { UpdateHarvestAreaDto } from '../../dto/update-harvest-area.dto';
+import { QueryHarvestAreaDto } from '../../dto/query-harvest-area.dto';
 import { OpsAuthorizationService } from './ops-authorization.service';
+import { infinityPagination } from '../../../utils/infinity-pagination';
+import { InfinityPaginationResponseDto } from '../../../utils/dto/infinity-pagination-response.dto';
 
 @Injectable()
 export class HarvestAreasService {
@@ -47,5 +52,96 @@ export class HarvestAreasService {
     });
 
     return this.harvestAreasRepository.save(entity);
+  }
+
+  async findMany(
+    actor: JwtPayloadType,
+    query: QueryHarvestAreaDto,
+  ): Promise<InfinityPaginationResponseDto<HarvestAreaEntity>> {
+    const page = query.page ?? 1;
+    const limit = Math.min(query.limit ?? 10, 50);
+    const skip = (page - 1) * limit;
+
+    const where: FindOptionsWhere<HarvestAreaEntity> = {};
+
+    if (query.filters?.status) {
+      where.status = query.filters.status;
+    }
+
+    if (this.opsAuthorizationService.isOwner(actor)) {
+      where.owner = { id: Number(actor.id) };
+    } else if (
+      this.opsAuthorizationService.isAdmin(actor) &&
+      query.filters?.ownerId
+    ) {
+      where.owner = { id: query.filters.ownerId };
+    }
+
+    const data = await this.harvestAreasRepository.find({
+      where,
+      relations: ['owner'],
+      skip,
+      take: limit,
+      order: { createdAt: 'DESC' },
+    });
+
+    return infinityPagination(data, { page, limit });
+  }
+
+  async findOne(actor: JwtPayloadType, id: string): Promise<HarvestAreaEntity> {
+    const entity = await this.harvestAreasRepository.findOne({
+      where: { id },
+      relations: ['owner'],
+    });
+
+    if (!entity) {
+      throw new NotFoundException({ error: 'harvest area not found' });
+    }
+
+    if (this.opsAuthorizationService.isOwner(actor)) {
+      if (entity.owner?.id !== Number(actor.id)) {
+        throw new ForbiddenException({ error: 'forbidden' });
+      }
+    }
+
+    return entity;
+  }
+
+  async update(
+    actor: JwtPayloadType,
+    id: string,
+    dto: UpdateHarvestAreaDto,
+  ): Promise<HarvestAreaEntity> {
+    await this.opsAuthorizationService.assertOwnerOwnsHarvestArea(actor, id);
+
+    const entity = await this.harvestAreasRepository.findOne({ where: { id } });
+
+    if (!entity) {
+      throw new NotFoundException({ error: 'harvest area not found' });
+    }
+
+    if (dto.name !== undefined) entity.name = dto.name;
+    if (dto.googlePlaceId !== undefined)
+      entity.googlePlaceId = dto.googlePlaceId ?? null;
+    if (dto.latitude !== undefined)
+      entity.latitude = dto.latitude?.toString() ?? null;
+    if (dto.longitude !== undefined)
+      entity.longitude = dto.longitude?.toString() ?? null;
+    if (dto.targetTons !== undefined)
+      entity.targetTons = dto.targetTons?.toString() ?? null;
+
+    return this.harvestAreasRepository.save(entity);
+  }
+
+  async softDelete(actor: JwtPayloadType, id: string): Promise<void> {
+    await this.opsAuthorizationService.assertOwnerOwnsHarvestArea(actor, id);
+
+    const entity = await this.harvestAreasRepository.findOne({ where: { id } });
+
+    if (!entity) {
+      throw new NotFoundException({ error: 'harvest area not found' });
+    }
+
+    await this.harvestAreasRepository.softDelete(id);
   }
 }

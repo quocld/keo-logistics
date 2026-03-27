@@ -1,20 +1,35 @@
 import {
   Body,
   Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
+  Param,
+  Patch,
   Post,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiCreatedResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../../../roles/roles.decorator';
 import { RolesGuard } from '../../../roles/roles.guard';
 import { RoleEnum } from '../../../roles/roles.enum';
 import { CreateHarvestAreaDto } from '../../dto/create-harvest-area.dto';
+import { UpdateHarvestAreaDto } from '../../dto/update-harvest-area.dto';
+import { QueryHarvestAreaDto } from '../../dto/query-harvest-area.dto';
 import { HarvestAreaEntity } from '../../infrastructure/persistence/relational/entities/harvest-area.entity';
 import { HarvestAreasService } from '../services/harvest-areas.service';
+import { InfinityPaginationResponse } from '../../../utils/dto/infinity-pagination-response.dto';
+import { InfinityPaginationResponseDto } from '../../../utils/dto/infinity-pagination-response.dto';
 
 @ApiBearerAuth()
 @ApiTags('HarvestAreas')
@@ -35,5 +50,43 @@ export class HarvestAreasController {
     @Body() dto: CreateHarvestAreaDto,
   ): Promise<HarvestAreaEntity> {
     return this.harvestAreasService.create(request.user, dto);
+  }
+
+  @ApiOkResponse({ type: InfinityPaginationResponse(HarvestAreaEntity) })
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  findAll(
+    @Request() request,
+    @Query() query: QueryHarvestAreaDto,
+  ): Promise<InfinityPaginationResponseDto<HarvestAreaEntity>> {
+    return this.harvestAreasService.findMany(request.user, query);
+  }
+
+  @ApiOkResponse({ type: HarvestAreaEntity })
+  @Get(':id')
+  @HttpCode(HttpStatus.OK)
+  findOne(
+    @Request() request,
+    @Param('id') id: string,
+  ): Promise<HarvestAreaEntity> {
+    return this.harvestAreasService.findOne(request.user, id);
+  }
+
+  @ApiOkResponse({ type: HarvestAreaEntity })
+  @Patch(':id')
+  @HttpCode(HttpStatus.OK)
+  update(
+    @Request() request,
+    @Param('id') id: string,
+    @Body() dto: UpdateHarvestAreaDto,
+  ): Promise<HarvestAreaEntity> {
+    return this.harvestAreasService.update(request.user, id, dto);
+  }
+
+  @ApiNoContentResponse()
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Request() request, @Param('id') id: string): Promise<void> {
+    return this.harvestAreasService.softDelete(request.user, id);
   }
 }

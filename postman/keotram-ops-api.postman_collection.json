@@ -16,12 +16,101 @@
             "header": [],
             "url": {
               "raw": "{{baseUrlRoot}}/",
-              "host": [
-                "{{baseUrlRoot}}"
-              ],
-              "path": [
-                ""
-              ]
+              "host": ["{{baseUrlRoot}}"],
+              "path": [""]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Setup – Ops tokens",
+      "description": "Chạy login theo role trước khi test Harvest Areas / Weighing Stations / Receipts. Test script lưu token vào collection variables adminAccessToken, ownerAccessToken, driverAccessToken.",
+      "item": [
+        {
+          "name": "POST /auth/email/login (admin → adminAccessToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) pm.collectionVariables.set('adminAccessToken', res.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"secret\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/email/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "email", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /auth/email/login (owner → ownerAccessToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) pm.collectionVariables.set('ownerAccessToken', res.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"secret\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/email/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "email", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /auth/email/login (driver → driverAccessToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) pm.collectionVariables.set('driverAccessToken', res.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"driver@example.com\",\n  \"password\": \"secret\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/email/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "email", "login"]
             }
           },
           "response": []
@@ -35,26 +124,15 @@
           "name": "POST /auth/email/register",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"driver1@example.com\",\n  \"password\": \"12345678\",\n  \"firstName\": \"Driver\",\n  \"lastName\": \"One\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/email/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "email",
-                "register"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "email", "register"]
             }
           },
           "response": []
@@ -63,26 +141,15 @@
           "name": "POST /auth/email/login",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"driver1@example.com\",\n  \"password\": \"12345678\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/email/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "email",
-                "login"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "email", "login"]
             }
           },
           "response": []
@@ -91,26 +158,15 @@
           "name": "POST /auth/email/confirm",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"hash\": \"paste-confirm-hash\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/email/confirm",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "email",
-                "confirm"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "email", "confirm"]
             }
           },
           "response": []
@@ -119,27 +175,15 @@
           "name": "POST /auth/email/confirm/new",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"hash\": \"paste-confirm-hash\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/email/confirm/new",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "email",
-                "confirm",
-                "new"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "email", "confirm", "new"]
             }
           },
           "response": []
@@ -148,26 +192,15 @@
           "name": "POST /auth/forgot/password",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"driver1@example.com\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/forgot/password",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "forgot",
-                "password"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "forgot", "password"]
             }
           },
           "response": []
@@ -176,26 +209,15 @@
           "name": "POST /auth/reset/password",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"hash\": \"paste-reset-hash\",\n  \"password\": \"newStrongPassword123\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/reset/password",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "reset",
-                "password"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "reset", "password"]
             }
           },
           "response": []
@@ -204,21 +226,11 @@
           "name": "GET /auth/me",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": {
               "raw": "{{baseUrl}}/auth/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "me"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
             }
           },
           "response": []
@@ -227,21 +239,11 @@
           "name": "POST /auth/refresh",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{refreshToken}}"
-              }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{refreshToken}}" }],
             "url": {
               "raw": "{{baseUrl}}/auth/refresh",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "refresh"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
             }
           },
           "response": []
@@ -250,21 +252,11 @@
           "name": "POST /auth/logout",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": {
               "raw": "{{baseUrl}}/auth/logout",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "logout"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
             }
           },
           "response": []
@@ -274,14 +266,8 @@
           "request": {
             "method": "PATCH",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
@@ -289,13 +275,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "me"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
             }
           },
           "response": []
@@ -304,21 +285,11 @@
           "name": "DELETE /auth/me",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": {
               "raw": "{{baseUrl}}/auth/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "me"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
             }
           },
           "response": []
@@ -327,26 +298,15 @@
           "name": "POST /auth/facebook/login",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"accessToken\": \"facebook-access-token\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/facebook/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "facebook",
-                "login"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "facebook", "login"]
             }
           },
           "response": []
@@ -355,26 +315,15 @@
           "name": "POST /auth/google/login",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"idToken\": \"google-id-token\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/google/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "google",
-                "login"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "google", "login"]
             }
           },
           "response": []
@@ -383,26 +332,15 @@
           "name": "POST /auth/apple/login",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"identityToken\": \"apple-identity-token\",\n  \"firstName\": \"Apple\",\n  \"lastName\": \"User\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/apple/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "apple",
-                "login"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "apple", "login"]
             }
           },
           "response": []
@@ -410,21 +348,15 @@
       ]
     },
     {
-      "name": "Users (Admin + JWT)",
+      "name": "Users (Admin only)",
       "item": [
         {
           "name": "POST /users",
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
@@ -432,12 +364,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/users",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
             }
           },
           "response": []
@@ -446,29 +374,14 @@
           "name": "GET /users",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
             "url": {
               "raw": "{{baseUrl}}/users?page=1&limit=10",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
               "query": [
-                {
-                  "key": "page",
-                  "value": "1"
-                },
-                {
-                  "key": "limit",
-                  "value": "10"
-                }
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
               ]
             }
           },
@@ -478,21 +391,11 @@
           "name": "GET /users/:id",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
             "url": {
               "raw": "{{baseUrl}}/users/{{userId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "{{userId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
             }
           },
           "response": []
@@ -502,14 +405,8 @@
           "request": {
             "method": "PATCH",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
@@ -517,13 +414,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/users/{{userId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "{{userId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
             }
           },
           "response": []
@@ -532,21 +424,11 @@
           "name": "DELETE /users/:id",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
             "url": {
               "raw": "{{baseUrl}}/users/{{userId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "{{userId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
             }
           },
           "response": []
@@ -554,165 +436,361 @@
       ]
     },
     {
-      "name": "Ops",
+      "name": "Harvest Areas (admin + owner)",
+      "description": "Trước khi test: chạy **Setup – Ops tokens** để lấy adminAccessToken / ownerAccessToken.\n\nAdmin thấy tất cả khu vực. Owner chỉ thấy khu vực của mình.\nPATCH/DELETE: owner chỉ được chỉnh khu vực thuộc sở hữu của mình.",
       "item": [
         {
-          "name": "Auth - Admin Login",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
+          "name": "POST /harvest-areas (owner tự tạo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('harvestAreaId', res.id);"
+                ],
+                "type": "text/javascript"
               }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"secret\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auth/email/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "email",
-                "login"
-              ]
             }
-          },
-          "response": []
-        },
-        {
-          "name": "Auth - Owner Login",
+          ],
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"secret\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auth/email/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "email",
-                "login"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Auth - Driver Login",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"driver@example.com\",\n  \"password\": \"secret\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auth/email/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "email",
-                "login"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "POST /weighing-stations (admin)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Tram Station A\",\n  \"code\": \"TRM-001\",\n  \"latitude\": 10.762622,\n  \"longitude\": 106.660172,\n  \"formattedAddress\": \"123 Main St\",\n  \"unitPrice\": 1200\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/weighing-stations",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "weighing-stations"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "POST /harvest-areas (owner)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{ownerAccessToken}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Harvest Area #1\"\n}"
+              "raw": "{\n  \"name\": \"Khu vực số 1\",\n  \"latitude\": 10.762622,\n  \"longitude\": 106.660172,\n  \"googlePlaceId\": \"ChIJexample001\",\n  \"targetTons\": 500\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/harvest-areas",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "harvest-areas"
+              "host": ["{{baseUrl}}"],
+              "path": ["harvest-areas"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /harvest-areas (admin tạo cho owner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('harvestAreaId', res.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Khu vực do admin tạo\",\n  \"ownerId\": 2,\n  \"latitude\": 10.800000,\n  \"longitude\": 106.700000,\n  \"targetTons\": 1000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas",
+              "host": ["{{baseUrl}}"],
+              "path": ["harvest-areas"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /harvest-areas (list – admin, all)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["harvest-areas"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                {
+                  "key": "filters",
+                  "value": "{\"status\":\"active\"}",
+                  "description": "JSON filter: status, ownerId",
+                  "disabled": true
+                },
+                {
+                  "key": "filters",
+                  "value": "{\"ownerId\":2}",
+                  "description": "Lọc theo owner (admin only)",
+                  "disabled": true
+                }
               ]
             }
           },
           "response": []
         },
         {
-          "name": "POST /receipts (driver)",
+          "name": "GET /harvest-areas (list – owner, chỉ của mình)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["harvest-areas"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                {
+                  "key": "filters",
+                  "value": "{\"status\":\"active\"}",
+                  "description": "Lọc theo status",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /harvest-areas/:id (detail – admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["harvest-areas", "{{harvestAreaId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /harvest-areas/:id (detail – owner)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["harvest-areas", "{{harvestAreaId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /harvest-areas/:id (update – owner)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Khu vực số 1 (đã cập nhật)\",\n  \"targetTons\": 750\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["harvest-areas", "{{harvestAreaId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /harvest-areas/:id (update – admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Khu vực sửa bởi admin\",\n  \"latitude\": 10.900000,\n  \"longitude\": 106.800000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["harvest-areas", "{{harvestAreaId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /harvest-areas/:id (soft delete – owner)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["harvest-areas", "{{harvestAreaId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /harvest-areas/:id (soft delete – admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["harvest-areas", "{{harvestAreaId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Weighing Stations (admin only)",
+      "description": "Trước khi test: chạy **Setup – Ops tokens** → login admin.\n\nChỉ admin mới có quyền tạo, xem, sửa, xoá trạm cân.",
+      "item": [
+        {
+          "name": "POST /weighing-stations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('weighingStationId', res.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{driverAccessToken}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
+              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Trạm cân A\",\n  \"code\": \"TRM-001\",\n  \"latitude\": 10.762622,\n  \"longitude\": 106.660172,\n  \"formattedAddress\": \"123 Đường Chính, TP.HCM\",\n  \"unitPrice\": 1200,\n  \"status\": \"active\",\n  \"notes\": \"Trạm cân chính khu vực nam\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/weighing-stations",
+              "host": ["{{baseUrl}}"],
+              "path": ["weighing-stations"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /weighing-stations (list)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/weighing-stations?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["weighing-stations"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                {
+                  "key": "filters",
+                  "value": "{\"status\":\"active\"}",
+                  "description": "Lọc theo status",
+                  "disabled": true
+                },
+                {
+                  "key": "filters",
+                  "value": "{\"code\":\"TRM-001\"}",
+                  "description": "Lọc theo code trạm",
+                  "disabled": true
+                },
+                {
+                  "key": "filters",
+                  "value": "{\"status\":\"active\",\"code\":\"TRM-001\"}",
+                  "description": "Kết hợp cả hai filter",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /weighing-stations/:id (detail)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/weighing-stations/{{weighingStationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["weighing-stations", "{{weighingStationId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /weighing-stations/:id (update)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Trạm cân A (v2)\",\n  \"unitPrice\": 1350,\n  \"notes\": \"Đã nâng cấp thiết bị tháng 3/2026\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/weighing-stations/{{weighingStationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["weighing-stations", "{{weighingStationId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /weighing-stations/:id (soft delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/weighing-stations/{{weighingStationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["weighing-stations", "{{weighingStationId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Receipts",
+      "description": "Trước khi test: chạy **Setup – Ops tokens** (ít nhất driver; approve/reject cần owner hoặc admin).\n\nDriver tạo phiếu. Owner/Admin duyệt hoặc từ chối.",
+      "item": [
+        {
+          "name": "POST /receipts (driver submit)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('receiptId', res.id);"
+                ],
+                "type": "text/javascript"
               }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
@@ -720,12 +798,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/receipts",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "receipts"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["receipts"]
             }
           },
           "response": []
@@ -734,22 +808,11 @@
           "name": "POST /receipts/:id/approve (owner|admin)",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{ownerAccessToken}}"
-              }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
             "url": {
               "raw": "{{baseUrl}}/receipts/{{receiptId}}/approve",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "receipts",
-                "{{receiptId}}",
-                "approve"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["receipts", "{{receiptId}}", "approve"]
             }
           },
           "response": []
@@ -759,29 +822,17 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{ownerAccessToken}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"rejectedReason\": \"Rejected by owner\"\n}"
+              "raw": "{\n  \"rejectedReason\": \"Cân không khớp, kiểm tra lại\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/receipts/{{receiptId}}/reject",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "receipts",
-                "{{receiptId}}",
-                "reject"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["receipts", "{{receiptId}}", "reject"]
             }
           },
           "response": []
@@ -795,12 +846,7 @@
           "name": "POST /files/upload",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -813,13 +859,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/files/upload",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "files",
-                "upload"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["files", "upload"]
             }
           },
           "response": []
@@ -830,14 +871,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/files/{{filePath}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "files",
-                "{{filePath}}"
-              ]
+              "raw": "{{baseUrlRoot}}/files/{{filePath}}",
+              "host": ["{{baseUrlRoot}}"],
+              "path": ["files", "{{filePath}}"]
             }
           },
           "response": []
@@ -846,53 +882,17 @@
     }
   ],
   "variable": [
-    {
-      "key": "baseUrlRoot",
-      "value": "http://localhost:3000"
-    },
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:3000/api/v1"
-    },
-    {
-      "key": "accessToken",
-      "value": ""
-    },
-    {
-      "key": "refreshToken",
-      "value": ""
-    },
-    {
-      "key": "userId",
-      "value": ""
-    },
-    {
-      "key": "filePath",
-      "value": ""
-    },
-    {
-      "key": "adminAccessToken",
-      "value": ""
-    },
-    {
-      "key": "ownerAccessToken",
-      "value": ""
-    },
-    {
-      "key": "driverAccessToken",
-      "value": ""
-    },
-    {
-      "key": "harvestAreaId",
-      "value": ""
-    },
-    {
-      "key": "weighingStationId",
-      "value": ""
-    },
-    {
-      "key": "receiptId",
-      "value": ""
-    }
+    { "key": "baseUrlRoot", "value": "http://localhost:3000" },
+    { "key": "baseUrl", "value": "http://localhost:3000/api/v1" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "filePath", "value": "" },
+    { "key": "adminAccessToken", "value": "" },
+    { "key": "ownerAccessToken", "value": "" },
+    { "key": "driverAccessToken", "value": "" },
+    { "key": "harvestAreaId", "value": "" },
+    { "key": "weighingStationId", "value": "" },
+    { "key": "receiptId", "value": "" }
   ]
 }

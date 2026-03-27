@@ -1,10 +1,18 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import { JwtPayloadType } from '../../../auth/strategies/types/jwt-payload.type';
 import { WeighingStationEntity } from '../../infrastructure/persistence/relational/entities/weighing-station.entity';
 import { CreateWeighingStationDto } from '../../dto/create-weighing-station.dto';
+import { UpdateWeighingStationDto } from '../../dto/update-weighing-station.dto';
+import { QueryWeighingStationDto } from '../../dto/query-weighing-station.dto';
 import { OpsAuthorizationService } from './ops-authorization.service';
+import { infinityPagination } from '../../../utils/infinity-pagination';
+import { InfinityPaginationResponseDto } from '../../../utils/dto/infinity-pagination-response.dto';
 
 @Injectable()
 export class WeighingStationsService {
@@ -37,5 +45,98 @@ export class WeighingStationsService {
     });
 
     return this.weighingStationsRepository.save(entity);
+  }
+
+  async findMany(
+    actor: JwtPayloadType,
+    query: QueryWeighingStationDto,
+  ): Promise<InfinityPaginationResponseDto<WeighingStationEntity>> {
+    this.opsAuthorizationService.assertAdmin(actor);
+
+    const page = query.page ?? 1;
+    const limit = Math.min(query.limit ?? 10, 50);
+    const skip = (page - 1) * limit;
+
+    const where: FindOptionsWhere<WeighingStationEntity> = {};
+
+    if (query.filters?.status) {
+      where.status = query.filters.status;
+    }
+
+    if (query.filters?.code) {
+      where.code = query.filters.code;
+    }
+
+    const data = await this.weighingStationsRepository.find({
+      where,
+      skip,
+      take: limit,
+      order: { createdAt: 'DESC' },
+    });
+
+    return infinityPagination(data, { page, limit });
+  }
+
+  async findOne(
+    actor: JwtPayloadType,
+    id: string,
+  ): Promise<WeighingStationEntity> {
+    this.opsAuthorizationService.assertAdmin(actor);
+
+    const entity = await this.weighingStationsRepository.findOne({
+      where: { id },
+    });
+
+    if (!entity) {
+      throw new NotFoundException({ error: 'weighing station not found' });
+    }
+
+    return entity;
+  }
+
+  async update(
+    actor: JwtPayloadType,
+    id: string,
+    dto: UpdateWeighingStationDto,
+  ): Promise<WeighingStationEntity> {
+    this.opsAuthorizationService.assertAdmin(actor);
+
+    const entity = await this.weighingStationsRepository.findOne({
+      where: { id },
+    });
+
+    if (!entity) {
+      throw new NotFoundException({ error: 'weighing station not found' });
+    }
+
+    if (dto.name !== undefined) entity.name = dto.name;
+    if (dto.code !== undefined) entity.code = dto.code ?? null;
+    if (dto.googlePlaceId !== undefined)
+      entity.googlePlaceId = dto.googlePlaceId ?? null;
+    if (dto.latitude !== undefined) entity.latitude = dto.latitude.toString();
+    if (dto.longitude !== undefined)
+      entity.longitude = dto.longitude.toString();
+    if (dto.formattedAddress !== undefined)
+      entity.formattedAddress = dto.formattedAddress;
+    if (dto.unitPrice !== undefined)
+      entity.unitPrice = dto.unitPrice.toString();
+    if (dto.status !== undefined) entity.status = dto.status ?? entity.status;
+    if (dto.notes !== undefined) entity.notes = dto.notes ?? null;
+
+    return this.weighingStationsRepository.save(entity);
+  }
+
+  async softDelete(actor: JwtPayloadType, id: string): Promise<void> {
+    this.opsAuthorizationService.assertAdmin(actor);
+
+    const entity = await this.weighingStationsRepository.findOne({
+      where: { id },
+    });
+
+    if (!entity) {
+      throw new NotFoundException({ error: 'weighing station not found' });
+    }
+
+    await this.weighingStationsRepository.softDelete(id);
   }
 }
