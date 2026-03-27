@@ -437,7 +437,7 @@
     },
     {
       "name": "Harvest Areas (admin + owner)",
-      "description": "Trước khi test: chạy **Setup – Ops tokens** để lấy adminAccessToken / ownerAccessToken.\n\nAdmin thấy tất cả khu vực. Owner chỉ thấy khu vực của mình.\nPATCH/DELETE: owner chỉ được chỉnh khu vực thuộc sở hữu của mình.",
+      "description": "Trước khi test: chạy **Setup – Ops tokens** để lấy adminAccessToken / ownerAccessToken.\n\nAdmin thấy tất cả khu vực. Owner chỉ thấy khu vực của mình.\nPATCH/DELETE: owner chỉ được chỉnh khu vực thuộc sở hữu của mình.\n\n**Trạng thái bãi (`status`):** `inactive` (chưa hoạt động), `active`, `paused`, `completed`.\n**Chủ bãi (hợp đồng cây):** `siteContactName`, `siteContactPhone`, `siteContactEmail`, `sitePurchaseDate` (ISO date), `siteNotes` (ví dụ chu kỳ mua lại sau vài năm).",
       "item": [
         {
           "name": "POST /harvest-areas (owner tự tạo)",
@@ -461,7 +461,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Khu vực số 1\",\n  \"latitude\": 10.762622,\n  \"longitude\": 106.660172,\n  \"googlePlaceId\": \"ChIJexample001\",\n  \"targetTons\": 500\n}"
+              "raw": "{\n  \"name\": \"Khu vực số 1\",\n  \"status\": \"inactive\",\n  \"latitude\": 10.762622,\n  \"longitude\": 106.660172,\n  \"googlePlaceId\": \"ChIJexample001\",\n  \"targetTons\": 500,\n  \"siteContactName\": \"Ông Nguyễn Văn A\",\n  \"siteContactPhone\": \"0901234567\",\n  \"siteContactEmail\": \"chu-bai@example.com\",\n  \"sitePurchaseDate\": \"2024-06-15\",\n  \"siteNotes\": \"Mua cây đợt 1/2024; dự kiến mua tiếp sau 3 năm.\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/harvest-areas",
@@ -493,7 +493,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Khu vực do admin tạo\",\n  \"ownerId\": 2,\n  \"latitude\": 10.800000,\n  \"longitude\": 106.700000,\n  \"targetTons\": 1000\n}"
+              "raw": "{\n  \"name\": \"Khu vực do admin tạo\",\n  \"ownerId\": 2,\n  \"status\": \"active\",\n  \"latitude\": 10.800000,\n  \"longitude\": 106.700000,\n  \"targetTons\": 1000,\n  \"siteContactName\": \"Bà Trần Thị B\",\n  \"siteContactPhone\": \"0912345678\",\n  \"sitePurchaseDate\": \"2025-01-10\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/harvest-areas",
@@ -518,7 +518,7 @@
                 {
                   "key": "filters",
                   "value": "{\"status\":\"active\"}",
-                  "description": "JSON filter: status, ownerId",
+                  "description": "status: inactive|active|paused|completed",
                   "disabled": true
                 },
                 {
@@ -591,7 +591,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Khu vực số 1 (đã cập nhật)\",\n  \"targetTons\": 750\n}"
+              "raw": "{\n  \"name\": \"Khu vực số 1 (đã cập nhật)\",\n  \"status\": \"active\",\n  \"targetTons\": 750,\n  \"sitePurchaseDate\": \"2026-03-01\",\n  \"siteNotes\": \"Đã mua thêm đợt 2.\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}",

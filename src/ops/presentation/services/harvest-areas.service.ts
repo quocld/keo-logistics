@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { JwtPayloadType } from '../../../auth/strategies/types/jwt-payload.type';
 import { HarvestAreaEntity } from '../../infrastructure/persistence/relational/entities/harvest-area.entity';
+import { HarvestAreaStatusEnum } from '../../domain/harvest-area-status.enum';
 import { CreateHarvestAreaDto } from '../../dto/create-harvest-area.dto';
 import { UpdateHarvestAreaDto } from '../../dto/update-harvest-area.dto';
 import { QueryHarvestAreaDto } from '../../dto/query-harvest-area.dto';
@@ -45,10 +46,16 @@ export class HarvestAreasService {
     const entity = this.harvestAreasRepository.create({
       name: dto.name,
       owner: { id: ownerId } as any,
+      status: dto.status ?? HarvestAreaStatusEnum.active,
       googlePlaceId: dto.googlePlaceId ?? null,
       latitude: dto.latitude?.toString() ?? null,
       longitude: dto.longitude?.toString() ?? null,
       targetTons: dto.targetTons?.toString() ?? null,
+      siteContactName: dto.siteContactName ?? null,
+      siteContactPhone: dto.siteContactPhone ?? null,
+      siteContactEmail: dto.siteContactEmail ?? null,
+      sitePurchaseDate: dto.sitePurchaseDate ?? null,
+      siteNotes: dto.siteNotes ?? null,
     });
 
     return this.harvestAreasRepository.save(entity);
@@ -121,6 +128,7 @@ export class HarvestAreasService {
     }
 
     if (dto.name !== undefined) entity.name = dto.name;
+    if (dto.status !== undefined) entity.status = dto.status;
     if (dto.googlePlaceId !== undefined)
       entity.googlePlaceId = dto.googlePlaceId ?? null;
     if (dto.latitude !== undefined)
@@ -129,6 +137,15 @@ export class HarvestAreasService {
       entity.longitude = dto.longitude?.toString() ?? null;
     if (dto.targetTons !== undefined)
       entity.targetTons = dto.targetTons?.toString() ?? null;
+    if (dto.siteContactName !== undefined)
+      entity.siteContactName = dto.siteContactName ?? null;
+    if (dto.siteContactPhone !== undefined)
+      entity.siteContactPhone = dto.siteContactPhone ?? null;
+    if (dto.siteContactEmail !== undefined)
+      entity.siteContactEmail = dto.siteContactEmail ?? null;
+    if (dto.sitePurchaseDate !== undefined)
+      entity.sitePurchaseDate = dto.sitePurchaseDate ?? null;
+    if (dto.siteNotes !== undefined) entity.siteNotes = dto.siteNotes ?? null;
 
     return this.harvestAreasRepository.save(entity);
   }

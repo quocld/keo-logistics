@@ -1,17 +1,19 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsEnum,
   IsNumber,
   IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
 import { Transform, Type, plainToInstance } from 'class-transformer';
+import { HarvestAreaStatusEnum } from '../domain/harvest-area-status.enum';
 
 export class FilterHarvestAreaDto {
-  @ApiPropertyOptional({ example: 'active' })
+  @ApiPropertyOptional({ enum: HarvestAreaStatusEnum })
   @IsOptional()
-  @IsString()
-  status?: string | null;
+  @IsEnum(HarvestAreaStatusEnum)
+  status?: HarvestAreaStatusEnum | null;
 
   @ApiPropertyOptional({ example: 2 })
   @IsOptional()

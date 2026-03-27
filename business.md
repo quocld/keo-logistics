@@ -76,9 +76,9 @@ Không có OCR ở MVP (sẽ làm sau). Hiện tại dùng manual entry + chụp
 
 **Backend**
 
-1. Receipt Approved → tính `revenue = weight × unit_price` (theo trạm cân)
-2. Tính profit → cập nhật dashboard realtime
-3. Tracking vị trí driver đang chạy nền
+1. Receipt Approved → tính `revenue = weight × unit_price` (theo trạm cân), ghi `finance_records`; nếu receipt có `trip_id` thì cộng dồn `total_tons` / `total_receipts` trên trip (**chỉ tính phiếu đã approved**)
+2. Tính profit → cập nhật dashboard realtime *(dashboard API có thể chưa có)*
+3. Tracking vị trí driver đang chạy nền *(API ghi/đọc vị trí có thể chưa có)*
 
 **Driver (kết thúc)**
 
@@ -95,17 +95,21 @@ Không có OCR ở MVP (sẽ làm sau). Hiện tại dùng manual entry + chụp
 
 ### 6.2 Trip management
 
-- Tạo Trip mới: chọn Harvest Area → Weighing Station
-- Bắt đầu / kết thúc Trip
-- Xem danh sách Trip của mình
+- Tạo Trip mới: chọn Harvest Area → Weighing Station (API backend: `POST /trips`, có thể `startNow` để vào luôn trạng thái đang chạy).
+- Vòng đời backend: `planned` (đã tạo, chưa start) → `in_progress` (sau `POST .../start` hoặc tạo kèm `startNow`) → `completed` hoặc `cancelled`.
+- Mỗi tài xế chỉ có **một** trip `in_progress` tại một thời điểm; có thể có nhiều trip `planned` / đã đóng trong lịch sử.
+- Kết thúc / hủy: driver; owner (khu thuộc sở hữu) và admin cũng có thể **complete** / **cancel**.
+- `GET /trips`: driver xem của mình; owner theo khu; admin toàn hệ thống (có filter).
+- Xe **bận** có thể suy ra: tồn tại trip `in_progress` (dùng cho map/dashboard sau).
 
 ### 6.3 Receipt (core)
 
 - Nhập manual: weight (tấn), amount (VND), receipt_date, bill_code, notes
-- Bắt buộc chọn Harvest Area & Weighing Station
+- **Bắt buộc** ít nhất một ảnh bill: URL (`imageUrls`) và/hoặc file đã upload (`imageFileIds` qua module Files)
+- Harvest Area bắt buộc; Weighing Station **tùy** chuyến — nếu gắn `tripId`, hệ thống **tự lấy trạm từ trip** (phải khớp khu + driver + trip đang `in_progress`)
 - Chụp ảnh bill (hỗ trợ nhiều ảnh)
 - Submit → Pending
-- Offline mode: lưu tạm → sync khi có mạng
+- Offline mode: lưu tạm → sync khi có mạng *(client; backend chưa mô tả chi tiết)*
 
 ### 6.4 Live tracking (bắt buộc)
 
@@ -152,8 +156,12 @@ Không có OCR ở MVP (sẽ làm sau). Hiện tại dùng manual entry + chụp
 
 ### 7.4 Harvest area management
 
-- List khu + Google Maps (latitude, longitude, address)
-- Tiến độ target tấn, current tons, lời/lỗ từng khu
+- List / tạo / chi tiết / cập nhật / xoá mềm khu (API `harvest-areas`; admin + owner)
+- Google Maps: latitude, longitude, `google_place_id`, v.v. khi có
+- **Trạng thái vận hành bãi** (`status`): `inactive` (chưa hoạt động), `active` (đang hoạt động), `paused` (tạm dừng), `completed` (hoàn thành chu kỳ)
+- **Liên hệ phía chủ bãi / chủ đất** (hợp đồng cây — khác user *owner* trong hệ thống): tên, SĐT, email
+- **Ngày mua/thuê cây tại bãi** (`site_purchase_date`) và **ghi chú** (ví dụ chu kỳ mua lại cây sau 2–3 năm)
+- Tiến độ target tấn, current tons; lời/lỗ từng khu *(tổng hợp báo cáo có thể mở rộng sau)*
 
 ### 7.5 Weighing station management
 
@@ -205,10 +213,10 @@ Không có OCR ở MVP (sẽ làm sau). Hiện tại dùng manual entry + chụp
 ## 11. Data model (tóm tắt các bảng chính)
 
 - `users` + `driver_profiles`
-- `harvest_areas` (có Google Maps)
+- `harvest_areas` (Google Maps; `status` vận hành; liên hệ chủ bãi + ngày mua cây + ghi chú — xem `KEO_Ops_database.md`)
 - `weighing_stations` (có `unit_price` + Google Maps)
-- `trips`
-- `receipts` (status: pending / approved / rejected)
+- `trips` (`status`: planned / in_progress / completed / cancelled; tổng tấn/số phiếu approved gắn chuyến)
+- `receipts` (status: pending / approved / rejected; `trip_id` tùy chọn, ràng buộc khớp chuyến khi có)
 - `receipt_images`
 - `finance_records`
 - `vehicle_locations` (tracking realtime; trong một số tài liệu gọi là driver locations)
@@ -221,21 +229,23 @@ Không có OCR ở MVP (sẽ làm sau). Hiện tại dùng manual entry + chụp
 
 ## 12. Đối chiếu triển khai backend (repo keo-be)
 
-**Kết luận:** Tài liệu BRD **không** khớp 100% với backend hiện tại. BRD mô tả **toàn bộ MVP**; repo mới triển khai **một phần** nền (API + DB), phần lớn màn hình/dashboard/map nằm ở client hoặc chưa làm.
+**Kết luận:** BRD mô tả **toàn bộ MVP**; backend keo-be đã có **nền API + DB** cho nhiều luồng cốt lõi; dashboard tổng hợp, map realtime và một số rule chống gian lận vẫn chủ yếu ở client hoặc chưa làm.
 
 | Hạng mục trong BRD                         | Trạng thái trong keo-be (backend) |
 | ------------------------------------------ | --------------------------------- |
 | Đăng ký / auth                             | Email + password + JWT (boilerplate); **không** có login OTP số điện thoại |
-| Harvest Area                               | `POST` tạo khu (admin/owner); **chưa** có API list/detail/update đầy đủ như mục 7.4 |
-| Weighing Station                           | `POST` tạo trạm (admin); **chưa** có API list như mục 7.5 |
-| Receipt submit / approve / reject          | **Có** (`/receipts`, role driver / owner / admin); owner chỉ duyệt khu thuộc mình |
-| Ảnh bill bắt buộc, nhiều ảnh               | Bảng `receipt_images` có trong DB; **chưa** ghi ảnh từ API submit (DTO có field URL nhưng chưa persist) |
-| Finance engine (`revenue`, `profit`, …)    | Bảng `finance_records` có trong DB; **chưa** tạo bản ghi khi approve; **chưa** tính `weight × unit_price` tự động |
-| Trip (bắt đầu/kết thúc, list)              | Bảng `trips` có trong DB; **chưa** có API |
-| Live tracking / map                        | Bảng `vehicle_locations` có trong DB; **chưa** có API ghi/đọc vị trí |
-| Dashboard, báo cáo, alert                  | **Chưa** có trong backend như mô tả mục 7.1, 7.7 |
-| Audit log, notifications                   | Bảng có trong DB; **chưa** có service/API theo BRD |
-| Duplicate `bill_code`, anti-fraud nâng cao | **Chưa** thấy rule kiểm tra trùng |
+| Harvest Area                               | **Có** CRUD + list/detail (admin/owner): `harvest-areas`. Trạng thái bãi `inactive` / `active` / `paused` / `completed`; thông tin liên hệ chủ bãi + ngày mua cây + ghi chú (`site_*`) |
+| Weighing Station                           | **Có** CRUD + list (admin): `weighing-stations` |
+| Receipt submit / approve / reject          | **Có** `POST/GET /receipts` + approve/reject; owner chỉ khu của mình; **bắt buộc** ít nhất một ảnh (`imageUrls` / `imageFileIds`) |
+| Ảnh bill, nhiều ảnh                        | **Có** lưu `receipt_images`; upload qua `Files` + URL client |
+| Finance khi approve                        | **Có** tạo `finance_records`, `revenue = weight × unit_price` (trạm active) |
+| Trip                                       | **Có** `GET/POST /trips`, start/complete/cancel; `planned` / `in_progress` / …; một trip `in_progress` / tài xế; complete/cancel: driver + owner (khu) + admin |
+| Receipt gắn Trip                           | **Có** `tripId` khi submit: khớp driver + khu + trip `in_progress`; trạm cân **auto** theo trip |
+| Trip `total_tons` / `total_receipts`       | **Có** cộng khi **approve** phiếu có `trip_id` |
+| Live tracking / map                        | Bảng `vehicle_locations` có trong DB; **chưa** có API ghi/đọc vị trí theo BRD |
+| Dashboard, báo cáo, alert                  | **Chưa** có API như mục 7.1, 7.7 |
+| Audit log, notifications                   | Bảng có trong DB; **chưa** có service/API đầy đủ theo BRD |
+| Duplicate `bill_code`, anti-fraud nâng cao | **Chưa** rule kiểm tra trùng |
 | Admin user CRUD                            | **Có** (module Users, role admin) — một phần mục 8 |
 
-*Nếu cần bám sát BRD 100%, cần bổ sung lần lượt: API Trip & tracking, finance khi approve, lưu ảnh receipt, endpoint đọc/ghi phục vụ Owner dashboard/map, và các rule chống gian lận/alert.*
+*Việc còn lại điển hình: API tracking, dashboard aggregate, audit/notifications, rule trùng `bill_code`, login OTP.*

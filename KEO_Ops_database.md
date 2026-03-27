@@ -1,8 +1,8 @@
 # KeoTram Ops - Database Schema
 
 **Database:** PostgreSQL  
-**Phiên bản:** 1.0 (MVP - Manual Entry + Approval Flow)  
-**Ngày:** 27/03/2026
+**Phiên bản:** 1.1 (đồng bộ schema + migration trong repo)  
+**Ngày cập nhật:** 27/03/2026
 
 ## 1. Core Tables
 
@@ -73,7 +73,9 @@ avg_tons_per_trip     NUMERIC(8,2) DEFAULT 0
 updated_at            TIMESTAMPTZ DEFAULT NOW()
 ```
 
-### 1.3. `harvest_areas` (Khu khai thac)
+### 1.3. `harvest_areas` (Khu khai thác)
+
+`owner_id` = user **chủ thầu** trong hệ thống. Các cột `site_*` = **liên hệ phía chủ đất / chủ bãi** (hợp đồng mua cây), khác với `owner_id`.
 
 ```sql
 id                    UUID PRIMARY KEY DEFAULT gen_random_uuid()
@@ -90,7 +92,19 @@ plus_code             VARCHAR(50)
 
 target_tons           NUMERIC(12,2)
 current_tons          NUMERIC(12,2) DEFAULT 0
-status                VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active','completed','paused'))
+
+-- Trạng thái vận hành bãi (khai thác / hợp đồng cây)
+status                VARCHAR(20) NOT NULL DEFAULT 'active'
+                      CHECK (status IN ('inactive','active','paused','completed'))
+                      -- inactive = chưa hoạt động, active = đang hoạt động,
+                      -- paused = tạm dừng, completed = hoàn thành chu kỳ
+
+-- Liên hệ chủ bãi / chủ đất (mua cây); ngày mua & ghi chú chu kỳ (vd mua lại sau vài năm)
+site_contact_name     VARCHAR(150)
+site_contact_phone    VARCHAR(30)
+site_contact_email    VARCHAR(255)
+site_purchase_date    DATE
+site_notes            TEXT
 
 created_at            TIMESTAMPTZ DEFAULT NOW()
 updated_at            TIMESTAMPTZ DEFAULT NOW()
@@ -131,14 +145,18 @@ start_time            TIMESTAMPTZ
 end_time              TIMESTAMPTZ
 estimated_distance    NUMERIC(8,2)
 
-total_tons            NUMERIC(12,2) DEFAULT 0
-total_receipts        INTEGER DEFAULT 0
-status                VARCHAR(20) DEFAULT 'in_progress' CHECK (status IN ('in_progress','completed','cancelled'))
+total_tons            NUMERIC(12,2) DEFAULT 0   -- cộng dồn weight receipt approved có trip_id
+total_receipts        INTEGER DEFAULT 0        -- đếm receipt approved có trip_id
+status                VARCHAR(20) NOT NULL DEFAULT 'planned'
+                      CHECK (status IN ('planned','in_progress','completed','cancelled'))
 
 created_at            TIMESTAMPTZ DEFAULT NOW()
 updated_at            TIMESTAMPTZ DEFAULT NOW()
 deleted_at            TIMESTAMPTZ
 ```
+
+- `planned`: đã tạo chuyến, chưa start (hoặc chờ `start_time`).
+- Mỗi tài xế tối đa **một** bản ghi `in_progress` tại một thời điểm (enforce ở application).
 
 ### 1.6. `receipts` (Core Table)
 
@@ -262,7 +280,8 @@ CREATE INDEX idx_vehicle_locations_timestamp ON vehicle_locations(timestamp DESC
 
 ## 5. Business Rules
 
-- Finance chi tinh khi `receipts.status = 'approved'`.
-- `revenue = weight * weighing_stations.unit_price` (lay tu tram can).
-- Mot `trip` di tu 1 `harvest_area` den 1 `weighing_station`.
-- `receipt` thuoc `trip` hoac co the doc lap (`trip_id` nullable).
+- Finance chỉ tính khi `receipts.status = 'approved'`; bản ghi trong `finance_records`, `revenue = weight × weighing_stations.unit_price` (trạm active).
+- Một `trip` đi từ một `harvest_area` đến một `weighing_station`.
+- `receipt.trip_id` nullable. Khi có `trip_id`: backend kiểm tra cùng `driver_id`, cùng `harvest_area_id` với trip, trip đang `in_progress`; trạm cân trên phiếu lấy theo trip (auto-fill).
+- Khi approve receipt có `trip_id`: cộng `weight` vào `trips.total_tons`, tăng `trips.total_receipts` (chỉ phiếu approved).
+- Ảnh bill: ít nhất một URL hoặc file id trên mỗi lần submit (`receipt_images`).

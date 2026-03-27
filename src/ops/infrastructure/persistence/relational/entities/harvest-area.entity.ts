@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { EntityRelationalHelper } from '../../../../../utils/relational-entity-helper';
 import { UserEntity } from '../../../../../users/infrastructure/persistence/relational/entities/user.entity';
+import { HarvestAreaStatusEnum } from '../../../../domain/harvest-area-status.enum';
 
 @Entity({
   name: 'harvest_areas',
@@ -100,9 +101,50 @@ export class HarvestAreaEntity extends EntityRelationalHelper {
   @Column({
     type: String,
     length: 20,
-    default: 'active',
+    default: HarvestAreaStatusEnum.active,
   })
-  status: string;
+  status: HarvestAreaStatusEnum;
+
+  /** Liên hệ phía chủ đất / chủ bãi (khác user owner trong hệ thống). */
+  @Column({
+    name: 'site_contact_name',
+    type: String,
+    length: 150,
+    nullable: true,
+  })
+  siteContactName: string | null;
+
+  @Column({
+    name: 'site_contact_phone',
+    type: String,
+    length: 30,
+    nullable: true,
+  })
+  siteContactPhone: string | null;
+
+  @Column({
+    name: 'site_contact_email',
+    type: String,
+    length: 255,
+    nullable: true,
+  })
+  siteContactEmail: string | null;
+
+  /** Ngày mua/thuê cây tại bãi (lần gần nhất hoặc lần đầu — ghi chú thêm ở siteNotes). */
+  @Column({
+    name: 'site_purchase_date',
+    type: 'date',
+    nullable: true,
+  })
+  sitePurchaseDate: string | null;
+
+  /** Ví dụ: chu kỳ mua lại cây sau 2–3 năm. */
+  @Column({
+    name: 'site_notes',
+    type: 'text',
+    nullable: true,
+  })
+  siteNotes: string | null;
 
   @CreateDateColumn({
     name: 'created_at',
