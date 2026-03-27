@@ -6,27 +6,65 @@
 
 ## 1. Core Tables
 
-### 1.1. `users`
+### 1.1. Reuse existing auth tables (from boilerplate)
+
+> Khong tao lai cac bang nay trong Ops schema de tranh conflict migration.
+> Su dung truc tiep cac bang da co san: `user`, `role`, `status`, `file`, `session`.
+
+#### `role` (existing)
 
 ```sql
-id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
-phone           VARCHAR(15) UNIQUE NOT NULL
-email           VARCHAR(255) UNIQUE
-password_hash   TEXT NOT NULL
-full_name       VARCHAR(100) NOT NULL
-role            VARCHAR(20) NOT NULL CHECK (role IN ('driver', 'owner', 'admin'))
-is_active       BOOLEAN DEFAULT true
-created_at      TIMESTAMPTZ DEFAULT NOW()
-updated_at      TIMESTAMPTZ DEFAULT NOW()
-deleted_at      TIMESTAMPTZ
-created_by      UUID REFERENCES users(id)
-updated_by      UUID REFERENCES users(id)
+id          INTEGER PRIMARY KEY
+name        VARCHAR NOT NULL
+```
+
+#### `status` (existing)
+
+```sql
+id          INTEGER PRIMARY KEY
+name        VARCHAR NOT NULL
+```
+
+#### `file` (existing)
+
+```sql
+id          UUID PRIMARY KEY DEFAULT uuid_generate_v4()
+path        VARCHAR NOT NULL
+```
+
+#### `user` (existing)
+
+```sql
+id          SERIAL PRIMARY KEY
+email       VARCHAR UNIQUE
+password    VARCHAR
+provider    VARCHAR NOT NULL DEFAULT 'email'
+socialId    VARCHAR
+firstName   VARCHAR
+lastName    VARCHAR
+photoId     UUID UNIQUE REFERENCES file(id)
+roleId      INTEGER REFERENCES role(id)
+statusId    INTEGER REFERENCES status(id)
+createdAt   TIMESTAMP DEFAULT NOW()
+updatedAt   TIMESTAMP DEFAULT NOW()
+deletedAt   TIMESTAMP
+```
+
+#### `session` (existing)
+
+```sql
+id          SERIAL PRIMARY KEY
+hash        VARCHAR NOT NULL
+userId      INTEGER REFERENCES user(id)
+createdAt   TIMESTAMP DEFAULT NOW()
+updatedAt   TIMESTAMP DEFAULT NOW()
+deletedAt   TIMESTAMP
 ```
 
 ### 1.2. `driver_profiles`
 
 ```sql
-user_id               UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE
+user_id               INTEGER PRIMARY KEY REFERENCES "user"(id) ON DELETE CASCADE
 vehicle_plate         VARCHAR(20)
 license_number        VARCHAR(30)
 rating                NUMERIC(3,2) DEFAULT 5.00
@@ -40,7 +78,7 @@ updated_at            TIMESTAMPTZ DEFAULT NOW()
 ```sql
 id                    UUID PRIMARY KEY DEFAULT gen_random_uuid()
 name                  VARCHAR(150) NOT NULL
-owner_id              UUID REFERENCES users(id)
+owner_id              INTEGER REFERENCES "user"(id)
 
 -- Google Maps
 google_place_id       VARCHAR(100) UNIQUE
@@ -85,7 +123,7 @@ deleted_at            TIMESTAMPTZ
 
 ```sql
 id                    UUID PRIMARY KEY DEFAULT gen_random_uuid()
-driver_id             UUID NOT NULL REFERENCES users(id)
+driver_id             INTEGER NOT NULL REFERENCES "user"(id)
 harvest_area_id       UUID NOT NULL REFERENCES harvest_areas(id)
 weighing_station_id   UUID NOT NULL REFERENCES weighing_stations(id)
 
@@ -107,7 +145,7 @@ deleted_at            TIMESTAMPTZ
 ```sql
 id                    UUID PRIMARY KEY DEFAULT gen_random_uuid()
 trip_id               UUID REFERENCES trips(id)
-driver_id             UUID NOT NULL REFERENCES users(id)
+driver_id             INTEGER NOT NULL REFERENCES "user"(id)
 harvest_area_id       UUID NOT NULL REFERENCES harvest_areas(id)
 weighing_station_id   UUID REFERENCES weighing_stations(id)
 
@@ -121,7 +159,7 @@ status                VARCHAR(20) DEFAULT 'pending'
                       CHECK (status IN ('pending', 'approved', 'rejected'))
 
 submitted_at          TIMESTAMPTZ DEFAULT NOW()
-approved_by           UUID REFERENCES users(id)
+approved_by           INTEGER REFERENCES "user"(id)
 approved_at           TIMESTAMPTZ
 rejected_reason       TEXT
 
@@ -163,7 +201,7 @@ record_id     UUID NOT NULL
 action        VARCHAR(20) NOT NULL
 old_data      JSONB
 new_data      JSONB
-user_id       UUID REFERENCES users(id)
+user_id       INTEGER REFERENCES "user"(id)
 created_at    TIMESTAMPTZ DEFAULT NOW()
 ```
 
@@ -171,7 +209,7 @@ created_at    TIMESTAMPTZ DEFAULT NOW()
 
 ```sql
 id            UUID PRIMARY KEY DEFAULT gen_random_uuid()
-user_id       UUID NOT NULL REFERENCES users(id)
+user_id       INTEGER NOT NULL REFERENCES "user"(id)
 title         TEXT NOT NULL
 message       TEXT NOT NULL
 type          VARCHAR(30)
@@ -199,7 +237,7 @@ CREATE INDEX idx_weighing_stations_location ON weighing_stations(latitude, longi
 ```sql
 CREATE TABLE vehicle_locations (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    driver_id         UUID NOT NULL REFERENCES users(id),
+    driver_id         INTEGER NOT NULL REFERENCES "user"(id),
     trip_id           UUID NOT NULL REFERENCES trips(id),        -- Bat buoc lien ket voi trip
     latitude          NUMERIC(10, 8) NOT NULL,
     longitude         NUMERIC(11, 8) NOT NULL,
