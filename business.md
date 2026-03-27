@@ -158,7 +158,8 @@ Không có OCR ở MVP (sẽ làm sau). Hiện tại dùng manual entry + chụp
 
 - List / tạo / chi tiết / cập nhật / xoá mềm khu (API `harvest-areas`; admin + owner)
 - Google Maps: latitude, longitude, `google_place_id`, v.v. khi có
-- **Trạng thái vận hành bãi** (`status`): `inactive` (chưa hoạt động), `active` (đang hoạt động), `paused` (tạm dừng), `completed` (hoàn thành chu kỳ)
+- **Trạng thái vận hành bãi** (`status`): `inactive`, `preparing` (chuẩn bị/khảo sát), `active`, `paused`, `awaiting_renewal` (chờ chu kỳ mua cây tiếp), `completed`
+- **Diện tích** (`area_hectares`, ha); **số tấn dự kiến** (`target_tons`)
 - **Liên hệ phía chủ bãi / chủ đất** (hợp đồng cây — khác user *owner* trong hệ thống): tên, SĐT, email
 - **Ngày mua/thuê cây tại bãi** (`site_purchase_date`) và **ghi chú** (ví dụ chu kỳ mua lại cây sau 2–3 năm)
 - Tiến độ target tấn, current tons; lời/lỗ từng khu *(tổng hợp báo cáo có thể mở rộng sau)*
@@ -234,7 +235,7 @@ Không có OCR ở MVP (sẽ làm sau). Hiện tại dùng manual entry + chụp
 | Hạng mục trong BRD                         | Trạng thái trong keo-be (backend) |
 | ------------------------------------------ | --------------------------------- |
 | Đăng ký / auth                             | Email + password + JWT (boilerplate); **không** có login OTP số điện thoại |
-| Harvest Area                               | **Có** CRUD + list/detail (admin/owner): `harvest-areas`. Trạng thái bãi `inactive` / `active` / `paused` / `completed`; thông tin liên hệ chủ bãi + ngày mua cây + ghi chú (`site_*`) |
+| Harvest Area                               | **Có** CRUD + list/detail (admin/owner): `harvest-areas`. Trạng thái: `inactive`, `preparing`, `active`, `paused`, `awaiting_renewal`, `completed`; `area_hectares`, `target_tons` (tấn dự kiến); `site_*` (liên hệ chủ bãi, ngày mua, ghi chú) |
 | Weighing Station                           | **Có** CRUD + list (admin): `weighing-stations` |
 | Receipt submit / approve / reject          | **Có** `POST/GET /receipts` + approve/reject; owner chỉ khu của mình; **bắt buộc** ít nhất một ảnh (`imageUrls` / `imageFileIds`) |
 | Ảnh bill, nhiều ảnh                        | **Có** lưu `receipt_images`; upload qua `Files` + URL client |

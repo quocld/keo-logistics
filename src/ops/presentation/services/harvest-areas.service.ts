@@ -50,6 +50,7 @@ export class HarvestAreasService {
       googlePlaceId: dto.googlePlaceId ?? null,
       latitude: dto.latitude?.toString() ?? null,
       longitude: dto.longitude?.toString() ?? null,
+      areaHectares: dto.areaHectares?.toString() ?? null,
       targetTons: dto.targetTons?.toString() ?? null,
       siteContactName: dto.siteContactName ?? null,
       siteContactPhone: dto.siteContactPhone ?? null,
@@ -135,6 +136,8 @@ export class HarvestAreasService {
       entity.latitude = dto.latitude?.toString() ?? null;
     if (dto.longitude !== undefined)
       entity.longitude = dto.longitude?.toString() ?? null;
+    if (dto.areaHectares !== undefined)
+      entity.areaHectares = dto.areaHectares?.toString() ?? null;
     if (dto.targetTons !== undefined)
       entity.targetTons = dto.targetTons?.toString() ?? null;
     if (dto.siteContactName !== undefined)

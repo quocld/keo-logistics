@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  Min,
 } from 'class-validator';
 import { HarvestAreaStatusEnum } from '../domain/harvest-area-status.enum';
 
@@ -24,7 +25,7 @@ export class CreateHarvestAreaDto {
   @ApiPropertyOptional({
     enum: HarvestAreaStatusEnum,
     description:
-      'inactive = chưa hoạt động, active = đang hoạt động, paused = tạm dừng, completed = hoàn thành',
+      'inactive | preparing (chuẩn bị/khảo sát) | active | paused | awaiting_renewal (chờ mua cây tiếp) | completed',
   })
   @IsOptional()
   @IsEnum(HarvestAreaStatusEnum)
@@ -45,9 +46,22 @@ export class CreateHarvestAreaDto {
   @IsNumber()
   longitude?: number;
 
-  @ApiPropertyOptional({ example: 1000 })
+  @ApiPropertyOptional({
+    example: 12.5,
+    description: 'Diện tích bãi (ha)',
+  })
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  areaHectares?: number;
+
+  @ApiPropertyOptional({
+    example: 1000,
+    description: 'Số tấn dự kiến khai thác',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   targetTons?: number;
 
   @ApiPropertyOptional({

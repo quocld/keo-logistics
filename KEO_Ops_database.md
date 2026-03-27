@@ -90,14 +90,13 @@ formatted_address     TEXT
 address_components    JSONB
 plus_code             VARCHAR(50)
 
-target_tons           NUMERIC(12,2)
+area_hectares         NUMERIC(12,4)   -- diện tích (ha)
+target_tons           NUMERIC(12,2)   -- số tấn dự kiến khai thác
 current_tons          NUMERIC(12,2) DEFAULT 0
 
 -- Trạng thái vận hành bãi (khai thác / hợp đồng cây)
 status                VARCHAR(20) NOT NULL DEFAULT 'active'
-                      CHECK (status IN ('inactive','active','paused','completed'))
-                      -- inactive = chưa hoạt động, active = đang hoạt động,
-                      -- paused = tạm dừng, completed = hoàn thành chu kỳ
+                      CHECK (status IN ('inactive','preparing','active','paused','awaiting_renewal','completed'))
 
 -- Liên hệ chủ bãi / chủ đất (mua cây); ngày mua & ghi chú chu kỳ (vd mua lại sau vài năm)
 site_contact_name     VARCHAR(150)

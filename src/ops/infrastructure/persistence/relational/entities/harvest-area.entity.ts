@@ -80,6 +80,17 @@ export class HarvestAreaEntity extends EntityRelationalHelper {
   })
   plusCode: string | null;
 
+  /** Diện tích bãi (ha). */
+  @Column({
+    name: 'area_hectares',
+    type: 'numeric',
+    precision: 12,
+    scale: 4,
+    nullable: true,
+  })
+  areaHectares: string | null;
+
+  /** Số tấn dự kiến khai thác (kế hoạch). */
   @Column({
     name: 'target_tons',
     type: 'numeric',
