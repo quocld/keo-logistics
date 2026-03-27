@@ -1,12 +1,7 @@
 import { registerAs } from '@nestjs/config';
 import { AppConfig } from './app-config.type';
 import validateConfig from '.././utils/validate-config';
-import {
-  IsEnum,
-  IsOptional,
-  IsString,
-  IsUrl,
-} from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUrl } from 'class-validator';
 
 enum Environment {
   Development = 'development',
