@@ -105,19 +105,24 @@ describe('Ops Receipts MVP', () => {
         weight: 12.5,
         amount: 15000,
         receiptDate: new Date().toISOString(),
+        imageUrls: ['https://example.com/bill-phase2.jpg'],
       });
 
     expect(submitResp.status).toBe(201);
     expect(submitResp.body.status).toBe('pending');
+    expect(submitResp.body.images?.length).toBe(1);
+    expect(submitResp.body.images[0].isPrimary).toBe(true);
     const receiptId = submitResp.body.id;
 
     const approveResp = await request(APP_URL)
       .post(`/api/v1/receipts/${receiptId}/approve`)
       .auth(owner1Token, { type: 'bearer' })
-      .send();
+      .send({});
 
     expect(approveResp.status).toBe(200);
     expect(approveResp.body.status).toBe('approved');
+    expect(approveResp.body.financeRecord).toBeDefined();
+    expect(approveResp.body.financeRecord.revenue).toBe('15000.00');
 
     const driverApproveResp = await request(APP_URL)
       .post(`/api/v1/receipts/${receiptId}/approve`)
@@ -137,6 +142,7 @@ describe('Ops Receipts MVP', () => {
         weight: 10.1,
         amount: 12300,
         receiptDate: new Date().toISOString(),
+        imageUrls: ['https://example.com/bill-owner2.jpg'],
       });
 
     const receiptId = submitResp.body.id;
@@ -159,6 +165,7 @@ describe('Ops Receipts MVP', () => {
         weight: 20,
         amount: 24000,
         receiptDate: new Date().toISOString(),
+        imageUrls: ['https://example.com/bill-reject.jpg'],
       });
 
     const receiptId = submitResp.body.id;
@@ -177,5 +184,79 @@ describe('Ops Receipts MVP', () => {
       .send();
 
     expect(approveAgainResp.status).toBe(422);
+  });
+
+  it('should reject approval without weighing station when not inferable', async () => {
+    const submitResp = await request(APP_URL)
+      .post('/api/v1/receipts')
+      .auth(driverToken, { type: 'bearer' })
+      .send({
+        harvestAreaId,
+        weight: 5,
+        amount: 5000,
+        receiptDate: new Date().toISOString(),
+        imageUrls: ['https://example.com/bill-no-station.jpg'],
+      });
+
+    expect(submitResp.status).toBe(201);
+    const receiptId = submitResp.body.id;
+
+    const approveResp = await request(APP_URL)
+      .post(`/api/v1/receipts/${receiptId}/approve`)
+      .auth(owner1Token, { type: 'bearer' })
+      .send({});
+
+    expect(approveResp.status).toBe(422);
+    expect(approveResp.body.message?.error ?? approveResp.body.error).toBe(
+      'weighingStationRequiredForApproval',
+    );
+  });
+
+  it('should allow approval with weighingStationId in body when receipt has none', async () => {
+    const submitResp = await request(APP_URL)
+      .post('/api/v1/receipts')
+      .auth(driverToken, { type: 'bearer' })
+      .send({
+        harvestAreaId,
+        weight: 2,
+        amount: 2000,
+        receiptDate: new Date().toISOString(),
+        imageUrls: ['https://example.com/bill-approve-body-station.jpg'],
+      });
+
+    expect(submitResp.status).toBe(201);
+    const receiptId = submitResp.body.id;
+
+    const approveResp = await request(APP_URL)
+      .post(`/api/v1/receipts/${receiptId}/approve`)
+      .auth(owner1Token, { type: 'bearer' })
+      .send({ weighingStationId });
+
+    expect(approveResp.status).toBe(200);
+    expect(approveResp.body.financeRecord.revenue).toBe('2400.00');
+  });
+
+  it('should list receipts for driver, owner, and admin', async () => {
+    const driverList = await request(APP_URL)
+      .get('/api/v1/receipts')
+      .auth(driverToken, { type: 'bearer' })
+      .query({ limit: 50 });
+
+    expect(driverList.status).toBe(200);
+    expect(Array.isArray(driverList.body.data)).toBe(true);
+
+    const ownerList = await request(APP_URL)
+      .get('/api/v1/receipts')
+      .auth(owner1Token, { type: 'bearer' })
+      .query({ limit: 50 });
+
+    expect(ownerList.status).toBe(200);
+
+    const adminList = await request(APP_URL)
+      .get('/api/v1/receipts')
+      .auth(adminToken, { type: 'bearer' })
+      .query({ limit: 50 });
+
+    expect(adminList.status).toBe(200);
   });
 });

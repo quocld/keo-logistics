@@ -16,7 +16,7 @@ export class ReceiptImageEntity extends EntityRelationalHelper {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => ReceiptEntity, {
+  @ManyToOne(() => ReceiptEntity, (r) => r.images, {
     nullable: false,
     onDelete: 'CASCADE',
   })

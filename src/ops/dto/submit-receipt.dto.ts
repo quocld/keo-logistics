@@ -1,15 +1,30 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ApiHideProperty,
+  ApiProperty,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
+import {
+  Allow,
+  ArrayMaxSize,
+  IsArray,
   IsDateString,
   IsNumber,
   IsOptional,
   IsString,
+  IsUrl,
   IsUUID,
   Min,
+  Validate,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { HasAtLeastOneReceiptImageConstraint } from './validators/has-at-least-one-receipt-image.validator';
 
 export class SubmitReceiptDto {
+  @ApiHideProperty()
+  @Validate(HasAtLeastOneReceiptImageConstraint)
+  @Allow()
+  _receiptImageRule?: unknown;
+
   @ApiPropertyOptional({ description: 'Optional: receipt belongs to a trip' })
   @IsOptional()
   @IsUUID()
@@ -49,8 +64,32 @@ export class SubmitReceiptDto {
   @IsString()
   notes?: string;
 
-  @ApiPropertyOptional({ example: 'primary image url' })
+  @ApiPropertyOptional({
+    description: 'Public image URLs (optional if imageFileIds provided).',
+    type: [String],
+  })
   @IsOptional()
-  @IsString()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsUrl({ require_tld: false }, { each: true })
+  imageUrls?: string[];
+
+  @ApiPropertyOptional({
+    description:
+      'File IDs from POST /v1/files/upload (after upload completes).',
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsUUID('4', { each: true })
+  imageFileIds?: string[];
+
+  @ApiPropertyOptional({
+    deprecated: true,
+    description: 'Use imageUrls instead.',
+  })
+  @IsOptional()
+  @IsUrl({ require_tld: false })
   receiptImageUrl?: string;
 }

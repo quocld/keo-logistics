@@ -770,10 +770,10 @@
     },
     {
       "name": "Receipts",
-      "description": "Trước khi test: chạy **Setup – Ops tokens** (ít nhất driver; approve/reject cần owner hoặc admin).\n\nDriver tạo phiếu. Owner/Admin duyệt hoặc từ chối.",
+      "description": "Trước khi test: **Setup – Ops tokens** (driver + owner + admin); có `harvestAreaId` và `weighingStationId` (POST harvest-areas / weighing-stations).\n\n**Phase 2:**\n- Submit **bắt buộc** ít nhất một ảnh: `imageUrls` (URL) và/hoặc `imageFileIds` (UUID sau **POST /files/upload**).\n- **GET /receipts**: driver chỉ phiếu của mình; owner theo khu sở hữu; admin tất cả. Query: `page`, `limit`, `status` (pending|approved|rejected), `receiptDateFrom`, `receiptDateTo`, `harvestAreaId` (chỉ admin).\n- **Approve** tạo `finance_records`: `revenue = weight × unit_price` của trạm. Trạm lấy từ receipt, hoặc từ trip, hoặc gửi `weighingStationId` trong body khi phiếu chưa có trạm.",
       "item": [
         {
-          "name": "POST /receipts (driver submit)",
+          "name": "POST /receipts (driver – imageUrls)",
           "event": [
             {
               "listen": "test",
@@ -794,26 +794,182 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"harvestAreaId\": \"{{harvestAreaId}}\",\n  \"weighingStationId\": \"{{weighingStationId}}\",\n  \"weight\": 12.5,\n  \"amount\": 15000,\n  \"receiptDate\": \"{{$isoTimestamp}}\"\n}"
+              "raw": "{\n  \"harvestAreaId\": \"{{harvestAreaId}}\",\n  \"weighingStationId\": \"{{weighingStationId}}\",\n  \"weight\": 12.5,\n  \"amount\": 15000,\n  \"receiptDate\": \"{{$isoTimestamp}}\",\n  \"billCode\": \"BILL-2026-0001\",\n  \"notes\": \"Ghi chú tùy chọn\",\n  \"imageUrls\": [\"https://example.com/bill-1.jpg\"]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/receipts",
               "host": ["{{baseUrl}}"],
               "path": ["receipts"]
+            },
+            "description": "`tripId` có thể bỏ hoặc gửi UUID trip. Ít nhất một trong: `imageUrls`, `imageFileIds`, hoặc (deprecated) `receiptImageUrl`."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /receipts (driver – imageFileIds)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('receiptId', res.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"harvestAreaId\": \"{{harvestAreaId}}\",\n  \"weighingStationId\": \"{{weighingStationId}}\",\n  \"weight\": 10,\n  \"amount\": 12000,\n  \"receiptDate\": \"{{$isoTimestamp}}\",\n  \"imageFileIds\": [\"{{uploadedFileId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts",
+              "host": ["{{baseUrl}}"],
+              "path": ["receipts"]
+            },
+            "description": "Chạy **POST /files/upload** (driver) trước; biến `uploadedFileId` lưu `file.id` từ response."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /receipts (driver – chỉ của mình)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/receipts?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["receipts"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "description": "pending | approved | rejected",
+                  "disabled": true
+                },
+                {
+                  "key": "receiptDateFrom",
+                  "value": "2026-03-01T00:00:00.000Z",
+                  "disabled": true
+                },
+                {
+                  "key": "receiptDateTo",
+                  "value": "2026-03-31T23:59:59.999Z",
+                  "disabled": true
+                }
+              ]
             }
           },
           "response": []
         },
         {
-          "name": "POST /receipts/:id/approve (owner|admin)",
+          "name": "GET /receipts (owner – theo khu)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/receipts?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["receipts"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                {
+                  "key": "status",
+                  "value": "approved",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /receipts (admin – tất cả + lọc khu)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/receipts?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["receipts"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                {
+                  "key": "harvestAreaId",
+                  "value": "{{harvestAreaId}}",
+                  "description": "Chỉ admin: lọc theo khu",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "disabled": true
+                },
+                {
+                  "key": "receiptDateFrom",
+                  "value": "2026-03-01T00:00:00.000Z",
+                  "disabled": true
+                },
+                {
+                  "key": "receiptDateTo",
+                  "value": "2026-03-31T23:59:59.999Z",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /receipts/:id/approve (owner|admin, body rỗng)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
             "url": {
               "raw": "{{baseUrl}}/receipts/{{receiptId}}/approve",
               "host": ["{{baseUrl}}"],
               "path": ["receipts", "{{receiptId}}", "approve"]
-            }
+            },
+            "description": "Khi phiếu đã có `weighingStationId` hoặc suy ra từ trip. Response có `financeRecord` (revenue = weight × unit_price)."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /receipts/:id/approve (gửi weighingStationId)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weighingStationId\": \"{{weighingStationId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/{{receiptId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["receipts", "{{receiptId}}", "approve"]
+            },
+            "description": "Dùng khi phiếu **chưa** có trạm và không lấy được từ trip."
           },
           "response": []
         },
@@ -841,12 +997,26 @@
     },
     {
       "name": "Files",
+      "description": "Upload JWT: dùng **driverAccessToken** khi gắn ảnh vào phiếu (Receipts).",
       "item": [
         {
-          "name": "POST /files/upload",
+          "name": "POST /files/upload (driver – cho receipt imageFileIds)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const id = res.file && res.file.id;",
+                  "if (id) pm.collectionVariables.set('uploadedFileId', id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }],
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -861,7 +1031,8 @@
               "raw": "{{baseUrl}}/files/upload",
               "host": ["{{baseUrl}}"],
               "path": ["files", "upload"]
-            }
+            },
+            "description": "Response dạng `{ file: { id, path } }`. Test script ghi `uploadedFileId` để dùng trong POST /receipts (imageFileIds)."
           },
           "response": []
         },
@@ -893,6 +1064,7 @@
     { "key": "driverAccessToken", "value": "" },
     { "key": "harvestAreaId", "value": "" },
     { "key": "weighingStationId", "value": "" },
-    { "key": "receiptId", "value": "" }
+    { "key": "receiptId", "value": "" },
+    { "key": "uploadedFileId", "value": "" }
   ]
 }

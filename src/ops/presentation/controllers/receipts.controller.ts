@@ -1,22 +1,32 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
   Post,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiCreatedResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../../../roles/roles.decorator';
 import { RolesGuard } from '../../../roles/roles.guard';
 import { RoleEnum } from '../../../roles/roles.enum';
 import { SubmitReceiptDto } from '../../dto/submit-receipt.dto';
 import { RejectReceiptDto } from '../../dto/reject-receipt.dto';
+import { ApproveReceiptDto } from '../../dto/approve-receipt.dto';
+import { QueryReceiptDto } from '../../dto/query-receipt.dto';
 import { ReceiptEntity } from '../../infrastructure/persistence/relational/entities/receipt.entity';
 import { ReceiptsService } from '../services/receipts.service';
+import { InfinityPaginationResponseDto } from '../../../utils/dto/infinity-pagination-response.dto';
 
 @ApiBearerAuth()
 @ApiTags('Receipts')
@@ -27,6 +37,29 @@ import { ReceiptsService } from '../services/receipts.service';
 })
 export class ReceiptsController {
   constructor(private readonly receiptsService: ReceiptsService) {}
+
+  @ApiOkResponse({
+    description: 'Infinity pagination of receipts',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/ReceiptEntity' },
+        },
+        hasNextPage: { type: 'boolean' },
+      },
+    },
+  })
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  @Roles(RoleEnum.driver, RoleEnum.owner, RoleEnum.admin)
+  findMany(
+    @Request() request,
+    @Query() query: QueryReceiptDto,
+  ): Promise<InfinityPaginationResponseDto<ReceiptEntity>> {
+    return this.receiptsService.findMany(request.user, query);
+  }
 
   @ApiCreatedResponse({ type: ReceiptEntity })
   @Post()
@@ -46,8 +79,9 @@ export class ReceiptsController {
   approve(
     @Request() request,
     @Param('id') receiptId: string,
+    @Body() dto: ApproveReceiptDto,
   ): Promise<ReceiptEntity> {
-    return this.receiptsService.approve(request.user, receiptId);
+    return this.receiptsService.approve(request.user, receiptId, dto);
   }
 
   @ApiCreatedResponse({ type: ReceiptEntity })

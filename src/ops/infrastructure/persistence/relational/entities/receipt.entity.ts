@@ -4,8 +4,10 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
-  ManyToOne,
   JoinColumn,
+  ManyToOne,
+  OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -14,6 +16,8 @@ import { UserEntity } from '../../../../../users/infrastructure/persistence/rela
 import { HarvestAreaEntity } from './harvest-area.entity';
 import { WeighingStationEntity } from './weighing-station.entity';
 import { TripEntity } from './trip.entity';
+import { ReceiptImageEntity } from './receipt-image.entity';
+import { FinanceRecordEntity } from './finance-record.entity';
 import { ReceiptStatusEnum } from '../../../../domain/receipt-status.enum';
 
 @Entity({
@@ -125,4 +129,10 @@ export class ReceiptEntity extends EntityRelationalHelper {
     type: 'timestamptz',
   })
   deletedAt: Date | null;
+
+  @OneToMany(() => ReceiptImageEntity, (img) => img.receipt)
+  images: ReceiptImageEntity[];
+
+  @OneToOne(() => FinanceRecordEntity, (fr) => fr.receipt)
+  financeRecord: FinanceRecordEntity | null;
 }
