@@ -554,6 +554,241 @@
       ]
     },
     {
+      "name": "Ops",
+      "item": [
+        {
+          "name": "Auth - Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"secret\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/email/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "email",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Auth - Owner Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"secret\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/email/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "email",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Auth - Driver Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"driver@example.com\",\n  \"password\": \"secret\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/email/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "email",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /weighing-stations (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tram Station A\",\n  \"code\": \"TRM-001\",\n  \"latitude\": 10.762622,\n  \"longitude\": 106.660172,\n  \"formattedAddress\": \"123 Main St\",\n  \"unitPrice\": 1200\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/weighing-stations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weighing-stations"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /harvest-areas (owner)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Harvest Area #1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /receipts (driver)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"harvestAreaId\": \"{{harvestAreaId}}\",\n  \"weighingStationId\": \"{{weighingStationId}}\",\n  \"weight\": 12.5,\n  \"amount\": 15000,\n  \"receiptDate\": \"{{$isoTimestamp}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /receipts/:id/approve (owner|admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/{{receiptId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "{{receiptId}}",
+                "approve"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /receipts/:id/reject (owner|admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rejectedReason\": \"Rejected by owner\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/{{receiptId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "{{receiptId}}",
+                "reject"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Files",
       "item": [
         {
@@ -633,6 +868,30 @@
     },
     {
       "key": "filePath",
+      "value": ""
+    },
+    {
+      "key": "adminAccessToken",
+      "value": ""
+    },
+    {
+      "key": "ownerAccessToken",
+      "value": ""
+    },
+    {
+      "key": "driverAccessToken",
+      "value": ""
+    },
+    {
+      "key": "harvestAreaId",
+      "value": ""
+    },
+    {
+      "key": "weighingStationId",
+      "value": ""
+    },
+    {
+      "key": "receiptId",
       "value": ""
     }
   ]
