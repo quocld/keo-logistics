@@ -1,6 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -183,6 +184,7 @@ function ReceiptCard({
 
 export default function ReceiptApprovalScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [items, setItems] = useState<Receipt[]>([]);
   const [page, setPage] = useState(1);
   const [hasNext, setHasNext] = useState(false);
@@ -439,6 +441,12 @@ export default function ReceiptApprovalScreen() {
           </Text>
         </View>
         <View style={os.topBarRight}>
+          <Pressable
+            accessibilityLabel="Tạo phiếu cân"
+            onPress={() => router.push('/receipt/form')}
+            style={({ pressed }) => [os.iconBtn, pressed && os.iconBtnPressed]}>
+            <MaterialIcons name="add" size={26} color={S.primary} />
+          </Pressable>
           <Pressable
             onPress={() => setFiltersOpen((v) => !v)}
             style={({ pressed }) => [os.iconBtn, pressed && os.iconBtnPressed]}>

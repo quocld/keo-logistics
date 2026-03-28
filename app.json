@@ -39,7 +39,14 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ứng dụng cần truy cập ảnh để đính kèm bill phiếu cân.",
+          "cameraPermission": "Ứng dụng cần camera để chụp bill phiếu cân."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,17 +1,17 @@
 import { useFocusEffect } from '@react-navigation/native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import { BarChart } from 'react-native-gifted-charts';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ownerStitchListStyles as os } from '@/components/owner/owner-stitch-list-styles';
@@ -83,8 +83,20 @@ function StatTile({
   );
 }
 
+/** Demo 7 ngày — thay bằng series từ API dashboard */
+const DEMO_PERFORMANCE_BARS = [
+  { value: 45, label: 'CN' },
+  { value: 72, label: 'T2' },
+  { value: 55, label: 'T3' },
+  { value: 88, label: 'T4' },
+  { value: 62, label: 'T5' },
+  { value: 95, label: 'T6' },
+  { value: 70, label: 'T7' },
+] as const;
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   const router = useRouter();
   const { user } = useAuth();
   const isOwner = user?.role === 'owner';
@@ -121,6 +133,8 @@ export default function HomeScreen() {
 
   const greeting = user ? displayName(user) : 'bạn';
   const todayLine = useMemo(() => formatTodayVi(new Date()), []);
+
+  const performanceChartWidth = Math.max(260, windowWidth - 40 - 36);
 
   /** Minh họa UI theo Stitch — thay bằng API tổng hợp khi backend có dashboard */
   const demoRevenue = 28_500_000;
@@ -263,15 +277,36 @@ export default function HomeScreen() {
           <Text style={st.sectionBody}>
             Tăng trưởng vận tải trong 30 ngày qua đạt mức ổn định 14%. Theo dõi xu hướng khi dashboard API sẵn sàng.
           </Text>
-          <View style={st.chartRow}>
-            {[0.45, 0.72, 0.55, 0.88, 0.62, 0.95, 0.7].map((h, i) => (
-              <View key={i} style={st.chartBarWrap}>
-                <LinearGradient
-                  colors={[`${S.primary}55`, S.primary]}
-                  style={[st.chartBar, { height: 56 * h }]}
-                />
-              </View>
-            ))}
+          <View style={st.chartWrap}>
+            <BarChart
+              data={DEMO_PERFORMANCE_BARS.map((d) => ({
+                value: d.value,
+                label: d.label,
+                frontColor: S.primary,
+                showGradient: true,
+                gradientColor: `${S.primary}44`,
+              }))}
+              width={performanceChartWidth}
+              height={190}
+              barWidth={Math.min(28, Math.floor((performanceChartWidth - 48) / 7 - 10))}
+              spacing={10}
+              roundedTop
+              roundedBottom
+              isAnimated
+              animationDuration={550}
+              noOfSections={4}
+              maxValue={100}
+              hideRules={false}
+              rulesType="solid"
+              rulesColor={`${S.outline}40`}
+              rulesThickness={StyleSheet.hairlineWidth}
+              yAxisThickness={0}
+              xAxisThickness={1}
+              xAxisColor={`${S.outlineVariant}cc`}
+              yAxisTextStyle={st.chartAxisText}
+              xAxisLabelTextStyle={st.chartAxisText}
+              disableScroll
+            />
           </View>
         </View>
 
@@ -333,15 +368,10 @@ export default function HomeScreen() {
         </View>
 
         <Pressable
-          onPress={() =>
-            Alert.alert(
-              'Tạo lệnh mới',
-              'Luồng tạo manifest / phiếu sẽ kết nối trip và receipts trên KeoTram Ops.',
-            )
-          }
+          onPress={() => router.push('/receipt/form')}
           style={({ pressed }) => [st.manifestBtn, pressed && { opacity: 0.92 }]}>
           <MaterialIcons name="add-circle" size={22} color="#fff" />
-          <Text style={st.manifestBtnText}>Tạo lệnh mới</Text>
+          <Text style={st.manifestBtnText}>Tạo phiếu cân</Text>
         </Pressable>
       </ScrollView>
     </View>
@@ -491,23 +521,13 @@ const st = StyleSheet.create({
     color: S.onSurfaceVariant,
     marginBottom: 16,
   },
-  chartRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: 8,
-    height: 64,
-    paddingHorizontal: 4,
-  },
-  chartBarWrap: {
-    flex: 1,
+  chartWrap: {
+    marginHorizontal: -4,
     alignItems: 'center',
-    justifyContent: 'flex-end',
   },
-  chartBar: {
-    width: '72%',
-    borderRadius: 6,
-    minHeight: 8,
+  chartAxisText: {
+    fontSize: 11,
+    color: S.onSurfaceVariant,
   },
   fleetHead: {
     flexDirection: 'row',

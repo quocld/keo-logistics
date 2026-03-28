@@ -130,6 +130,22 @@ export type ReceiptRejectPayload = {
   rejectedReason?: string | null;
 };
 
+/** POST /receipts — KeoTram Ops Postman (driver | owner theo quyền API) */
+export type ReceiptCreatePayload = {
+  harvestAreaId: string | number;
+  weighingStationId?: string | number | null;
+  tripId?: string | number | null;
+  weight: number;
+  amount: number;
+  receiptDate: string;
+  billCode?: string | null;
+  notes?: string | null;
+  imageUrls?: string[];
+  imageFileIds?: string[];
+  /** @deprecated ưu tiên imageUrls / imageFileIds */
+  receiptImageUrl?: string | null;
+};
+
 export type AggregatedDriver = {
   key: string;
   driverId: number | string;

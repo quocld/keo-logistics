@@ -2,6 +2,7 @@ import type {
   PaginatedList,
   Receipt,
   ReceiptApprovePayload,
+  ReceiptCreatePayload,
   ReceiptRejectPayload,
 } from '@/lib/types/ops';
 
@@ -55,6 +56,14 @@ export async function listReceipts(params: {
   }
 
   return { ok: true, body: parsed as PaginatedList<Receipt> };
+}
+
+export async function createReceipt(body: ReceiptCreatePayload): Promise<Receipt> {
+  return apiFetchJson<Receipt>('/receipts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 }
 
 export async function approveReceipt(
