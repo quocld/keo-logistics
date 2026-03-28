@@ -12,10 +12,12 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { stitchHarvestFormStyles as styles } from '@/components/owner/stitch-harvest-form-styles';
 import { Brand } from '@/constants/brand';
 import { useAuth } from '@/contexts/auth-context';
 import { createHarvestArea, getHarvestArea, updateHarvestArea } from '@/lib/api/harvest-areas';
@@ -31,6 +33,17 @@ const STATUS_OPTIONS: { value: HarvestAreaStatus; label: string }[] = [
   { value: 'inactive', label: 'Ngưng' },
   { value: 'completed', label: 'Hoàn thành' },
 ];
+
+function coerceHarvestStatus(raw: unknown): HarvestAreaStatus {
+  const s =
+    typeof raw === 'object' && raw !== null && 'name' in raw
+      ? String((raw as { name: string }).name).toLowerCase().trim()
+      : String(raw ?? '')
+          .toLowerCase()
+          .trim();
+  const hit = STATUS_OPTIONS.find((o) => o.value === s);
+  return hit?.value ?? 'preparing';
+}
 
 const END_PREFIX = 'Kết thúc dự kiến:';
 
@@ -121,7 +134,7 @@ export default function HarvestAreaFormScreen() {
     try {
       const h = await getHarvestArea(id);
       setName(h.name ?? '');
-      setStatus((h.status as HarvestAreaStatus) || 'preparing');
+      setStatus(coerceHarvestStatus(h.status));
       setAreaHectares(h.areaHectares != null ? String(h.areaHectares) : '');
       setTargetTons(h.targetTons != null ? String(h.targetTons) : '');
       setLatitude(h.latitude != null ? String(h.latitude) : '');
@@ -342,6 +355,10 @@ export default function HarvestAreaFormScreen() {
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionEyebrow}>Kế hoạch thời gian</Text>
+          <Text style={styles.fieldApiHint}>
+            Trường API: <Text style={styles.fieldApiMono}>sitePurchaseDate</Text> · Ngày kết thúc dự kiến được gộp vào{' '}
+            <Text style={styles.fieldApiMono}>siteNotes</Text> (dòng {END_PREFIX} …)
+          </Text>
           <View style={styles.twoCol}>
             <View style={styles.colHalf}>
               <Text style={styles.fieldLabel}>Ngày bắt đầu dự kiến</Text>
@@ -394,6 +411,10 @@ export default function HarvestAreaFormScreen() {
               />
             </View>
           </View>
+          <Text style={styles.fieldApiHint}>
+            Ô tìm kiếm chỉ hỗ trợ giao diện. API nhận <Text style={styles.fieldApiMono}>latitude</Text>,{' '}
+            <Text style={styles.fieldApiMono}>longitude</Text>, <Text style={styles.fieldApiMono}>googlePlaceId</Text>.
+          </Text>
           <Text style={styles.coordEyebrow}>Thông tin tọa độ</Text>
           <View style={styles.coordRow}>
             <TextInput
@@ -471,7 +492,11 @@ export default function HarvestAreaFormScreen() {
           </View>
         ) : null}
 
-        <Pressable onPress={() => void onSubmit()} disabled={saving} style={styles.saveWrap}>
+        <TouchableOpacity
+          onPress={() => void onSubmit()}
+          disabled={saving}
+          activeOpacity={0.88}
+          style={styles.saveWrap}>
           <LinearGradient
             colors={[S.primary, S.primaryContainer]}
             start={{ x: 0, y: 0 }}
@@ -482,7 +507,7 @@ export default function HarvestAreaFormScreen() {
               {saving ? 'Đang lưu…' : isEdit ? 'Cập nhật khu' : 'Lưu Khu Khai Thác'}
             </Text>
           </LinearGradient>
-        </Pressable>
+        </TouchableOpacity>
 
         <Pressable onPress={() => router.back()} style={styles.cancelBtn}>
           <Text style={styles.cancelText}>Hủy bỏ và quay lại</Text>
@@ -491,245 +516,3 @@ export default function HarvestAreaFormScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: Brand.canvas },
-  root: { flex: 1 },
-  content: { paddingHorizontal: 24, paddingTop: 20 },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Brand.canvas,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: Brand.canvas,
-  },
-  headerLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    minWidth: 0,
-  },
-  backBtn: { marginRight: 4 },
-  headerTitle: {
-    flex: 1,
-    fontSize: 17,
-    fontWeight: '500',
-    letterSpacing: -0.2,
-    color: Brand.ink,
-  },
-  headerRight: { flexDirection: 'row', alignItems: 'center' },
-  headerIconBtn: { padding: 8 },
-  headerDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: `${S.outlineVariant}55`,
-    marginHorizontal: 4,
-  },
-  helpBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-  },
-  helpBtnText: { fontSize: 14, fontWeight: '500', color: Brand.ink },
-  headerHairline: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: S.surfaceContainerLow,
-  },
-  sectionCard: {
-    backgroundColor: Brand.surface,
-    borderRadius: 12,
-    padding: 24,
-    marginBottom: 20,
-    shadowColor: Brand.ink,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.04,
-    shadowRadius: 32,
-    elevation: 3,
-  },
-  sectionEyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: S.onSurfaceVariant,
-    marginBottom: 20,
-  },
-  fieldLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Brand.ink,
-    marginBottom: 8,
-  },
-  inputSoft: {
-    backgroundColor: S.surfaceContainerLow,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: Brand.ink,
-    marginBottom: 16,
-  },
-  inputSoftMuted: {
-    backgroundColor: S.surfaceContainerHigh,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: Brand.ink,
-    marginBottom: 0,
-  },
-  textArea: { minHeight: 96, textAlignVertical: 'top' },
-  twoCol: { flexDirection: 'row', gap: 16, marginBottom: 0 },
-  colHalf: { flex: 1, minWidth: 0 },
-  fieldIconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: S.surfaceContainerLow,
-    borderRadius: 8,
-    paddingLeft: 12,
-    marginBottom: 16,
-  },
-  fieldIcon: { marginRight: 4 },
-  fieldIconInput: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingRight: 12,
-    fontSize: 16,
-    color: Brand.ink,
-  },
-  chipsScroll: { flexGrow: 0, marginBottom: 4 },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: Brand.chipMuted,
-    marginRight: 8,
-  },
-  chipOn: { backgroundColor: S.primary },
-  chipTxt: { fontSize: 13, fontWeight: '600', color: Brand.inkMuted },
-  chipTxtOn: { color: '#fff' },
-  mapCard: {
-    backgroundColor: S.surfaceContainerLow,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    overflow: 'hidden',
-  },
-  mapCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
-  sectionEyebrowMap: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: S.onSurfaceVariant,
-  },
-  gpsPill: {
-    backgroundColor: S.secondaryContainer,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  gpsPillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: S.onSecondaryContainer,
-  },
-  mapVisual: {
-    height: 200,
-    borderRadius: 8,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mapPinWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Brand.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Brand.ink,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  mapSearchOverlay: {
-    position: 'absolute',
-    bottom: 12,
-    left: 12,
-    right: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: `${Brand.surface}e6`,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: `${S.outlineVariant}30`,
-  },
-  mapSearchInput: { flex: 1, fontSize: 14, color: Brand.ink, padding: 0 },
-  coordEyebrow: {
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    color: S.onSurfaceVariant,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  coordRow: {
-    flexDirection: 'row',
-    gap: 12,
-    backgroundColor: S.surfaceContainerHigh,
-    borderRadius: 8,
-    padding: 12,
-  },
-  coordInput: {
-    flex: 1,
-    fontSize: 12,
-    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
-    color: `${Brand.ink}99`,
-  },
-  saveWrap: {
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginTop: 8,
-    shadowColor: S.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 6,
-  },
-  saveGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 16,
-  },
-  saveText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  cancelBtn: {
-    alignItems: 'center',
-    paddingVertical: 14,
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  cancelText: { fontSize: 14, fontWeight: '600', color: S.primary },
-});

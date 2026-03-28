@@ -13,6 +13,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -67,6 +68,15 @@ function formatNumberVi(n: number): string {
 function formatKktCode(id: string | number): string {
   const n = String(id).replace(/\D/g, '').slice(-3).padStart(3, '0');
   return `#KKT-${n}`;
+}
+
+/** API có thể trả status string hoặc { name: string } */
+function normalizeHarvestStatus(raw: unknown): string {
+  if (raw == null) return '';
+  if (typeof raw === 'object' && raw !== null && 'name' in raw) {
+    return String((raw as { name: string }).name).toLowerCase().trim();
+  }
+  return String(raw).toLowerCase().trim();
 }
 
 type MaterialIconName = ComponentProps<typeof MaterialIcons>['name'];
@@ -152,7 +162,7 @@ function HarvestProgressCard({
   patching: boolean;
   onPatch: (next: HarvestAreaStatus) => void;
 }) {
-  const st = String(item.status);
+  const st = normalizeHarvestStatus(item.status);
   const ui = cardUiForStatus(st);
   const pct = harvestProgressPercent(item.id, st);
   const target = item.targetTons != null ? Number(item.targetTons) : 0;
@@ -163,55 +173,49 @@ function HarvestProgressCard({
       : '— / — tấn';
 
   const primaryBtn = (label: string, icon: MaterialIconName, onPress: () => void) => (
-    <Pressable
+    <TouchableOpacity
       onPress={onPress}
       disabled={patching}
-      style={({ pressed }) => [
-        styles.cardActionBtn,
-        styles.cardActionMuted,
-        pressed && styles.cardActionPressed,
-        patching && styles.cardActionDisabled,
-      ]}>
+      activeOpacity={0.85}
+      style={[styles.cardActionBtn, patching && styles.cardActionDisabled]}>
       <MaterialIcons name={icon} size={18} color={S.tertiary} />
       <Text style={[styles.cardActionLabel, { color: S.tertiary }]}>{label}</Text>
-    </Pressable>
+    </TouchableOpacity>
   );
 
   const outlineBtn = (label: string, icon: MaterialIconName, onPress: () => void) => (
-    <Pressable
+    <TouchableOpacity
       onPress={onPress}
       disabled={patching}
-      style={({ pressed }) => [
-        styles.cardActionBtn,
-        styles.cardActionMuted,
-        pressed && styles.cardActionPressed,
-        patching && styles.cardActionDisabled,
-      ]}>
+      activeOpacity={0.85}
+      style={[styles.cardActionBtn, patching && styles.cardActionDisabled]}>
       <MaterialIcons name={icon} size={18} color={S.outline} />
       <Text style={[styles.cardActionLabel, { color: S.outline }]}>{label}</Text>
-    </Pressable>
+    </TouchableOpacity>
   );
 
   const gradientBtn = (label: string, icon: MaterialIconName, onPress: () => void) => (
-    <Pressable onPress={onPress} disabled={patching} style={styles.cardActionGrow}>
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={patching}
+      activeOpacity={0.88}
+      style={[styles.cardActionGrow, patching && styles.cardActionDisabled]}>
       <LinearGradient
         colors={[S.primary, S.primaryContainer]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.cardActionGradientInner, patching && { opacity: 0.6 }]}>
+        style={styles.cardActionGradientInner}>
         <MaterialIcons name={icon} size={18} color="#fff" />
         <Text style={styles.cardActionGradientLabel}>{label}</Text>
       </LinearGradient>
-    </Pressable>
+    </TouchableOpacity>
   );
 
   const detailOutlineBtn = (
-    <Pressable
-      onPress={onDetail}
-      style={({ pressed }) => [styles.cardDetailWide, pressed && { opacity: 0.9 }]}>
+    <TouchableOpacity onPress={onDetail} activeOpacity={0.85} style={styles.cardDetailWide}>
       <MaterialIcons name="history" size={18} color={S.outline} />
       <Text style={styles.cardDetailWideText}>Xem chi tiết</Text>
-    </Pressable>
+    </TouchableOpacity>
   );
 
   let actions: ReactNode = null;
@@ -243,7 +247,7 @@ function HarvestProgressCard({
 
   return (
     <View style={[styles.stitchCard, ui.mutedCard && styles.stitchCardMuted]}>
-      <View style={[styles.stitchAccent, { backgroundColor: ui.accent }]} />
+      <View style={[styles.stitchAccent, { backgroundColor: ui.accent }]} pointerEvents="none" />
       <View style={styles.stitchCardInner}>
         <View style={styles.stitchCardHeader}>
           <View style={styles.stitchTitleBlock}>
@@ -257,7 +261,9 @@ function HarvestProgressCard({
               {item.name}
             </Text>
           </View>
-          <MaterialIcons name="more-vert" size={22} color={S.outlineVariant} />
+          <View pointerEvents="none">
+            <MaterialIcons name="more-vert" size={22} color={S.outlineVariant} />
+          </View>
         </View>
 
         {st === 'paused' && item.siteNotes ? (
@@ -279,6 +285,7 @@ function HarvestProgressCard({
           </View>
           <View style={styles.progressTrack}>
             <View
+              pointerEvents="none"
               style={[
                 styles.progressFill,
                 {
@@ -419,7 +426,7 @@ export default function HarvestAreasScreen() {
   }, [items, searchQuery]);
 
   const runningCount = useMemo(
-    () => items.filter((i) => String(i.status) === 'active').length,
+    () => items.filter((i) => normalizeHarvestStatus(i.status) === 'active').length,
     [items],
   );
   const totalTargetTons = useMemo(
@@ -536,7 +543,7 @@ export default function HarvestAreasScreen() {
           <ActivityIndicator size="large" color={S.primary} />
         </View>
       ) : (
-        <>
+        <View style={styles.listWithFab} pointerEvents="box-none">
           <FlatList
             data={displayedItems}
             keyExtractor={(item) => String(item.id)}
@@ -544,7 +551,7 @@ export default function HarvestAreasScreen() {
             renderItem={({ item }) => (
               <HarvestProgressCard
                 item={item}
-                patching={patchingId === item.id}
+                patching={patchingId != null && String(patchingId) === String(item.id)}
                 onDetail={() => router.push(`/harvest-area/${String(item.id)}`)}
                 onPatch={(next) => {
                   if (next === 'completed' || next === 'paused') {
@@ -578,10 +585,14 @@ export default function HarvestAreasScreen() {
                 <EditorialFooter runningCount={runningCount} totalTargetTons={totalTargetTons} />
               </>
             }
+            style={styles.flatListFlex}
           />
-          <Pressable
+          <TouchableOpacity
             onPress={() => router.push('/harvest-area/form')}
-            style={[styles.fab, { bottom: insets.bottom + 56 }]}>
+            activeOpacity={0.9}
+            style={[styles.fab, { bottom: insets.bottom + 56 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Thêm khu khai thác">
             <LinearGradient
               colors={[S.primary, S.primaryContainer]}
               start={{ x: 0, y: 0 }}
@@ -589,8 +600,8 @@ export default function HarvestAreasScreen() {
               style={styles.fabInner}>
               <MaterialIcons name="add" size={28} color="#fff" />
             </LinearGradient>
-          </Pressable>
-        </>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
@@ -600,6 +611,12 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: Brand.canvas,
+  },
+  listWithFab: {
+    flex: 1,
+  },
+  flatListFlex: {
+    flex: 1,
   },
   topBar: {
     flexDirection: 'row',
@@ -864,10 +881,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     backgroundColor: S.surfaceContainerHigh,
-  },
-  cardActionMuted: {},
-  cardActionPressed: {
-    opacity: 0.92,
   },
   cardActionDisabled: {
     opacity: 0.5,

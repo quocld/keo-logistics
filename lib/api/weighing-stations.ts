@@ -1,7 +1,15 @@
-import type { PaginatedList, WeighingStation } from '@/lib/types/ops';
+import type { PaginatedList, WeighingStation, WeighingStationCreatePayload } from '@/lib/types/ops';
 
-import { apiFetch } from './client';
+import { apiFetch, apiFetchJson } from './client';
 import { buildListQuery } from './list-query';
+
+export async function createWeighingStation(body: WeighingStationCreatePayload): Promise<WeighingStation> {
+  return apiFetchJson<WeighingStation>('/weighing-stations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
 
 export type ListWeighingStationsResult =
   | { ok: true; body: PaginatedList<WeighingStation> }

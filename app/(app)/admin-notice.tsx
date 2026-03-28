@@ -23,6 +23,12 @@ export default function AdminNoticeScreen() {
       </Text>
       <Pressable
         accessibilityRole="button"
+        onPress={() => router.push('/driver/form')}
+        style={({ pressed }) => [styles.secondaryButton, pressed && { opacity: 0.92 }]}>
+        <Text style={styles.secondaryButtonText}>Tạo tài khoản tài xế</Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
         onPress={() => signOut().then(() => router.replace('/(auth)/login'))}
         style={({ pressed }) => [styles.button, pressed && { opacity: 0.9 }]}>
         <Text style={styles.buttonText}>Đăng xuất</Text>
@@ -54,7 +60,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     color: Brand.metallicDeep,
-    marginBottom: 32,
+    marginBottom: 24,
+  },
+  secondaryButton: {
+    borderWidth: 2,
+    borderColor: Brand.forest,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  secondaryButtonText: {
+    color: Brand.forest,
+    fontSize: 16,
+    fontWeight: '700',
   },
   button: {
     backgroundColor: Brand.forest,

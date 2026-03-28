@@ -64,6 +64,19 @@ export type WeighingStation = {
   [key: string]: unknown;
 };
 
+/** POST /weighing-stations (owner | admin theo API) */
+export type WeighingStationCreatePayload = {
+  name: string;
+  code?: string;
+  latitude?: number;
+  longitude?: number;
+  formattedAddress?: string | null;
+  unitPrice?: number;
+  status?: string;
+  notes?: string | null;
+  ownerId?: number;
+};
+
 export type TripDriverRef = {
   id?: number;
   email?: string;
@@ -92,4 +105,42 @@ export type AggregatedDriver = {
   lastStatus: string;
   lastTripId: string | number;
   lastUpdated?: string;
+};
+
+/** POST /users (Admin) — KeoTram Ops Postman */
+export type UserCreatePayload = {
+  email: string;
+  password: string;
+  firstName?: string;
+  lastName?: string;
+  role: { id: number };
+  status?: { id: number };
+  managedByOwnerId?: number;
+};
+
+/** POST /owner/drivers (Owner) — role = driver implicit; managedByOwner = caller */
+export type OwnerDriverCreatePayload = {
+  email: string;
+  password: string;
+  firstName?: string;
+  lastName?: string;
+  status?: { id: number };
+};
+
+export type OwnerDriverUpdatePayload = {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  password?: string;
+};
+
+export type OwnerDriverUser = {
+  id: number;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  role?: { id: number; name?: string };
+  status?: { id: number; name?: string } | null;
+  managedByOwnerId?: number | null;
+  [key: string]: unknown;
 };

@@ -1,22 +1,146 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useRouter } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { OwnerListChrome } from '@/components/owner/owner-list-chrome';
+import { ownerStitchListStyles as os } from '@/components/owner/owner-stitch-list-styles';
 import { Brand } from '@/constants/brand';
 import { listWeighingStations } from '@/lib/api/weighing-stations';
 import type { WeighingStation } from '@/lib/types/ops';
 
+const S = Brand.stitch;
+
 const PAGE_SIZE = 15;
 
+function normalizeStationStatus(raw: unknown): string {
+  if (raw == null) return '';
+  if (typeof raw === 'object' && raw !== null && 'name' in raw) {
+    return String((raw as { name: string }).name).toLowerCase().trim();
+  }
+  return String(raw).toLowerCase().trim();
+}
+
+function formatStationCode(id: string | number): string {
+  const n = String(id).replace(/\D/g, '').slice(-3).padStart(3, '0');
+  return `#TCN-${n}`;
+}
+
+function stationAccent(st: string): string {
+  if (st.includes('active') || st === '1') return S.primary;
+  if (st.includes('inactive') || st.includes('disabled')) return S.outlineVariant;
+  if (st) return S.primaryContainer;
+  return S.primary;
+}
+
+function WeighingStationCard({ item }: { item: WeighingStation }) {
+  const st = normalizeStationStatus(item.status);
+  const accent = stationAccent(st);
+  const price =
+    item.unitPrice != null
+      ? `${Number(item.unitPrice).toLocaleString('vi-VN')} VND/tấn`
+      : '—';
+
+  return (
+    <View style={os.stitchCard}>
+      <View style={[os.stitchAccent, { backgroundColor: accent }]} pointerEvents="none" />
+      <View style={os.stitchCardInner}>
+        <View style={os.stitchCardHeader}>
+          <View style={os.stitchTitleBlock}>
+            <View style={os.stitchPillRow}>
+              {st ? (
+                <View style={[os.statusPill, { backgroundColor: S.secondaryContainer }]}>
+                  <Text style={[os.statusPillText, { color: S.onSecondaryContainer }]} numberOfLines={1}>
+                    {st.replace(/_/g, ' ').toUpperCase()}
+                  </Text>
+                </View>
+              ) : (
+                <View style={[os.statusPill, { backgroundColor: S.surfaceContainerHigh }]}>
+                  <Text style={[os.statusPillText, { color: S.onSurfaceVariant }]}>TRẠM</Text>
+                </View>
+              )}
+              <Text style={os.codeMuted}>{formatStationCode(item.id)}</Text>
+            </View>
+            <Text style={os.stitchCardTitle}>{item.name}</Text>
+          </View>
+          {item.code ? (
+            <View pointerEvents="none" style={styles.codeBadge}>
+              <Text style={styles.codeBadgeText}>{item.code}</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={os.stitchMetaLine}>
+          <Text style={os.stitchMetaBold}>{price}</Text>
+        </Text>
+        {item.formattedAddress ? (
+          <Text style={os.stitchSubLine} numberOfLines={3}>
+            {item.formattedAddress}
+          </Text>
+        ) : null}
+        {item.notes ? (
+          <Text style={os.stitchSubLine} numberOfLines={2}>
+            {String(item.notes)}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function WeighingEditorialFooter({
+  count,
+  withPrice,
+}: {
+  count: number;
+  withPrice: number;
+}) {
+  return (
+    <View style={os.editorialCard}>
+      <LinearGradient
+        colors={['#e3f2fd', S.surfaceContainerLow]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={os.editorialVisual}>
+        <MaterialIcons name="scale" size={44} color={S.primary} style={{ opacity: 0.35 }} />
+      </LinearGradient>
+      <View style={os.editorialBody}>
+        <Text style={os.editorialEyebrow}>Vận hành</Text>
+        <Text style={os.editorialTitle}>Trạm cân & đơn giá theo tấn</Text>
+        <Text style={os.editorialDesc}>
+          Đơn giá cấu hình tại trạm dùng khi duyệt phiếu; danh sách theo phạm vi tài khoản của bạn.
+        </Text>
+        <View style={os.editorialStats}>
+          <View>
+            <Text style={os.editorialStatNum}>{count}</Text>
+            <Text style={os.editorialStatCap}>Trạm (đã tải)</Text>
+          </View>
+          <View style={os.editorialStatDivider} />
+          <View>
+            <Text style={os.editorialStatNum}>{withPrice}</Text>
+            <Text style={os.editorialStatCap}>Có đơn giá</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function WeighingStationsScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [items, setItems] = useState<WeighingStation[]>([]);
   const [page, setPage] = useState(1);
   const [hasNext, setHasNext] = useState(false);
@@ -25,6 +149,9 @@ export default function WeighingStationsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [forbidden, setForbidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('');
 
   const loadPage = useCallback(async (nextPage: number, append: boolean) => {
     const res = await listWeighingStations({ page: nextPage, limit: PAGE_SIZE });
@@ -60,9 +187,11 @@ export default function WeighingStationsScreen() {
     }
   }, [loadPage]);
 
-  useEffect(() => {
-    void initialLoad();
-  }, [initialLoad]);
+  useFocusEffect(
+    useCallback(() => {
+      void initialLoad();
+    }, [initialLoad]),
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -90,201 +219,249 @@ export default function WeighingStationsScreen() {
     }
   }, [forbidden, hasNext, loadPage, loadingMore, loading, page]);
 
-  const renderItem = useCallback(({ item }: { item: WeighingStation }) => {
-    const price =
-      item.unitPrice != null
-        ? `${item.unitPrice.toLocaleString('vi-VN')} VND/tấn`
-        : '—';
-    return (
-      <View style={styles.card}>
-        <View style={styles.cardTop}>
-          <Text style={styles.cardTitle}>{item.name}</Text>
-          {item.code ? (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{item.code}</Text>
-            </View>
-          ) : null}
+  const statusOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const i of items) {
+      const s = normalizeStationStatus(i.status);
+      if (s) set.add(s);
+    }
+    return Array.from(set).sort();
+  }, [items]);
+
+  const displayedItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    let list = items;
+    if (statusFilter) {
+      list = list.filter((i) => normalizeStationStatus(i.status) === statusFilter);
+    }
+    if (!q) return list;
+    return list.filter((i) => {
+      const name = (i.name ?? '').toLowerCase();
+      const code = (i.code ?? '').toLowerCase();
+      const addr = (i.formattedAddress ?? '').toLowerCase();
+      return name.includes(q) || code.includes(q) || addr.includes(q);
+    });
+  }, [items, searchQuery, statusFilter]);
+
+  const stats = useMemo(() => {
+    const withPrice = items.filter((i) => i.unitPrice != null).length;
+    return { count: items.length, withPrice };
+  }, [items]);
+
+  const listHeader = useMemo(
+    () => (
+      <View style={os.mainHeader}>
+        <Text style={os.eyebrow}>Dữ liệu thời gian thực</Text>
+        <Text style={os.sectionTitle}>Trạm cân</Text>
+        <Text style={fabStyles.listHint}>Nhấn + để thêm trạm (POST /weighing-stations).</Text>
+        <View style={os.heroSearchRow}>
+          <View style={os.searchFieldWrap}>
+            <MaterialIcons name="search" size={18} color={S.outline} style={os.searchFieldIcon} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Tìm tên, mã, địa chỉ…"
+              placeholderTextColor={`${S.outline}99`}
+              style={os.searchFieldInput}
+            />
+          </View>
+          <Pressable
+            onPress={() => setFiltersOpen((v) => !v)}
+            style={({ pressed }) => [os.filterCompact, pressed && os.filterBtnPressed]}>
+            <MaterialIcons name="tune" size={20} color={S.primary} />
+            <Text style={os.filterBtnText}>Lọc</Text>
+          </Pressable>
         </View>
-        <Text style={styles.cardMeta}>{price}</Text>
-        {item.formattedAddress ? (
-          <Text style={styles.cardSub}>{item.formattedAddress}</Text>
-        ) : null}
-        {item.status ? (
-          <Text style={styles.cardHint}>Trạng thái: {item.status}</Text>
+        {filtersOpen ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={os.chipsContent}>
+            <Pressable
+              onPress={() => setStatusFilter('')}
+              style={[os.chip, !statusFilter && os.chipSelected]}>
+              <Text style={[os.chipText, !statusFilter && os.chipTextSelected]}>Tất cả</Text>
+            </Pressable>
+            {statusOptions.map((s) => {
+              const selected = statusFilter === s;
+              return (
+                <Pressable key={s} onPress={() => setStatusFilter(s)} style={[os.chip, selected && os.chipSelected]}>
+                  <Text style={[os.chipText, selected && os.chipTextSelected]}>{s}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         ) : null}
       </View>
-    );
-  }, []);
+    ),
+    [filtersOpen, searchQuery, statusFilter, statusOptions],
+  );
 
   if (forbidden && !loading) {
     return (
-      <View style={styles.root}>
-        <OwnerListChrome
-          title="Trạm cân"
-          subtitle="Theo API hiện tại, danh sách trạm cân có thể chỉ dành cho admin."
-        />
-        <View style={styles.blockedBox}>
-          <Text style={styles.blockedTitle}>Không có quyền xem</Text>
-          <Text style={styles.blockedBody}>
-            Backend trả về 403 cho tài khoản Owner. Vui lòng dùng Admin Dashboard hoặc yêu cầu mở quyền đọc
-            trạm cân cho owner.
-          </Text>
-          <Pressable onPress={() => void initialLoad()} style={styles.retry}>
-            <Text style={styles.retryText}>Thử lại</Text>
-          </Pressable>
+      <View style={os.root}>
+        <View style={[os.topBar, { paddingTop: Math.max(insets.top, 8) }]}>
+          <View style={os.topBarLeft}>
+            <MaterialIcons name="scale" size={26} color={Brand.forest} />
+            <Text style={os.topTitleStitch} numberOfLines={1}>
+              Trạm cân
+            </Text>
+          </View>
+        </View>
+        <View style={os.hairline} />
+        <View style={os.blockedCard}>
+          <LinearGradient
+            colors={[`${S.tertiaryFixed}80`, S.surfaceContainerLow]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ height: 100, alignItems: 'center', justifyContent: 'center' }}>
+            <MaterialIcons name="lock-outline" size={40} color={S.tertiary} style={{ opacity: 0.5 }} />
+          </LinearGradient>
+          <View style={os.blockedBody}>
+            <Text style={os.blockedTitle}>Không có quyền xem</Text>
+            <Text style={os.blockedText}>
+              Backend trả 403 — danh sách trạm cân có thể chỉ dành cho admin. Dùng Admin Dashboard hoặc yêu cầu mở
+              quyền đọc cho owner.
+            </Text>
+            <Pressable onPress={() => void initialLoad()} style={os.retry}>
+              <Text style={os.retryText}>Thử lại</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.root}>
-      <OwnerListChrome
-        title="Trạm cân"
-        subtitle="Đơn giá theo tấn dùng khi duyệt phiếu (theo cấu hình trạm)."
-      />
+    <View style={os.root}>
+      <View style={[os.topBar, { paddingTop: Math.max(insets.top, 8) }]}>
+        <View style={os.topBarLeft}>
+          <MaterialIcons name="scale" size={26} color={Brand.forest} />
+          <Text style={os.topTitleStitch} numberOfLines={1}>
+            Trạm cân
+          </Text>
+        </View>
+        <View style={os.topBarRight}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Thêm trạm cân"
+            onPress={() => router.push('/weighing-station/form')}
+            style={({ pressed }) => [os.iconBtn, pressed && os.iconBtnPressed]}>
+            <MaterialIcons name="add" size={26} color={S.primary} />
+          </Pressable>
+          <Pressable
+            onPress={() => setFiltersOpen((v) => !v)}
+            style={({ pressed }) => [os.iconBtn, pressed && os.iconBtnPressed]}>
+            <MaterialIcons name="filter-list" size={22} color={S.onSurfaceVariant} />
+          </Pressable>
+        </View>
+      </View>
+      <View style={os.hairline} />
+
       {error ? (
-        <View style={styles.centerBox}>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable onPress={() => void initialLoad()} style={styles.retry}>
-            <Text style={styles.retryText}>Thử lại</Text>
+        <View style={os.centerBox}>
+          <Text style={os.errorText}>{error}</Text>
+          <Pressable onPress={() => void initialLoad()} style={os.retry}>
+            <Text style={os.retryText}>Thử lại</Text>
           </Pressable>
         </View>
       ) : null}
+
       {loading && !refreshing ? (
-        <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color={Brand.forest} />
+        <View style={os.centerBox}>
+          <ActivityIndicator size="large" color={S.primary} />
         </View>
       ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          onEndReached={onEndReached}
-          onEndReachedThreshold={0.4}
-          ListEmptyComponent={
-            !loading && !error ? (
-              <Text style={styles.empty}>Chưa có trạm cân hoặc danh sách trống.</Text>
-            ) : null
-          }
-          ListFooterComponent={
-            loadingMore ? (
-              <ActivityIndicator style={styles.footerLoader} color={Brand.forest} />
-            ) : null
-          }
-        />
+        <View style={os.listWithFab} pointerEvents="box-none">
+          <FlatList
+            data={displayedItems}
+            keyExtractor={(item) => String(item.id)}
+            ListHeaderComponent={listHeader}
+            renderItem={({ item }) => <WeighingStationCard item={item} />}
+            contentContainerStyle={[os.listContent, fabStyles.listContentFab]}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={S.primary} />
+            }
+            onEndReached={onEndReached}
+            onEndReachedThreshold={0.35}
+            ListEmptyComponent={
+              !loading && !error ? (
+                <Text style={os.empty}>
+                  {searchQuery.trim() || statusFilter
+                    ? 'Không có trạm khớp bộ lọc.'
+                    : 'Chưa có trạm cân. Nhấn + để thêm trạm.'}
+                </Text>
+              ) : null
+            }
+            ListFooterComponent={
+              <>
+                {loadingMore ? <ActivityIndicator style={os.footerLoader} color={S.primary} /> : null}
+                <WeighingEditorialFooter count={stats.count} withPrice={stats.withPrice} />
+              </>
+            }
+            style={os.flatListFlex}
+          />
+          <TouchableOpacity
+            onPress={() => router.push('/weighing-station/form')}
+            activeOpacity={0.9}
+            style={[fabStyles.fab, { bottom: insets.bottom + 56 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Thêm trạm cân">
+            <LinearGradient
+              colors={[S.primary, S.primaryContainer]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={fabStyles.fabInner}>
+              <MaterialIcons name="add" size={28} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
 }
 
+const fabStyles = StyleSheet.create({
+  listHint: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: `${S.outline}b3`,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  listContentFab: {
+    paddingBottom: 140,
+  },
+  fab: {
+    position: 'absolute',
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: S.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  fabInner: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
+
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: Brand.canvas,
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  card: {
-    backgroundColor: Brand.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: Brand.ink,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  cardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  cardTitle: {
-    flex: 1,
-    fontSize: 17,
-    fontWeight: '700',
-    color: Brand.ink,
-  },
-  badge: {
-    backgroundColor: Brand.surfaceQuiet,
+  codeBadge: {
+    backgroundColor: S.surfaceContainerHigh,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
-  badgeText: {
+  codeBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: Brand.forest,
-  },
-  cardMeta: {
-    marginTop: 8,
-    fontSize: 15,
-    fontWeight: '600',
-    color: Brand.forest,
-  },
-  cardSub: {
-    marginTop: 8,
-    fontSize: 14,
-    color: Brand.inkMuted,
-    lineHeight: 20,
-  },
-  cardHint: {
-    marginTop: 6,
-    fontSize: 13,
-    color: Brand.metallicDeep,
-  },
-  centerBox: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  blockedBox: {
-    padding: 24,
-    margin: 16,
-    backgroundColor: Brand.surface,
-    borderRadius: 16,
-  },
-  blockedTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Brand.ink,
-    marginBottom: 8,
-  },
-  blockedBody: {
-    fontSize: 15,
-    color: Brand.inkMuted,
-    lineHeight: 22,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#B00020',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  retry: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: Brand.forest,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  retryText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  empty: {
-    textAlign: 'center',
-    color: Brand.inkMuted,
-    marginTop: 40,
-    paddingHorizontal: 24,
-  },
-  footerLoader: {
-    marginVertical: 16,
+    color: S.primary,
   },
 });
