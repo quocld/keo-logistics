@@ -20,6 +20,11 @@ export class UserMapper {
     }
     domainEntity.role = raw.role;
     domainEntity.status = raw.status;
+    if (raw.managedByOwner) {
+      domainEntity.managedByOwner = { id: raw.managedByOwner.id };
+    } else {
+      domainEntity.managedByOwner = null;
+    }
     domainEntity.createdAt = raw.createdAt;
     domainEntity.updatedAt = raw.updatedAt;
     domainEntity.deletedAt = raw.deletedAt;
@@ -64,6 +69,13 @@ export class UserMapper {
     persistenceEntity.photo = photo;
     persistenceEntity.role = role;
     persistenceEntity.status = status;
+    if (domainEntity.managedByOwner) {
+      const mgr = new UserEntity();
+      mgr.id = Number(domainEntity.managedByOwner.id);
+      persistenceEntity.managedByOwner = mgr;
+    } else if (domainEntity.managedByOwner === null) {
+      persistenceEntity.managedByOwner = null;
+    }
     persistenceEntity.createdAt = domainEntity.createdAt;
     persistenceEntity.updatedAt = domainEntity.updatedAt;
     persistenceEntity.deletedAt = domainEntity.deletedAt;

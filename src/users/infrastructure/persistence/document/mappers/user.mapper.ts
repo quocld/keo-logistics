@@ -33,6 +33,12 @@ export class UserMapper {
       domainEntity.status.id = raw.status._id;
     }
 
+    if (raw.managedByOwnerId != null) {
+      domainEntity.managedByOwner = { id: raw.managedByOwnerId };
+    } else {
+      domainEntity.managedByOwner = null;
+    }
+
     domainEntity.createdAt = raw.createdAt;
     domainEntity.updatedAt = raw.updatedAt;
     domainEntity.deletedAt = raw.deletedAt;
@@ -76,6 +82,12 @@ export class UserMapper {
     persistenceSchema.photo = photo;
     persistenceSchema.role = role;
     persistenceSchema.status = status;
+    if (domainEntity.managedByOwner !== undefined) {
+      persistenceSchema.managedByOwnerId =
+        domainEntity.managedByOwner?.id != null
+          ? Number(domainEntity.managedByOwner.id)
+          : null;
+    }
     persistenceSchema.createdAt = domainEntity.createdAt;
     persistenceSchema.updatedAt = domainEntity.updatedAt;
     persistenceSchema.deletedAt = domainEntity.deletedAt;

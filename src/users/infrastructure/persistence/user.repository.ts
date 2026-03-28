@@ -37,4 +37,14 @@ export abstract class UserRepository {
   ): Promise<User | null>;
 
   abstract remove(id: User['id']): Promise<void>;
+
+  abstract findDriversByManagedOwnerId(
+    ownerUserId: number,
+    paginationOptions: IPaginationOptions,
+  ): Promise<User[]>;
+
+  abstract findDriverByIdAndManagedOwnerId(
+    driverId: User['id'],
+    ownerUserId: number,
+  ): Promise<NullableType<User>>;
 }

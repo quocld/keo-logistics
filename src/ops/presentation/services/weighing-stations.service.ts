@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
@@ -26,7 +27,15 @@ export class WeighingStationsService {
     actor: JwtPayloadType,
     dto: CreateWeighingStationDto,
   ): Promise<WeighingStationEntity> {
-    this.opsAuthorizationService.assertAdmin(actor);
+    let owner: { id: number } | null;
+
+    if (this.opsAuthorizationService.isOwner(actor)) {
+      owner = { id: Number(actor.id) };
+    } else if (this.opsAuthorizationService.isAdmin(actor)) {
+      owner = null;
+    } else {
+      throw new ForbiddenException({ error: 'forbidden' });
+    }
 
     if (!dto.latitude || !dto.longitude || !dto.unitPrice) {
       throw new UnprocessableEntityException({ error: 'invalid payload' });
@@ -42,6 +51,7 @@ export class WeighingStationsService {
       unitPrice: dto.unitPrice.toString(),
       status: dto.status ?? undefined,
       notes: dto.notes ?? null,
+      owner: owner as any,
     });
 
     return this.weighingStationsRepository.save(entity);
@@ -51,8 +61,6 @@ export class WeighingStationsService {
     actor: JwtPayloadType,
     query: QueryWeighingStationDto,
   ): Promise<InfinityPaginationResponseDto<WeighingStationEntity>> {
-    this.opsAuthorizationService.assertAdmin(actor);
-
     const page = query.page ?? 1;
     const limit = Math.min(query.limit ?? 10, 50);
     const skip = (page - 1) * limit;
@@ -67,8 +75,19 @@ export class WeighingStationsService {
       where.code = query.filters.code;
     }
 
+    if (this.opsAuthorizationService.isOwner(actor)) {
+      where.owner = { id: Number(actor.id) };
+    } else if (this.opsAuthorizationService.isAdmin(actor)) {
+      if (query.filters?.ownerId != null) {
+        where.owner = { id: query.filters.ownerId };
+      }
+    } else {
+      throw new ForbiddenException({ error: 'forbidden' });
+    }
+
     const data = await this.weighingStationsRepository.find({
       where,
+      relations: ['owner'],
       skip,
       take: limit,
       order: { createdAt: 'DESC' },
@@ -81,14 +100,21 @@ export class WeighingStationsService {
     actor: JwtPayloadType,
     id: string,
   ): Promise<WeighingStationEntity> {
-    this.opsAuthorizationService.assertAdmin(actor);
-
     const entity = await this.weighingStationsRepository.findOne({
       where: { id },
+      relations: ['owner'],
     });
 
     if (!entity) {
       throw new NotFoundException({ error: 'weighing station not found' });
+    }
+
+    if (this.opsAuthorizationService.isOwner(actor)) {
+      if (entity.owner?.id !== Number(actor.id)) {
+        throw new ForbiddenException({ error: 'forbidden' });
+      }
+    } else if (!this.opsAuthorizationService.isAdmin(actor)) {
+      throw new ForbiddenException({ error: 'forbidden' });
     }
 
     return entity;
@@ -99,7 +125,10 @@ export class WeighingStationsService {
     id: string,
     dto: UpdateWeighingStationDto,
   ): Promise<WeighingStationEntity> {
-    this.opsAuthorizationService.assertAdmin(actor);
+    await this.opsAuthorizationService.assertAdminOrOwnsWeighingStation(
+      actor,
+      id,
+    );
 
     const entity = await this.weighingStationsRepository.findOne({
       where: { id },
@@ -127,7 +156,10 @@ export class WeighingStationsService {
   }
 
   async softDelete(actor: JwtPayloadType, id: string): Promise<void> {
-    this.opsAuthorizationService.assertAdmin(actor);
+    await this.opsAuthorizationService.assertAdminOrOwnsWeighingStation(
+      actor,
+      id,
+    );
 
     const entity = await this.weighingStationsRepository.findOne({
       where: { id },

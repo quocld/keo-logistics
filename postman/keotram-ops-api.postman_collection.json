@@ -26,7 +26,7 @@
     },
     {
       "name": "Setup – Ops tokens",
-      "description": "Chạy login theo role trước khi test Harvest Areas / Weighing Stations / Trips / Receipts. Tài khoản seed: Admin `{{adminEmail}}`, Owner `{{ownerEmail}}`, Driver `{{driverEmail}}` (mật khẩu trong biến collection). Test script lưu token vào adminAccessToken, ownerAccessToken, driverAccessToken. Sau **POST /trips** (có test script) sẽ có `tripId`.",
+      "description": "Chạy login theo role trước khi test Users / Owner drivers / Harvest Areas / Weighing Stations / Trips / Receipts. Tài khoản seed: Admin `{{adminEmail}}`, Owner `{{ownerEmail}}`, Driver `{{driverEmail}}` (mật khẩu trong biến collection). Test script lưu token vào adminAccessToken, ownerAccessToken, driverAccessToken; login owner còn lưu **ownerUserId** (`user.id`) để dùng với **POST /users** (driver + managedByOwnerId). Sau **POST /trips** (có test script) sẽ có `tripId`.",
       "item": [
         {
           "name": "POST /auth/email/login (admin → adminAccessToken)",
@@ -65,7 +65,8 @@
               "script": {
                 "exec": [
                   "const res = pm.response.json();",
-                  "if (res.token) pm.collectionVariables.set('ownerAccessToken', res.token);"
+                  "if (res.token) pm.collectionVariables.set('ownerAccessToken', res.token);",
+                  "if (res.user && res.user.id != null) pm.collectionVariables.set('ownerUserId', String(res.user.id));"
                 ],
                 "type": "text/javascript"
               }
@@ -349,6 +350,7 @@
     },
     {
       "name": "Users (Admin only)",
+      "description": "**POST /users (driver + managedByOwnerId):** chỉ khi `role.id` = 3 (driver). `managedByOwnerId` = id user có role owner (dùng `ownerUserId` sau login owner trong Setup).\n\n**PATCH /users/:id:** có thể gửi `managedByOwnerId` (hoặc `null`) cho user role driver; đổi `role` khác driver sẽ xóa gán owner.",
       "item": [
         {
           "name": "POST /users",
@@ -367,6 +369,27 @@
               "host": ["{{baseUrl}}"],
               "path": ["users"]
             }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /users (admin – driver + managedByOwnerId)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"driver.managed@example.com\",\n  \"password\": \"12345678\",\n  \"firstName\": \"Tài\",\n  \"lastName\": \"Xế\",\n  \"role\": { \"id\": 3 },\n  \"status\": { \"id\": 1 },\n  \"managedByOwnerId\": {{ownerUserId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Chạy **Setup** (login owner) trước để có `ownerUserId`. Đổi `email` nếu user đã tồn tại. Response có `managedByOwner`.\n\n**Lưu ý:** `managedByOwnerId` chỉ hợp lệ khi `role` là driver (3)."
           },
           "response": []
         },
@@ -429,6 +452,109 @@
               "raw": "{{baseUrl}}/users/{{userId}}",
               "host": ["{{baseUrl}}"],
               "path": ["users", "{{userId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Owner drivers (owner only)",
+      "description": "Cần **ownerAccessToken** (Setup – login owner).\n\nOwner tạo/xem/sửa/xoá **chỉ** các tài khoản driver có `managed_by_owner_id` = chính owner đó.\n\nBiến **managedDriverUserId**: gán bằng test script ở POST (hoặc nhập tay từ response).",
+      "item": [
+        {
+          "name": "POST /owner/drivers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.id != null) pm.collectionVariables.set('managedDriverUserId', String(res.id));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tai.xe.owner@example.com\",\n  \"password\": \"12345678\",\n  \"firstName\": \"Tài\",\n  \"lastName\": \"Xế\",\n  \"status\": { \"id\": 1 }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owner/drivers",
+              "host": ["{{baseUrl}}"],
+              "path": ["owner", "drivers"]
+            },
+            "description": "Đổi `email` unique nếu 409/422 trùng. Role luôn là driver; `managedByOwner` = owner đang gọi API."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /owner/drivers (list)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/owner/drivers?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["owner", "drivers"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /owner/drivers/:id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/owner/drivers/{{managedDriverUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["owner", "drivers", "{{managedDriverUserId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /owner/drivers/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Tên mới\",\n  \"lastName\": \"Họ mới\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owner/drivers/{{managedDriverUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["owner", "drivers", "{{managedDriverUserId}}"]
+            },
+            "description": "Không gửi `role` hay `managedByOwnerId` ở đây (chỉ admin qua PATCH /users)."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /owner/drivers/:id (soft delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/owner/drivers/{{managedDriverUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["owner", "drivers", "{{managedDriverUserId}}"]
             }
           },
           "response": []
@@ -650,11 +776,11 @@
       ]
     },
     {
-      "name": "Weighing Stations (admin only)",
-      "description": "Trước khi test: chạy **Setup – Ops tokens** → login admin.\n\nChỉ admin mới có quyền tạo, xem, sửa, xoá trạm cân.",
+      "name": "Weighing Stations (admin + owner)",
+      "description": "Chạy **Setup – Ops tokens** (admin + owner).\n\n- **Admin**: CRUD mọi trạm; trạm tạo bởi admin có `owner_id` null (trạm hệ thống).\n- **Owner**: CRUD chỉ trạm do chính họ tạo (`owner_id` = user). Không xem/sửa/xoá trạm admin bằng token owner.\n- **GET list (admin)**: query `filters` JSON có thể thêm `ownerId` (số) để lọc theo chủ trạm.",
       "item": [
         {
-          "name": "POST /weighing-stations",
+          "name": "POST /weighing-stations (admin)",
           "event": [
             {
               "listen": "test",
@@ -686,6 +812,39 @@
           "response": []
         },
         {
+          "name": "POST /weighing-stations (owner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('ownerWeighingStationId', res.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Trạm cân Owner\",\n  \"code\": \"TRM-OWNER-{{$timestamp}}\",\n  \"latitude\": 10.775658,\n  \"longitude\": 106.700428,\n  \"formattedAddress\": \"Khu vực chủ thầu\",\n  \"unitPrice\": 1250,\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/weighing-stations",
+              "host": ["{{baseUrl}}"],
+              "path": ["weighing-stations"]
+            },
+            "description": "Dùng `code` unique (Postman `{{$timestamp}}`) để tránh trùng với trạm admin."
+          },
+          "response": []
+        },
+        {
           "name": "GET /weighing-stations (list)",
           "request": {
             "method": "GET",
@@ -712,11 +871,35 @@
                 {
                   "key": "filters",
                   "value": "{\"status\":\"active\",\"code\":\"TRM-001\"}",
-                  "description": "Kết hợp cả hai filter",
+                  "description": "Kết hợp status + code",
+                  "disabled": true
+                },
+                {
+                  "key": "filters",
+                  "value": "{\"ownerId\":2}",
+                  "description": "Admin only: lọc theo user id của owner (thay 2 bằng id thật)",
                   "disabled": true
                 }
               ]
             }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /weighing-stations (list – owner)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/weighing-stations?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["weighing-stations"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            },
+            "description": "Owner chỉ thấy trạm có `owner_id` trùng tài khoản."
           },
           "response": []
         },
@@ -1318,6 +1501,8 @@
     { "key": "filePath", "value": "" },
     { "key": "adminAccessToken", "value": "" },
     { "key": "ownerAccessToken", "value": "" },
+    { "key": "ownerUserId", "value": "2" },
+    { "key": "managedDriverUserId", "value": "" },
     { "key": "driverAccessToken", "value": "" },
     { "key": "harvestAreaId", "value": "" },
     { "key": "weighingStationId", "value": "" },

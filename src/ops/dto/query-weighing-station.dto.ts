@@ -17,6 +17,14 @@ export class FilterWeighingStationDto {
   @IsOptional()
   @IsString()
   code?: string | null;
+
+  @ApiPropertyOptional({
+    example: 2,
+    description: 'Admin only: filter stations by owner user id.',
+  })
+  @IsOptional()
+  @IsNumber()
+  ownerId?: number | null;
 }
 
 export class QueryWeighingStationDto {
@@ -34,7 +42,8 @@ export class QueryWeighingStationDto {
 
   @ApiPropertyOptional({
     type: String,
-    description: 'JSON string: {"status":"active","code":"TRM-001"}',
+    description:
+      'JSON string: {"status":"active","code":"TRM-001","ownerId":2} (ownerId: admin only)',
   })
   @IsOptional()
   @Transform(({ value }) =>

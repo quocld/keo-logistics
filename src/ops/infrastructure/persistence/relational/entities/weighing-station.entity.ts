@@ -3,10 +3,13 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { EntityRelationalHelper } from '../../../../../utils/relational-entity-helper';
+import { UserEntity } from '../../../../../users/infrastructure/persistence/relational/entities/user.entity';
 
 @Entity({
   name: 'weighing_stations',
@@ -14,6 +17,14 @@ import { EntityRelationalHelper } from '../../../../../utils/relational-entity-h
 export class WeighingStationEntity extends EntityRelationalHelper {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @ManyToOne(() => UserEntity, {
+    nullable: true,
+  })
+  @JoinColumn({
+    name: 'owner_id',
+  })
+  owner: UserEntity | null;
 
   @Column({
     type: String,

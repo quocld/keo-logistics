@@ -2,7 +2,7 @@ import { Exclude, Expose } from 'class-transformer';
 import { FileType } from '../../files/domain/file';
 import { Role } from '../../roles/domain/role';
 import { Status } from '../../statuses/domain/status';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import databaseConfig from '../../database/config/database.config';
 import { DatabaseConfig } from '../../database/config/database-config.type';
 
@@ -68,6 +68,15 @@ export class User {
     type: () => Status,
   })
   status?: Status;
+
+  @ApiPropertyOptional({
+    description:
+      'Owner user id that manages this driver (drivers created by an owner).',
+    type: Number,
+    example: 2,
+  })
+  @Expose({ groups: ['admin', 'owner'] })
+  managedByOwner?: { id: number } | null;
 
   @ApiProperty()
   createdAt: Date;

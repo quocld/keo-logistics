@@ -9,6 +9,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { QueryFilter, Model } from 'mongoose';
 import { UserMapper } from '../mappers/user.mapper';
 import { IPaginationOptions } from '../../../../../utils/types/pagination-options';
+import { RoleEnum } from '../../../../../roles/roles.enum';
 
 @Injectable()
 export class UsersDocumentRepository implements UserRepository {
@@ -121,5 +122,33 @@ export class UsersDocumentRepository implements UserRepository {
     await this.usersModel.deleteOne({
       _id: id.toString(),
     });
+  }
+
+  async findDriversByManagedOwnerId(
+    ownerUserId: number,
+    paginationOptions: IPaginationOptions,
+  ): Promise<User[]> {
+    const userObjects = await this.usersModel
+      .find({
+        'role._id': RoleEnum.driver.toString(),
+        managedByOwnerId: ownerUserId,
+      })
+      .sort({ _id: -1 })
+      .skip((paginationOptions.page - 1) * paginationOptions.limit)
+      .limit(paginationOptions.limit);
+
+    return userObjects.map((userObject) => UserMapper.toDomain(userObject));
+  }
+
+  async findDriverByIdAndManagedOwnerId(
+    driverId: User['id'],
+    ownerUserId: number,
+  ): Promise<NullableType<User>> {
+    const userObject = await this.usersModel.findOne({
+      _id: driverId.toString(),
+      'role._id': RoleEnum.driver.toString(),
+      managedByOwnerId: ownerUserId,
+    });
+    return userObject ? UserMapper.toDomain(userObject) : null;
   }
 }

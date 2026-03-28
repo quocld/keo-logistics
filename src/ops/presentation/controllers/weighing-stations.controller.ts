@@ -35,7 +35,7 @@ import {
 
 @ApiBearerAuth()
 @ApiTags('WeighingStations')
-@Roles(RoleEnum.admin)
+@Roles(RoleEnum.admin, RoleEnum.owner)
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller({
   path: 'weighing-stations',

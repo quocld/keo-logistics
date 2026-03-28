@@ -4,12 +4,15 @@ import { Repository } from 'typeorm';
 import { JwtPayloadType } from '../../../auth/strategies/types/jwt-payload.type';
 import { RoleEnum } from '../../../roles/roles.enum';
 import { HarvestAreaEntity } from '../../infrastructure/persistence/relational/entities/harvest-area.entity';
+import { WeighingStationEntity } from '../../infrastructure/persistence/relational/entities/weighing-station.entity';
 
 @Injectable()
 export class OpsAuthorizationService {
   constructor(
     @InjectRepository(HarvestAreaEntity)
     private readonly harvestAreasRepository: Repository<HarvestAreaEntity>,
+    @InjectRepository(WeighingStationEntity)
+    private readonly weighingStationsRepository: Repository<WeighingStationEntity>,
   ) {}
 
   isAdmin(actor: JwtPayloadType): boolean {
@@ -61,6 +64,30 @@ export class OpsAuthorizationService {
     });
 
     if (!ownedHarvestArea) {
+      throw new ForbiddenException({ error: 'forbidden' });
+    }
+  }
+
+  async assertAdminOrOwnsWeighingStation(
+    actor: JwtPayloadType,
+    weighingStationId: string,
+  ): Promise<void> {
+    if (this.isAdmin(actor)) {
+      return;
+    }
+
+    if (!this.isOwner(actor)) {
+      throw new ForbiddenException({ error: 'forbidden' });
+    }
+
+    const owned = await this.weighingStationsRepository.findOne({
+      where: {
+        id: weighingStationId,
+        owner: { id: Number(actor.id) },
+      },
+    });
+
+    if (!owned) {
       throw new ForbiddenException({ error: 'forbidden' });
     }
   }

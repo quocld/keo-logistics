@@ -63,6 +63,15 @@ export class UserEntity extends EntityRelationalHelper {
   })
   status?: StatusEntity;
 
+  /** Owner user who manages this driver account (role driver). */
+  @ManyToOne(() => UserEntity, {
+    nullable: true,
+  })
+  @JoinColumn({
+    name: 'managed_by_owner_id',
+  })
+  managedByOwner: UserEntity | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

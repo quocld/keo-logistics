@@ -1,9 +1,12 @@
 import {
+  ForbiddenException,
   HttpStatus,
   Injectable,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { CreateManagedDriverDto } from './dto/create-managed-driver.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateManagedDriverDto } from './dto/update-managed-driver.dto';
 import { NullableType } from '../utils/types/nullable.type';
 import { FilterUserDto, SortUserDto } from './dto/query-user.dto';
 import { UserRepository } from './infrastructure/persistence/user.repository';
@@ -26,7 +29,10 @@ export class UsersService {
     private readonly filesService: FilesService,
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  async create(
+    createUserDto: CreateUserDto,
+    options?: { forceManagedByOwnerUserId?: number },
+  ): Promise<User> {
     // Do not remove comment below.
     // <creating-property />
 
@@ -113,6 +119,52 @@ export class UsersService {
       };
     }
 
+    let managedByOwner: { id: number } | null | undefined = undefined;
+
+    if (options?.forceManagedByOwnerUserId != null) {
+      if (Number(createUserDto.role?.id) !== RoleEnum.driver) {
+        throw new UnprocessableEntityException({
+          status: HttpStatus.UNPROCESSABLE_ENTITY,
+          errors: {
+            role: 'managedDriverRequiresDriverRole',
+          },
+        });
+      }
+      const ownerAccount = await this.usersRepository.findById(
+        options.forceManagedByOwnerUserId,
+      );
+      if (!ownerAccount || Number(ownerAccount.role?.id) !== RoleEnum.owner) {
+        throw new UnprocessableEntityException({
+          status: HttpStatus.UNPROCESSABLE_ENTITY,
+          errors: {
+            managedByOwner: 'invalidOwner',
+          },
+        });
+      }
+      managedByOwner = { id: Number(ownerAccount.id) };
+    } else if (createUserDto.managedByOwnerId != null) {
+      if (Number(createUserDto.role?.id) !== RoleEnum.driver) {
+        throw new UnprocessableEntityException({
+          status: HttpStatus.UNPROCESSABLE_ENTITY,
+          errors: {
+            managedByOwnerId: 'requiresDriverRole',
+          },
+        });
+      }
+      const ownerAccount = await this.usersRepository.findById(
+        createUserDto.managedByOwnerId,
+      );
+      if (!ownerAccount || Number(ownerAccount.role?.id) !== RoleEnum.owner) {
+        throw new UnprocessableEntityException({
+          status: HttpStatus.UNPROCESSABLE_ENTITY,
+          errors: {
+            managedByOwnerId: 'invalidOwner',
+          },
+        });
+      }
+      managedByOwner = { id: Number(ownerAccount.id) };
+    }
+
     return this.usersRepository.create({
       // Do not remove comment below.
       // <creating-property-payload />
@@ -125,7 +177,74 @@ export class UsersService {
       status: status,
       provider: createUserDto.provider ?? AuthProvidersEnum.email,
       socialId: createUserDto.socialId,
+      managedByOwner,
     });
+  }
+
+  async createManagedDriverForOwner(
+    ownerUserId: number,
+    dto: CreateManagedDriverDto,
+  ): Promise<User> {
+    return this.create(
+      {
+        email: dto.email,
+        password: dto.password,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        role: { id: RoleEnum.driver },
+        status: dto.status ?? { id: StatusEnum.active },
+      },
+      { forceManagedByOwnerUserId: ownerUserId },
+    );
+  }
+
+  findManagedDrivers(
+    ownerUserId: number,
+    paginationOptions: IPaginationOptions,
+  ): Promise<User[]> {
+    return this.usersRepository.findDriversByManagedOwnerId(
+      ownerUserId,
+      paginationOptions,
+    );
+  }
+
+  async findManagedDriver(
+    ownerUserId: number,
+    driverId: User['id'],
+  ): Promise<NullableType<User>> {
+    return this.usersRepository.findDriverByIdAndManagedOwnerId(
+      driverId,
+      ownerUserId,
+    );
+  }
+
+  async updateManagedDriver(
+    ownerUserId: number,
+    driverId: User['id'],
+    dto: UpdateManagedDriverDto,
+  ): Promise<User | null> {
+    const existing = await this.usersRepository.findDriverByIdAndManagedOwnerId(
+      driverId,
+      ownerUserId,
+    );
+    if (!existing) {
+      throw new ForbiddenException({ error: 'forbidden' });
+    }
+    return this.update(driverId, dto as UpdateUserDto);
+  }
+
+  async removeManagedDriver(
+    ownerUserId: number,
+    driverId: User['id'],
+  ): Promise<void> {
+    const existing = await this.usersRepository.findDriverByIdAndManagedOwnerId(
+      driverId,
+      ownerUserId,
+    );
+    if (!existing) {
+      throw new ForbiddenException({ error: 'forbidden' });
+    }
+    await this.usersRepository.remove(driverId);
   }
 
   findManyWithPagination({
@@ -267,6 +386,41 @@ export class UsersService {
       };
     }
 
+    let managedByOwner: { id: number } | null | undefined = undefined;
+
+    if (role !== undefined && Number(role.id) !== RoleEnum.driver) {
+      managedByOwner = null;
+    } else if (updateUserDto.managedByOwnerId !== undefined) {
+      const current = await this.usersRepository.findById(id);
+      if (!current) {
+        return null;
+      }
+      if (Number(current.role?.id) !== RoleEnum.driver) {
+        throw new UnprocessableEntityException({
+          status: HttpStatus.UNPROCESSABLE_ENTITY,
+          errors: {
+            managedByOwnerId: 'targetMustBeDriver',
+          },
+        });
+      }
+      if (updateUserDto.managedByOwnerId === null) {
+        managedByOwner = null;
+      } else {
+        const ownerAccount = await this.usersRepository.findById(
+          updateUserDto.managedByOwnerId,
+        );
+        if (!ownerAccount || Number(ownerAccount.role?.id) !== RoleEnum.owner) {
+          throw new UnprocessableEntityException({
+            status: HttpStatus.UNPROCESSABLE_ENTITY,
+            errors: {
+              managedByOwnerId: 'invalidOwner',
+            },
+          });
+        }
+        managedByOwner = { id: Number(ownerAccount.id) };
+      }
+    }
+
     return this.usersRepository.update(id, {
       // Do not remove comment below.
       // <updating-property-payload />
@@ -279,6 +433,7 @@ export class UsersService {
       status,
       provider: updateUserDto.provider,
       socialId: updateUserDto.socialId,
+      managedByOwner,
     });
   }
 

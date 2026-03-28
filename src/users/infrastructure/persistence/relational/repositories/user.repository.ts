@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { FindOptionsWhere, Repository, In } from 'typeorm';
+import { RoleEnum } from '../../../../../roles/roles.enum';
 import { UserEntity } from '../entities/user.entity';
 import { NullableType } from '../../../../../utils/types/nullable.type';
 import { FilterUserDto, SortUserDto } from '../../../../dto/query-user.dto';
@@ -122,5 +123,35 @@ export class UsersRelationalRepository implements UserRepository {
 
   async remove(id: User['id']): Promise<void> {
     await this.usersRepository.softDelete(id);
+  }
+
+  async findDriversByManagedOwnerId(
+    ownerUserId: number,
+    paginationOptions: IPaginationOptions,
+  ): Promise<User[]> {
+    const entities = await this.usersRepository.find({
+      where: {
+        role: { id: RoleEnum.driver },
+        managedByOwner: { id: ownerUserId },
+      },
+      skip: (paginationOptions.page - 1) * paginationOptions.limit,
+      take: paginationOptions.limit,
+      order: { id: 'DESC' },
+    });
+    return entities.map((user) => UserMapper.toDomain(user));
+  }
+
+  async findDriverByIdAndManagedOwnerId(
+    driverId: User['id'],
+    ownerUserId: number,
+  ): Promise<NullableType<User>> {
+    const entity = await this.usersRepository.findOne({
+      where: {
+        id: Number(driverId),
+        role: { id: RoleEnum.driver },
+        managedByOwner: { id: ownerUserId },
+      },
+    });
+    return entity ? UserMapper.toDomain(entity) : null;
   }
 }

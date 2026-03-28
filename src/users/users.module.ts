@@ -3,6 +3,7 @@ import {
   Module,
 } from '@nestjs/common';
 
+import { OwnerDriversController } from './owner-drivers.controller';
 import { UsersController } from './users.controller';
 
 import { UsersService } from './users.service';
@@ -25,7 +26,7 @@ const infrastructurePersistenceModule = (databaseConfig() as DatabaseConfig)
     infrastructurePersistenceModule,
     FilesModule,
   ],
-  controllers: [UsersController],
+  controllers: [UsersController, OwnerDriversController],
   providers: [UsersService],
   exports: [UsersService, infrastructurePersistenceModule],
 })

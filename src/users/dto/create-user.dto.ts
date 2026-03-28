@@ -7,6 +7,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   // decorators here
   IsEmail,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   MinLength,
@@ -52,4 +53,14 @@ export class CreateUserDto {
   @IsOptional()
   @Type(() => StatusDto)
   status?: StatusDto;
+
+  @ApiPropertyOptional({
+    description:
+      'When role is driver: id of the owner user who manages this driver (admin only).',
+    example: 2,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  managedByOwnerId?: number;
 }
