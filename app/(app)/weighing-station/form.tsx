@@ -1,8 +1,9 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { useCallback, useState, type ComponentProps } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState, type ComponentProps } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -19,8 +20,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { stitchHarvestFormStyles as styles } from '@/components/owner/stitch-harvest-form-styles';
 import { Brand } from '@/constants/brand';
 import { useAuth } from '@/contexts/auth-context';
-import { createWeighingStation } from '@/lib/api/weighing-stations';
-import type { WeighingStationCreatePayload } from '@/lib/types/ops';
+import {
+  createWeighingStation,
+  getWeighingStation,
+  updateWeighingStation,
+} from '@/lib/api/weighing-stations';
+import type { WeighingStationCreatePayload, WeighingStationUpdatePayload } from '@/lib/types/ops';
 
 const S = Brand.stitch;
 
@@ -28,6 +33,15 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'active', label: 'Hoạt động' },
   { value: 'inactive', label: 'Ngưng' },
 ];
+
+function coerceWeighingStatus(raw: unknown): string {
+  const s =
+    typeof raw === 'object' && raw !== null && 'name' in raw
+      ? String((raw as { name: string }).name).toLowerCase()
+      : String(raw ?? '').toLowerCase();
+  if (s.includes('inactive') || s.includes('disabled') || s.includes('ngưng')) return 'inactive';
+  return 'active';
+}
 
 function parseOptionalNumber(s: string): number | undefined {
   const t = s.trim().replace(',', '.');
@@ -75,7 +89,11 @@ export default function WeighingStationFormScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
+  const { id: idParam } = useLocalSearchParams<{ id?: string }>();
+  const editId = typeof idParam === 'string' ? idParam : idParam?.[0];
+  const isEdit = Boolean(editId);
 
+  const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -112,6 +130,34 @@ export default function WeighingStationFormScreen() {
     return body;
   }, [name, code, unitPrice, status, latitude, longitude, formattedAddress, notes, ownerIdStr, user?.role]);
 
+  const load = useCallback(async () => {
+    if (!editId) return;
+    setLoading(true);
+    try {
+      const w = await getWeighingStation(editId);
+      setName(w.name ?? '');
+      setCode(w.code ?? '');
+      setUnitPrice(w.unitPrice != null ? String(w.unitPrice) : '');
+      setStatus(coerceWeighingStatus(w.status));
+      setLatitude(w.latitude != null ? String(w.latitude) : '');
+      setLongitude(w.longitude != null ? String(w.longitude) : '');
+      setPlaceSearch('');
+      setFormattedAddress(w.formattedAddress ?? '');
+      setNotes(w.notes != null ? String(w.notes) : '');
+      const oid = w.ownerId;
+      setOwnerIdStr(oid != null && Number.isFinite(Number(oid)) ? String(oid) : '');
+    } catch (e) {
+      Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không tải được trạm');
+      router.back();
+    } finally {
+      setLoading(false);
+    }
+  }, [editId, router]);
+
+  useEffect(() => {
+    if (isEdit) void load();
+  }, [isEdit, load]);
+
   const onSubmit = useCallback(async () => {
     if (!name.trim()) {
       Alert.alert('Thiếu thông tin', 'Vui lòng nhập tên trạm.');
@@ -119,14 +165,28 @@ export default function WeighingStationFormScreen() {
     }
     setSaving(true);
     try {
-      await createWeighingStation(buildPayload());
+      if (isEdit && editId) {
+        const full = buildPayload();
+        const patch: WeighingStationUpdatePayload = { ...full };
+        await updateWeighingStation(editId, patch);
+      } else {
+        await createWeighingStation(buildPayload());
+      }
       router.back();
     } catch (e) {
-      Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không tạo được trạm');
+      Alert.alert('Lỗi', e instanceof Error ? e.message : isEdit ? 'Không cập nhật được' : 'Không tạo được trạm');
     } finally {
       setSaving(false);
     }
-  }, [name, buildPayload, router]);
+  }, [name, buildPayload, router, isEdit, editId]);
+
+  if (loading) {
+    return (
+      <View style={[styles.flex, styles.centered]}>
+        <ActivityIndicator size="large" color={S.primary} />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -138,9 +198,9 @@ export default function WeighingStationFormScreen() {
           <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
             <MaterialIcons name="arrow-back" size={24} color={Brand.ink} />
           </Pressable>
-          <MaterialIcons name="add-circle" size={22} color={Brand.forest} />
+          <MaterialIcons name={isEdit ? 'edit' : 'add-circle'} size={22} color={Brand.forest} />
           <Text style={styles.headerTitle} numberOfLines={1}>
-            Thêm Trạm Cân Mới
+            {isEdit ? 'Chỉnh sửa trạm cân' : 'Thêm Trạm Cân Mới'}
           </Text>
         </View>
         <View style={styles.headerRight}>
@@ -151,7 +211,14 @@ export default function WeighingStationFormScreen() {
           <Pressable
             style={styles.helpBtn}
             hitSlop={8}
-            onPress={() => Alert.alert('Hỗ trợ', 'POST /weighing-stations — xem Postman KeoTram Ops.')}>
+            onPress={() =>
+              Alert.alert(
+                'Hỗ trợ',
+                isEdit
+                  ? 'PATCH /weighing-stations/:id — KeoTram Ops Postman.'
+                  : 'POST /weighing-stations — KeoTram Ops Postman.',
+              )
+            }>
             <MaterialIcons name="help-outline" size={20} color={Brand.ink} />
             <Text style={styles.helpBtnText}>Hỗ trợ</Text>
           </Pressable>
@@ -309,7 +376,9 @@ export default function WeighingStationFormScreen() {
             end={{ x: 1, y: 1 }}
             style={[styles.saveGradient, saving && { opacity: 0.65 }]}>
             <MaterialIcons name="save" size={22} color="#fff" />
-            <Text style={styles.saveText}>{saving ? 'Đang lưu…' : 'Lưu Trạm Cân'}</Text>
+            <Text style={styles.saveText}>
+              {saving ? 'Đang lưu…' : isEdit ? 'Cập nhật trạm cân' : 'Lưu Trạm Cân'}
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
 

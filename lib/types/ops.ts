@@ -61,6 +61,10 @@ export type WeighingStation = {
   latitude?: number | null;
   longitude?: number | null;
   notes?: string | null;
+  ownerId?: number | null;
+  /** Khi backend trả thống kê theo tháng */
+  monthlyWeighCount?: number | null;
+  expectedMonthlyRevenue?: number | null;
   [key: string]: unknown;
 };
 
@@ -76,6 +80,10 @@ export type WeighingStationCreatePayload = {
   notes?: string | null;
   ownerId?: number;
 };
+
+export type WeighingStationUpdatePayload = Partial<
+  Omit<WeighingStationCreatePayload, 'ownerId'>
+> & { ownerId?: number };
 
 export type TripDriverRef = {
   id?: number;

@@ -14,6 +14,7 @@ export default function WeighingStationStackLayout() {
         headerStyle: { backgroundColor: Brand.canvas },
         headerShadowVisible: false,
       }}>
+      <Stack.Screen name="[id]" options={{ headerShown: false }} />
       <Stack.Screen name="form" options={{ headerShown: false }} />
     </Stack>
   );

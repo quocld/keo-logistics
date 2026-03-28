@@ -1,4 +1,9 @@
-import type { PaginatedList, WeighingStation, WeighingStationCreatePayload } from '@/lib/types/ops';
+import type {
+  PaginatedList,
+  WeighingStation,
+  WeighingStationCreatePayload,
+  WeighingStationUpdatePayload,
+} from '@/lib/types/ops';
 
 import { apiFetch, apiFetchJson } from './client';
 import { buildListQuery } from './list-query';
@@ -9,6 +14,30 @@ export async function createWeighingStation(body: WeighingStationCreatePayload):
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+}
+
+export async function getWeighingStation(id: string | number): Promise<WeighingStation> {
+  return apiFetchJson<WeighingStation>(
+    `/weighing-stations/${encodeURIComponent(String(id))}`,
+  );
+}
+
+export async function updateWeighingStation(
+  id: string | number,
+  body: WeighingStationUpdatePayload,
+): Promise<WeighingStation> {
+  return apiFetchJson<WeighingStation>(`/weighing-stations/${encodeURIComponent(String(id))}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteWeighingStation(id: string | number): Promise<void> {
+  await apiFetchJson<Record<string, unknown>>(
+    `/weighing-stations/${encodeURIComponent(String(id))}`,
+    { method: 'DELETE' },
+  );
 }
 
 export type ListWeighingStationsResult =

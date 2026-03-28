@@ -46,7 +46,13 @@ function stationAccent(st: string): string {
   return S.primary;
 }
 
-function WeighingStationCard({ item }: { item: WeighingStation }) {
+function WeighingStationCard({
+  item,
+  onPress,
+}: {
+  item: WeighingStation;
+  onPress: () => void;
+}) {
   const st = normalizeStationStatus(item.status);
   const accent = stationAccent(st);
   const price =
@@ -55,7 +61,7 @@ function WeighingStationCard({ item }: { item: WeighingStation }) {
       : '—';
 
   return (
-    <View style={os.stitchCard}>
+    <Pressable onPress={onPress} style={os.stitchCard}>
       <View style={[os.stitchAccent, { backgroundColor: accent }]} pointerEvents="none" />
       <View style={os.stitchCardInner}>
         <View style={os.stitchCardHeader}>
@@ -95,8 +101,12 @@ function WeighingStationCard({ item }: { item: WeighingStation }) {
             {String(item.notes)}
           </Text>
         ) : null}
+        <View style={styles.cardActionRow} pointerEvents="none">
+          <Text style={styles.cardActionLabel}>Xem chi tiết trạm</Text>
+          <MaterialIcons name="chevron-right" size={22} color={S.primary} />
+        </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -377,7 +387,12 @@ export default function WeighingStationsScreen() {
             data={displayedItems}
             keyExtractor={(item) => String(item.id)}
             ListHeaderComponent={listHeader}
-            renderItem={({ item }) => <WeighingStationCard item={item} />}
+            renderItem={({ item }) => (
+              <WeighingStationCard
+                item={item}
+                onPress={() => router.push(`/weighing-station/${String(item.id)}`)}
+              />
+            )}
             contentContainerStyle={[os.listContent, fabStyles.listContentFab]}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={S.primary} />
@@ -463,5 +478,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: S.primary,
+  },
+  cardActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    marginLeft: -20,
+    marginRight: -24,
+    marginBottom: -24,
+    paddingVertical: 14,
+    paddingLeft: 20,
+    paddingRight: 24,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: S.outlineVariant,
+    backgroundColor: `${S.primary}0a`,
+  },
+  cardActionLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: S.primary,
+    letterSpacing: -0.1,
   },
 });
