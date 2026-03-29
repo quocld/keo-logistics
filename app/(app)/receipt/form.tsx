@@ -25,7 +25,9 @@ import { FormFieldLabel, FormSectionLabel } from '@/components/forms/FormFieldLa
 import { stitchHarvestFormStyles as styles } from '@/components/owner/stitch-harvest-form-styles';
 import { Brand } from '@/constants/brand';
 import { useAuth } from '@/contexts/auth-context';
+import { getErrorMessage } from '@/lib/api/errors';
 import { uploadOpsFile } from '@/lib/api/files';
+import { normalizePickedImageForUpload } from '@/lib/images/normalize-picked-image';
 import { listHarvestAreas } from '@/lib/api/harvest-areas';
 import { createReceipt } from '@/lib/api/receipts';
 import { listWeighingStations } from '@/lib/api/weighing-stations';
@@ -133,7 +135,7 @@ export default function ReceiptFormScreen() {
         setListsErr(ws.message);
       }
     } catch (e) {
-      setListsErr(e instanceof Error ? e.message : 'Không tải danh sách');
+      setListsErr(getErrorMessage(e, 'Không tải danh sách'));
       setAreas([]);
       setStations([]);
     } finally {
@@ -172,12 +174,26 @@ export default function ReceiptFormScreen() {
       quality: 0.85,
     });
     if (res.canceled) return;
-    const next: PickedImage[] = res.assets.map((a, i) => ({
-      uri: a.uri,
-      name: a.fileName ?? `receipt-${Date.now()}-${i}.jpg`,
-      mime: a.mimeType ?? 'image/jpeg',
-    }));
-    setPicked((prev) => [...prev, ...next]);
+    const batch: PickedImage[] = [];
+    for (let i = 0; i < res.assets.length; i++) {
+      const a = res.assets[i];
+      try {
+        const normalized = await normalizePickedImageForUpload({
+          uri: a.uri,
+          index: i,
+          width: a.width,
+        });
+        batch.push({
+          uri: normalized.uri,
+          name: normalized.name,
+          mime: normalized.mimeType,
+        });
+      } catch (e) {
+        Alert.alert('Ảnh', getErrorMessage(e, 'Không xử lý được ảnh'));
+        return;
+      }
+    }
+    setPicked((prev) => [...prev, ...batch]);
   }, []);
 
   const removePicked = useCallback((uri: string) => {
@@ -244,7 +260,7 @@ export default function ReceiptFormScreen() {
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (e) {
-      Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không tạo được phiếu');
+      Alert.alert('Lỗi', getErrorMessage(e, 'Không tạo được phiếu'));
     } finally {
       setSaving(false);
     }

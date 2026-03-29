@@ -19,6 +19,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Brand } from '@/constants/brand';
+import { getErrorMessage } from '@/lib/api/errors';
 import { listHarvestAreas, updateHarvestArea } from '@/lib/api/harvest-areas';
 import type { HarvestArea, HarvestAreaStatus } from '@/lib/types/ops';
 
@@ -387,7 +388,7 @@ export default function HarvestAreasScreen() {
     try {
       await loadPage(1, false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không tải được danh sách');
+      setError(getErrorMessage(e, 'Không tải được danh sách'));
     } finally {
       setLoading(false);
     }
@@ -405,7 +406,7 @@ export default function HarvestAreasScreen() {
     try {
       await loadPage(1, false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không tải được danh sách');
+      setError(getErrorMessage(e, 'Không tải được danh sách'));
     } finally {
       setRefreshing(false);
     }
@@ -447,7 +448,7 @@ export default function HarvestAreasScreen() {
         await updateHarvestArea(id, { status: next });
         await loadPage(1, false);
       } catch (e) {
-        Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không cập nhật được trạng thái');
+        Alert.alert('Lỗi', getErrorMessage(e, 'Không cập nhật được trạng thái'));
       } finally {
         setPatchingId(null);
       }

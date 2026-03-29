@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 
 import { useAuth } from '@/contexts/auth-context';
+import { getErrorMessage } from '@/lib/api/errors';
 import {
   cancelTrip as cancelTripApi,
   completeTrip as completeTripApi,
@@ -69,7 +70,7 @@ function DriverTripProviderInner({ children }: { children: React.ReactNode }) {
       const trip = await fetchMyActiveTrip();
       setActiveTrip(trip);
     } catch (e) {
-      setLastError(e instanceof Error ? e.message : 'Không tải được chuyến');
+      setLastError(getErrorMessage(e, 'Không tải được chuyến'));
     }
   }, []);
 
@@ -96,7 +97,7 @@ function DriverTripProviderInner({ children }: { children: React.ReactNode }) {
         }
       } catch (e) {
         if (!cancelled) {
-          setLastError(e instanceof Error ? e.message : 'Không tải được chuyến');
+          setLastError(getErrorMessage(e, 'Không tải được chuyến'));
         }
       } finally {
         if (!cancelled) setHydrated(true);
@@ -137,7 +138,7 @@ function DriverTripProviderInner({ children }: { children: React.ReactNode }) {
         setLastError(null);
       } catch (e) {
         if (!cancelled && gen === resumeGen.current) {
-          setLastError(e instanceof Error ? e.message : 'Không bật được GPS nền');
+          setLastError(getErrorMessage(e, 'Không bật được GPS nền'));
         }
       }
     })();
@@ -179,7 +180,7 @@ function DriverTripProviderInner({ children }: { children: React.ReactNode }) {
         setTrackingDesired(false);
       }
     } catch (e) {
-      setLastError(e instanceof Error ? e.message : 'Không tạo được chuyến');
+      setLastError(getErrorMessage(e, 'Không tạo được chuyến'));
       throw e;
     } finally {
       setBusy(false);
@@ -197,7 +198,7 @@ function DriverTripProviderInner({ children }: { children: React.ReactNode }) {
       await completeTripApi(activeTrip.id);
       setActiveTrip(null);
     } catch (e) {
-      setLastError(e instanceof Error ? e.message : 'Không kết thúc được chuyến');
+      setLastError(getErrorMessage(e, 'Không kết thúc được chuyến'));
       throw e;
     } finally {
       setBusy(false);
@@ -215,7 +216,7 @@ function DriverTripProviderInner({ children }: { children: React.ReactNode }) {
       await cancelTripApi(activeTrip.id);
       setActiveTrip(null);
     } catch (e) {
-      setLastError(e instanceof Error ? e.message : 'Không hủy được chuyến');
+      setLastError(getErrorMessage(e, 'Không hủy được chuyến'));
       throw e;
     } finally {
       setBusy(false);
@@ -234,7 +235,7 @@ function DriverTripProviderInner({ children }: { children: React.ReactNode }) {
       const trip = await startTripById(activeTrip.id);
       setActiveTrip(trip);
     } catch (e) {
-      setLastError(e instanceof Error ? e.message : 'Không bắt đầu được chuyến');
+      setLastError(getErrorMessage(e, 'Không bắt đầu được chuyến'));
       throw e;
     } finally {
       setBusy(false);

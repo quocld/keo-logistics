@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { stitchHarvestFormStyles as headerStyles } from '@/components/owner/stitch-harvest-form-styles';
 import { Brand } from '@/constants/brand';
+import { getErrorMessage } from '@/lib/api/errors';
 import { deleteWeighingStation, getWeighingStation } from '@/lib/api/weighing-stations';
 import type { WeighingStation } from '@/lib/types/ops';
 
@@ -70,7 +71,7 @@ export default function WeighingStationDetailScreen() {
       const data = await getWeighingStation(id);
       setItem(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không tải được');
+      setError(getErrorMessage(e, 'Không tải được'));
       setItem(null);
     } finally {
       setLoading(false);
@@ -95,7 +96,7 @@ export default function WeighingStationDetailScreen() {
               await deleteWeighingStation(id);
               router.back();
             } catch (e) {
-              Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không xóa được');
+              Alert.alert('Lỗi', getErrorMessage(e, 'Không xóa được'));
             } finally {
               setDeleting(false);
             }

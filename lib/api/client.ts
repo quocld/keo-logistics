@@ -2,6 +2,7 @@ import { refreshSession } from '@/lib/auth/api';
 import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from '@/lib/auth/storage';
 import { getApiBaseUrl } from '@/lib/config';
 
+import { formatApiErrorPayload, formatApiErrorFromJsonText } from './errors';
 import { emitSessionInvalid } from './session-events';
 
 let refreshChain: Promise<void> | null = null;
@@ -80,10 +81,23 @@ export async function apiFetch(path: string, init: ApiFetchOptions = {}): Promis
 export async function apiFetchJson<T>(path: string, init: ApiFetchOptions = {}): Promise<T> {
   const res = await apiFetch(path, init);
   const text = await res.text();
-  const data = text ? (JSON.parse(text) as T) : ({} as T);
+  if (!text) {
+    if (!res.ok) {
+      throw new Error(formatApiErrorPayload(null, res.statusText, res.status));
+    }
+    return {} as T;
+  }
+  let data: T;
+  try {
+    data = JSON.parse(text) as T;
+  } catch {
+    if (!res.ok) {
+      throw new Error(formatApiErrorFromJsonText(text, res.statusText, res.status));
+    }
+    throw new Error(text.trim().slice(0, 300) || 'Phản hồi không hợp lệ');
+  }
   if (!res.ok) {
-    const msg = (data as { message?: string }).message ?? res.statusText;
-    throw new Error(typeof msg === 'string' ? msg : 'Request failed');
+    throw new Error(formatApiErrorPayload(data, res.statusText, res.status));
   }
   return data;
 }

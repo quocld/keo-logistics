@@ -23,6 +23,7 @@ import { LocationMapPickerModal } from '@/components/location/LocationMapPickerM
 import { stitchHarvestFormStyles as styles } from '@/components/owner/stitch-harvest-form-styles';
 import { Brand } from '@/constants/brand';
 import { useAuth } from '@/contexts/auth-context';
+import { getErrorMessage } from '@/lib/api/errors';
 import { createHarvestArea, getHarvestArea, updateHarvestArea } from '@/lib/api/harvest-areas';
 import { parseIsoDateToLocal } from '@/lib/date/iso-date';
 import type { HarvestAreaCreatePayload, HarvestAreaStatus } from '@/lib/types/ops';
@@ -169,7 +170,7 @@ export default function HarvestAreaFormScreen() {
       setPlannedEndDate(plannedEnd);
       setOwnerIdStr(h.ownerId != null ? String(h.ownerId) : '');
     } catch (e) {
-      Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không tải được khu');
+      Alert.alert('Lỗi', getErrorMessage(e, 'Không tải được khu'));
       router.back();
     } finally {
       setLoading(false);
@@ -259,7 +260,7 @@ export default function HarvestAreaFormScreen() {
       }
       router.back();
     } catch (e) {
-      Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không lưu được');
+      Alert.alert('Lỗi', getErrorMessage(e, 'Không lưu được'));
     } finally {
       setSaving(false);
     }

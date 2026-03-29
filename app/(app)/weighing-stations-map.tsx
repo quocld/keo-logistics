@@ -17,6 +17,7 @@ import MapView, { Marker, PROVIDER_GOOGLE, type MapType, type Region } from 'rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Brand } from '@/constants/brand';
+import { getErrorMessage } from '@/lib/api/errors';
 import { listHarvestAreas } from '@/lib/api/harvest-areas';
 import {
   harvestAreaPinColor,
@@ -235,7 +236,7 @@ export default function WeighingStationsMapScreen() {
         } catch (e) {
           return {
             ok: false,
-            message: e instanceof Error ? e.message : 'Không tải được khu khai thác',
+            message: getErrorMessage(e, 'Không tải được khu khai thác'),
           };
         }
       })(),

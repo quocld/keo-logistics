@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { stitchHarvestFormStyles as headerStyles } from '@/components/owner/stitch-harvest-form-styles';
 import { Brand } from '@/constants/brand';
 import { useAuth } from '@/contexts/auth-context';
+import { getErrorMessage } from '@/lib/api/errors';
 import { deleteHarvestArea, getHarvestArea } from '@/lib/api/harvest-areas';
 import { aggregateDriversFromTrips, listTrips } from '@/lib/api/trips';
 import type { HarvestArea, Trip } from '@/lib/types/ops';
@@ -172,7 +173,7 @@ export default function HarvestAreaDetailScreen() {
       const data = await getHarvestArea(id);
       setItem(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không tải được');
+      setError(getErrorMessage(e, 'Không tải được'));
       setItem(null);
     } finally {
       setLoading(false);
@@ -217,7 +218,7 @@ export default function HarvestAreaDetailScreen() {
               await deleteHarvestArea(id);
               router.back();
             } catch (e) {
-              Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không xóa được');
+              Alert.alert('Lỗi', getErrorMessage(e, 'Không xóa được'));
             } finally {
               setDeleting(false);
             }

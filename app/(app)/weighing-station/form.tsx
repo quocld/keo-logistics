@@ -22,6 +22,7 @@ import { LocationMapPickerModal } from '@/components/location/LocationMapPickerM
 import { stitchHarvestFormStyles as styles } from '@/components/owner/stitch-harvest-form-styles';
 import { Brand } from '@/constants/brand';
 import { useAuth } from '@/contexts/auth-context';
+import { getErrorMessage } from '@/lib/api/errors';
 import {
   createWeighingStation,
   getWeighingStation,
@@ -164,7 +165,7 @@ export default function WeighingStationFormScreen() {
       const oid = w.ownerId;
       setOwnerIdStr(oid != null && Number.isFinite(Number(oid)) ? String(oid) : '');
     } catch (e) {
-      Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không tải được trạm');
+      Alert.alert('Lỗi', getErrorMessage(e, 'Không tải được trạm'));
       router.back();
     } finally {
       setLoading(false);
@@ -191,7 +192,10 @@ export default function WeighingStationFormScreen() {
       }
       router.back();
     } catch (e) {
-      Alert.alert('Lỗi', e instanceof Error ? e.message : isEdit ? 'Không cập nhật được' : 'Không tạo được trạm');
+      Alert.alert(
+        'Lỗi',
+        getErrorMessage(e, isEdit ? 'Không cập nhật được' : 'Không tạo được trạm'),
+      );
     } finally {
       setSaving(false);
     }

@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ownerStitchListStyles as os } from '@/components/owner/owner-stitch-list-styles';
 import { Brand } from '@/constants/brand';
 import { useAuth } from '@/contexts/auth-context';
+import { getErrorMessage } from '@/lib/api/errors';
 import { aggregateDriversFromTrips, fetchTripsForDriverAggregation } from '@/lib/api/trips';
 import type { AggregatedDriver } from '@/lib/types/ops';
 
@@ -258,7 +259,7 @@ export default function DriversScreen() {
     try {
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không tải được chuyến hàng');
+      setError(getErrorMessage(e, 'Không tải được chuyến hàng'));
     } finally {
       setLoading(false);
     }
@@ -284,7 +285,7 @@ export default function DriversScreen() {
     try {
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không tải được chuyến hàng');
+      setError(getErrorMessage(e, 'Không tải được chuyến hàng'));
     } finally {
       setRefreshing(false);
     }

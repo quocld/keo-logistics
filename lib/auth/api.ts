@@ -1,3 +1,4 @@
+import { formatApiErrorFromJsonText, formatApiErrorPayload } from '@/lib/api/errors';
 import { getApiBaseUrl } from '@/lib/config';
 
 import type { LoginResponse, MeResponse, RefreshResponse } from './types';
@@ -26,12 +27,11 @@ export async function loginWithEmail(email: string, password: string): Promise<L
     try {
       data = JSON.parse(text);
     } catch {
-      throw new Error(text.slice(0, 200) || res.statusText);
+      throw new Error(formatApiErrorFromJsonText(text, res.statusText, res.status));
     }
   }
   if (!res.ok) {
-    const msg = (data as { message?: string }).message ?? res.statusText;
-    throw new Error(typeof msg === 'string' ? msg : 'Đăng nhập thất bại');
+    throw new Error(formatApiErrorPayload(data, res.statusText, res.status));
   }
   return data as LoginResponse;
 }
@@ -46,8 +46,7 @@ export async function refreshSession(refreshToken: string): Promise<RefreshRespo
   });
   const data = await parseJson<RefreshResponse & { message?: string }>(res);
   if (!res.ok) {
-    const msg = (data as { message?: string }).message ?? res.statusText;
-    throw new Error(typeof msg === 'string' ? msg : 'Phiên hết hạn');
+    throw new Error(formatApiErrorPayload(data, res.statusText, res.status));
   }
   return data;
 }
@@ -58,8 +57,7 @@ export async function fetchMe(accessToken: string): Promise<MeResponse> {
   });
   const data = await parseJson<MeResponse & { message?: string }>(res);
   if (!res.ok) {
-    const msg = (data as { message?: string }).message ?? res.statusText;
-    throw new Error(typeof msg === 'string' ? msg : 'Không tải được hồ sơ');
+    throw new Error(formatApiErrorPayload(data, res.statusText, res.status));
   }
   return data;
 }
@@ -83,13 +81,6 @@ export async function forgotPasswordApi(email: string): Promise<void> {
   });
   if (!res.ok) {
     const text = await res.text();
-    let message = res.statusText;
-    try {
-      const j = JSON.parse(text) as { message?: string };
-      if (j.message) message = j.message;
-    } catch {
-      if (text) message = text.slice(0, 200);
-    }
-    throw new Error(message);
+    throw new Error(formatApiErrorFromJsonText(text, res.statusText, res.status));
   }
 }

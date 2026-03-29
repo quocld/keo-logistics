@@ -1,6 +1,7 @@
 import type { UserCreatePayload } from '@/lib/types/ops';
 
 import { apiFetch } from './client';
+import { formatApiErrorFromJsonText, formatApiErrorPayload } from './errors';
 
 export async function createUser(body: UserCreatePayload): Promise<unknown> {
   const res = await apiFetch('/users', {
@@ -14,12 +15,11 @@ export async function createUser(body: UserCreatePayload): Promise<unknown> {
     try {
       parsed = JSON.parse(text) as unknown;
     } catch {
-      throw new Error(text.slice(0, 200) || res.statusText);
+      throw new Error(formatApiErrorFromJsonText(text, res.statusText, res.status));
     }
   }
   if (!res.ok) {
-    const msg = (parsed as { message?: string }).message ?? res.statusText;
-    throw new Error(typeof msg === 'string' ? msg : 'Request failed');
+    throw new Error(formatApiErrorPayload(parsed, res.statusText, res.status));
   }
   return parsed;
 }

@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ownerStitchListStyles as os } from '@/components/owner/owner-stitch-list-styles';
 import { Brand } from '@/constants/brand';
+import { getErrorMessage } from '@/lib/api/errors';
 import { approveReceipt, listReceipts, rejectReceipt } from '@/lib/api/receipts';
 import type { Receipt } from '@/lib/types/ops';
 
@@ -234,7 +235,7 @@ export default function ReceiptApprovalScreen() {
     try {
       await loadPage(1, false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không tải được danh sách');
+      setError(getErrorMessage(e, 'Không tải được danh sách'));
     } finally {
       setLoading(false);
     }
@@ -252,7 +253,7 @@ export default function ReceiptApprovalScreen() {
     try {
       await loadPage(1, false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không tải được');
+      setError(getErrorMessage(e, 'Không tải được'));
     } finally {
       setRefreshing(false);
     }
@@ -296,7 +297,7 @@ export default function ReceiptApprovalScreen() {
                 await approveReceipt(id);
                 setItems((prev) => prev.filter((x) => String(x.id) !== id));
               } catch (e) {
-                Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không phê duyệt được');
+                Alert.alert('Lỗi', getErrorMessage(e, 'Không phê duyệt được'));
               } finally {
                 setBusyId(null);
               }
@@ -322,7 +323,7 @@ export default function ReceiptApprovalScreen() {
               await rejectReceipt(id, { rejectedReason: 'Từ chối từ app' });
               setItems((prev) => prev.filter((x) => String(x.id) !== id));
             } catch (e) {
-              Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không từ chối được');
+              Alert.alert('Lỗi', getErrorMessage(e, 'Không từ chối được'));
             } finally {
               setBusyId(null);
             }

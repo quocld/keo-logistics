@@ -24,6 +24,7 @@ import { Brand } from '@/constants/brand';
 import { useDriverTrip } from '@/contexts/driver-trip-context';
 import { useAuth } from '@/contexts/auth-context';
 import { flushLocationQueue } from '@/lib/api/driver-location';
+import { getErrorMessage } from '@/lib/api/errors';
 import { listHarvestAreas } from '@/lib/api/harvest-areas';
 import { listWeighingStations } from '@/lib/api/weighing-stations';
 import { isTrackingRunning } from '@/lib/tracking/driver-tracking';
@@ -83,7 +84,7 @@ export default function DriverTripScreen() {
         setListsErr(ws.message);
       }
     } catch (e) {
-      setListsErr(e instanceof Error ? e.message : 'Không tải danh sách');
+      setListsErr(getErrorMessage(e, 'Không tải danh sách'));
       setAreas([]);
       setStations([]);
     } finally {
@@ -146,10 +147,10 @@ export default function DriverTripScreen() {
         startNow: true,
       });
       Alert.alert('Đã tạo chuyến', 'Bạn có thể bật theo dõi GPS khi sẵn sàng xuất phát.');
-    } catch {
-      Alert.alert('Lỗi', lastError ?? 'Không tạo được chuyến.');
+    } catch (e) {
+      Alert.alert('Lỗi', getErrorMessage(e, 'Không tạo được chuyến.'));
     }
-  }, [areaId, stationId, createAndStartTrip, lastError]);
+  }, [areaId, stationId, createAndStartTrip]);
 
   const onToggleGps = useCallback(
     async (on: boolean) => {
@@ -172,14 +173,14 @@ export default function DriverTripScreen() {
             try {
               await completeActiveTrip();
               await syncGpsRunning();
-            } catch {
-              Alert.alert('Lỗi', lastError ?? 'Không kết thúc được chuyến.');
+            } catch (e) {
+              Alert.alert('Lỗi', getErrorMessage(e, 'Không kết thúc được chuyến.'));
             }
           })();
         },
       },
     ]);
-  }, [completeActiveTrip, lastError, syncGpsRunning]);
+  }, [completeActiveTrip, syncGpsRunning]);
 
   const onCancelTrip = useCallback(() => {
     Alert.alert('Hủy chuyến', 'Hủy chuyến hiện tại?', [
@@ -192,14 +193,14 @@ export default function DriverTripScreen() {
             try {
               await cancelActiveTrip();
               await syncGpsRunning();
-            } catch {
-              Alert.alert('Lỗi', lastError ?? 'Không hủy được chuyến.');
+            } catch (e) {
+              Alert.alert('Lỗi', getErrorMessage(e, 'Không hủy được chuyến.'));
             }
           })();
         },
       },
     ]);
-  }, [cancelActiveTrip, lastError, syncGpsRunning]);
+  }, [cancelActiveTrip, syncGpsRunning]);
 
   if (!user || user.role !== 'driver') {
     return (
@@ -258,8 +259,8 @@ export default function DriverTripScreen() {
                       void (async () => {
                         try {
                           await startPlannedActiveTrip();
-                        } catch {
-                          Alert.alert('Lỗi', lastError ?? 'Không bắt đầu được.');
+                        } catch (e) {
+                          Alert.alert('Lỗi', getErrorMessage(e, 'Không bắt đầu được.'));
                         }
                       })();
                     }}>

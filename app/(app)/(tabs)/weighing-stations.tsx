@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ownerStitchListStyles as os } from '@/components/owner/owner-stitch-list-styles';
 import { Brand } from '@/constants/brand';
+import { getErrorMessage } from '@/lib/api/errors';
 import { listWeighingStations } from '@/lib/api/weighing-stations';
 import type { WeighingStation } from '@/lib/types/ops';
 
@@ -191,7 +192,7 @@ export default function WeighingStationsScreen() {
     try {
       await loadPage(1, false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không tải được danh sách');
+      setError(getErrorMessage(e, 'Không tải được danh sách'));
     } finally {
       setLoading(false);
     }
@@ -209,7 +210,7 @@ export default function WeighingStationsScreen() {
     try {
       await loadPage(1, false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không tải được danh sách');
+      setError(getErrorMessage(e, 'Không tải được danh sách'));
     } finally {
       setRefreshing(false);
     }

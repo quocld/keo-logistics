@@ -21,6 +21,7 @@ import { stitchHarvestFormStyles as styles } from '@/components/owner/stitch-har
 import { Brand } from '@/constants/brand';
 import { getDefaultUserStatusId, getDriverRoleId } from '@/constants/ops-roles';
 import { useAuth } from '@/contexts/auth-context';
+import { getErrorMessage } from '@/lib/api/errors';
 import { createOwnerDriver } from '@/lib/api/owner-drivers';
 import { createUser } from '@/lib/api/users';
 
@@ -124,7 +125,7 @@ export default function DriverCreateFormScreen() {
       }
       Alert.alert('Đã tạo tài khoản', successMessage, [{ text: 'OK', onPress: () => router.back() }]);
     } catch (e) {
-      Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không tạo được tài khoản');
+      Alert.alert('Lỗi', getErrorMessage(e, 'Không tạo được tài khoản'));
     } finally {
       setSaving(false);
     }

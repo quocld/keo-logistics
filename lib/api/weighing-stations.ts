@@ -6,6 +6,7 @@ import type {
 } from '@/lib/types/ops';
 
 import { apiFetch, apiFetchJson } from './client';
+import { formatApiErrorFromJsonText, formatApiErrorPayload } from './errors';
 import { buildListQuery } from './list-query';
 
 export async function createWeighingStation(body: WeighingStationCreatePayload): Promise<WeighingStation> {
@@ -63,13 +64,20 @@ export async function listWeighingStations(params: {
     try {
       parsed = JSON.parse(text);
     } catch {
-      return { ok: false, forbidden: false, message: text.slice(0, 200) || res.statusText };
+      return {
+        ok: false,
+        forbidden: false,
+        message: formatApiErrorFromJsonText(text, res.statusText, res.status),
+      };
     }
   }
 
   if (!res.ok) {
-    const msg = (parsed as { message?: string }).message ?? res.statusText;
-    return { ok: false, forbidden: false, message: typeof msg === 'string' ? msg : 'Request failed' };
+    return {
+      ok: false,
+      forbidden: false,
+      message: formatApiErrorPayload(parsed, res.statusText, res.status),
+    };
   }
 
   return { ok: true, body: parsed as PaginatedList<WeighingStation> };

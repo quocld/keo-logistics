@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeoTramLogo } from '@/components/keotram-logo';
 import { Brand } from '@/constants/brand';
 import { getPostLoginPath, useAuth } from '@/contexts/auth-context';
+import { getErrorMessage } from '@/lib/api/errors';
 import { forgotPasswordApi } from '@/lib/auth/api';
 
 export default function LoginScreen() {
@@ -39,8 +40,7 @@ export default function LoginScreen() {
       const user = await signIn(email.trim(), password);
       router.replace(getPostLoginPath(user.role));
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Đăng nhập thất bại';
-      Alert.alert('Đăng nhập thất bại', message);
+      Alert.alert('Đăng nhập thất bại', getErrorMessage(e, 'Đăng nhập thất bại'));
     } finally {
       setSubmitting(false);
     }
@@ -56,8 +56,7 @@ export default function LoginScreen() {
       await forgotPasswordApi(email.trim());
       Alert.alert('Đã gửi', 'Kiểm tra hộp thư để đặt lại mật khẩu (nếu tài khoản tồn tại).');
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Không gửi được yêu cầu';
-      Alert.alert('Lỗi', message);
+      Alert.alert('Lỗi', getErrorMessage(e, 'Không gửi được yêu cầu'));
     } finally {
       setForgotSending(false);
     }
