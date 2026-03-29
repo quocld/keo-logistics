@@ -28,6 +28,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { MongooseConfigService } from './database/mongoose-config.service';
 import { DatabaseConfig } from './database/config/database-config.type';
 import { OpsModule } from './ops/ops.module';
+import { BetterStackLogger } from './logging/better-stack.logger';
 
 // <database-block>
 const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
@@ -95,5 +96,6 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     HomeModule,
     OpsModule,
   ],
+  providers: [BetterStackLogger],
 })
 export class AppModule {}

@@ -8,4 +8,8 @@ export type AppConfig = {
   apiPrefix: string;
   fallbackLanguage: string;
   headerLanguage: string;
+  /** When false, do not send logs to Better Stack even if a source token is set. */
+  betterStackEnabled: boolean;
+  betterStackSourceToken?: string;
+  betterStackEndpoint?: string;
 };

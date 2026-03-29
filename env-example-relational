@@ -7,6 +7,11 @@ APP_HEADER_LANGUAGE=x-custom-lang
 FRONTEND_DOMAIN=http://localhost:3000
 BACKEND_DOMAIN=http://localhost:3000
 
+# Better Stack (Logtail) — leave token empty for local; set BETTER_STACK_ENABLED=false to disable in prod without removing token
+BETTER_STACK_SOURCE_TOKEN=
+BETTER_STACK_ENDPOINT=
+BETTER_STACK_ENABLED=
+
 DATABASE_TYPE=postgres
 DATABASE_HOST=postgres
 DATABASE_PORT=5432
