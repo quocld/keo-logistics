@@ -14,6 +14,7 @@ import {
 import { BarChart } from 'react-native-gifted-charts';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DriverHome } from '@/components/driver/driver-home';
 import { ownerStitchListStyles as os } from '@/components/owner/owner-stitch-list-styles';
 import { Brand } from '@/constants/brand';
 import { useAuth } from '@/contexts/auth-context';
@@ -149,47 +150,8 @@ export default function HomeScreen() {
         ? `${pendingCount}+`
         : String(pendingCount);
 
-  if (!isOwner) {
-    return (
-      <View style={os.root}>
-        <View style={[os.topBar, { paddingTop: Math.max(insets.top, 8) }]}>
-          <View style={os.topBarLeft}>
-            <MaterialIcons name="eco" size={26} color={Brand.forest} />
-            <Text style={os.topTitleStitch} numberOfLines={1}>
-              KeoTram
-            </Text>
-          </View>
-          <View style={os.topBarRight}>
-            <Pressable
-              onPress={() => router.push('/settings')}
-              style={({ pressed }) => [os.iconBtn, pressed && os.iconBtnPressed]}>
-              <MaterialIcons name="settings" size={24} color={S.onSurfaceVariant} />
-            </Pressable>
-          </View>
-        </View>
-        <View style={os.hairline} />
-        <ScrollView
-          style={os.flatListFlex}
-          contentContainerStyle={[st.scrollPad, { paddingBottom: insets.bottom + 32 }]}>
-          <Text style={st.driverGreet}>
-            {greetingByHour()}, {greeting}
-          </Text>
-          <Text style={st.dateMuted}>{todayLine}</Text>
-          <Text style={st.driverHint}>
-            Bạn đang dùng tài khoản tài xế. Trang tổng quan đầy đủ dành cho chủ vườn; dùng tab khác để thao tác theo
-            quyền của bạn.
-          </Text>
-          <Pressable onPress={() => router.push('./driver-trip')} style={st.driverBtn}>
-            <Text style={st.driverBtnText}>Quản lý chuyến & GPS</Text>
-            <MaterialIcons name="chevron-right" size={22} color={S.primary} />
-          </Pressable>
-          <Pressable onPress={() => router.push('/settings')} style={[st.driverBtn, { marginTop: 10 }]}>
-            <Text style={st.driverBtnText}>Cài đặt & đăng xuất</Text>
-            <MaterialIcons name="chevron-right" size={22} color={S.primary} />
-          </Pressable>
-        </ScrollView>
-      </View>
-    );
+  if (!isOwner && user) {
+    return <DriverHome user={user} />;
   }
 
   return (
@@ -652,33 +614,5 @@ const st = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
-  },
-  driverGreet: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: Brand.ink,
-    marginBottom: 6,
-  },
-  driverHint: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: S.onSurfaceVariant,
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  driverBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Brand.surface,
-    padding: 18,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: `${S.outlineVariant}aa`,
-  },
-  driverBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Brand.ink,
   },
 });
