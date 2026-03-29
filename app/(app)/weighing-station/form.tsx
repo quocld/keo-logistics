@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FormFieldLabel } from '@/components/forms/FormFieldLabel';
 import { LocationMapPickerModal } from '@/components/location/LocationMapPickerModal';
 import { stitchHarvestFormStyles as styles } from '@/components/owner/stitch-harvest-form-styles';
 import { Brand } from '@/constants/brand';
@@ -251,7 +252,7 @@ export default function WeighingStationFormScreen() {
         <View style={styles.sectionCard}>
           <Text style={styles.sectionEyebrow}>Thông tin cơ bản</Text>
 
-          <Text style={styles.fieldLabel}>Tên trạm *</Text>
+          <FormFieldLabel required>Tên trạm</FormFieldLabel>
           <TextInput
             value={name}
             onChangeText={setName}
@@ -260,7 +261,7 @@ export default function WeighingStationFormScreen() {
             style={styles.inputSoft}
           />
 
-          <Text style={styles.fieldLabel}>Mã trạm</Text>
+          <FormFieldLabel>Mã trạm</FormFieldLabel>
           <FieldIconInput
             icon="local-offer"
             value={code}
@@ -268,7 +269,7 @@ export default function WeighingStationFormScreen() {
             placeholder="TRM-001"
           />
 
-          <Text style={styles.fieldLabel}>Đơn giá (VND/tấn)</Text>
+          <FormFieldLabel>Đơn giá (VND/tấn)</FormFieldLabel>
           <FieldIconInput
             icon="payments"
             value={unitPrice}
@@ -277,7 +278,7 @@ export default function WeighingStationFormScreen() {
             keyboardType="decimal-pad"
           />
 
-          <Text style={[styles.fieldLabel, { marginTop: 18 }]}>Trạng thái</Text>
+          <FormFieldLabel style={{ marginTop: 18 }}>Trạng thái</FormFieldLabel>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
             {STATUS_OPTIONS.map((o) => {
               const sel = status === o.value;
@@ -359,7 +360,7 @@ export default function WeighingStationFormScreen() {
               </Pressable>
             </>
           )}
-          <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Địa chỉ đầy đủ</Text>
+          <FormFieldLabel style={{ marginTop: 12 }}>Địa chỉ đầy đủ</FormFieldLabel>
           <TextInput
             value={formattedAddress}
             onChangeText={setFormattedAddress}
@@ -385,7 +386,7 @@ export default function WeighingStationFormScreen() {
         {user?.role === 'admin' ? (
           <View style={styles.sectionCard}>
             <Text style={styles.sectionEyebrow}>Quản trị</Text>
-            <Text style={styles.fieldLabel}>Owner ID *</Text>
+            <FormFieldLabel required>Owner ID</FormFieldLabel>
             <TextInput
               value={ownerIdStr}
               onChangeText={setOwnerIdStr}

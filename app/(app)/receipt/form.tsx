@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FormFieldLabel, FormSectionLabel } from '@/components/forms/FormFieldLabel';
 import { stitchHarvestFormStyles as styles } from '@/components/owner/stitch-harvest-form-styles';
 import { Brand } from '@/constants/brand';
 import { useAuth } from '@/contexts/auth-context';
@@ -297,7 +298,7 @@ export default function ReceiptFormScreen() {
 
           <View style={styles.sectionCard}>
             <Text style={styles.sectionEyebrow}>Khu & trạm</Text>
-            <Text style={styles.fieldLabel}>Khu khai thác *</Text>
+            <FormFieldLabel required>Khu khai thác</FormFieldLabel>
             <Pressable onPress={() => setAreaModal(true)} style={localStyles.selectBtn}>
               <Text style={localStyles.selectBtnText} numberOfLines={2}>
                 {areaLabel()}
@@ -305,7 +306,7 @@ export default function ReceiptFormScreen() {
               <MaterialIcons name="expand-more" size={22} color={S.primary} />
             </Pressable>
 
-            <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Trạm cân</Text>
+            <FormFieldLabel style={{ marginTop: 16 }}>Trạm cân</FormFieldLabel>
             <Text style={styles.fieldApiHint}>
               Bắt buộc nếu không gửi <Text style={styles.fieldApiMono}>tripId</Text> (chuyến in_progress).
             </Text>
@@ -316,7 +317,7 @@ export default function ReceiptFormScreen() {
               <MaterialIcons name="expand-more" size={22} color={S.primary} />
             </Pressable>
 
-            <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Trip ID (tùy chọn)</Text>
+            <FormFieldLabel style={{ marginTop: 16 }}>Trip ID (tùy chọn)</FormFieldLabel>
             <FieldIconInput
               icon="local-shipping"
               value={tripId}
@@ -327,7 +328,7 @@ export default function ReceiptFormScreen() {
 
           <View style={styles.sectionCard}>
             <Text style={styles.sectionEyebrow}>Số liệu phiếu</Text>
-            <Text style={styles.fieldLabel}>Khối lượng (tấn) *</Text>
+            <FormFieldLabel required>Khối lượng (tấn)</FormFieldLabel>
             <FieldIconInput
               icon="scale"
               value={weight}
@@ -335,7 +336,9 @@ export default function ReceiptFormScreen() {
               placeholder="12.5"
               keyboardType="decimal-pad"
             />
-            <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Số tiền (VND) *</Text>
+            <FormFieldLabel style={{ marginTop: 16 }} required>
+              Số tiền (VND)
+            </FormFieldLabel>
             <FieldIconInput
               icon="payments"
               value={amount}
@@ -343,14 +346,14 @@ export default function ReceiptFormScreen() {
               placeholder="15000000"
               keyboardType="number-pad"
             />
-            <Text style={styles.fieldLabel}>Mã bill</Text>
+            <FormFieldLabel>Mã bill</FormFieldLabel>
             <FieldIconInput
               icon="confirmation-number"
               value={billCode}
               onChangeText={setBillCode}
               placeholder="BILL-2026-0001"
             />
-            <Text style={styles.fieldLabel}>Ghi chú</Text>
+            <FormFieldLabel>Ghi chú</FormFieldLabel>
             <FieldIconInput
               icon="notes"
               value={notes}
@@ -361,7 +364,7 @@ export default function ReceiptFormScreen() {
           </View>
 
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionEyebrow}>Ảnh bill *</Text>
+            <FormSectionLabel required>Ảnh bill</FormSectionLabel>
             <Text style={styles.fieldApiHint}>
               Postman: ít nhất một trong <Text style={styles.fieldApiMono}>imageUrls</Text>,{' '}
               <Text style={styles.fieldApiMono}>imageFileIds</Text>.
@@ -384,7 +387,9 @@ export default function ReceiptFormScreen() {
                 ))}
               </ScrollView>
             ) : null}
-            <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Hoặc URL ảnh (mỗi dòng / cách nhau dấu phẩy)</Text>
+            <FormFieldLabel style={{ marginTop: 12 }}>
+              Hoặc URL ảnh (mỗi dòng / cách nhau dấu phẩy)
+            </FormFieldLabel>
             <TextInput
               value={imageUrlsText}
               onChangeText={setImageUrlsText}

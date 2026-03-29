@@ -13,7 +13,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE, type MapType, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Brand } from '@/constants/brand';
@@ -31,6 +31,8 @@ const S = Brand.stitch;
 
 const LIST_PAGE_LIMIT = 100;
 const MAX_PAGES = 80;
+
+type OpsMapLayer = Extract<MapType, 'standard' | 'satellite'>;
 
 const FALLBACK_REGION: Region = {
   latitude: 16.0,
@@ -110,11 +112,13 @@ const OpsMapBody = memo(function OpsMapBody({
   initialRegion,
   pins,
   tracksViewChanges,
+  mapType,
   onPinPress,
 }: {
   initialRegion: Region;
   pins: MapPinModel[];
   tracksViewChanges: boolean;
+  mapType: OpsMapLayer;
   onPinPress: (pin: MapPinModel) => void;
 }) {
   return (
@@ -126,7 +130,7 @@ const OpsMapBody = memo(function OpsMapBody({
       showsMyLocationButton={false}
       rotateEnabled={false}
       pitchEnabled={false}
-      mapType="standard">
+      mapType={mapType}>
       {pins.map((p) => (
         <Marker
           key={`${p.kind}-${String(p.id)}`}
@@ -210,6 +214,7 @@ export default function WeighingStationsMapScreen() {
   const initialFetchDoneRef = useRef(false);
   const [pinRenderEpoch, setPinRenderEpoch] = useState(0);
   const [tracksViewChanges, setTracksViewChanges] = useState(true);
+  const [mapLayer, setMapLayer] = useState<OpsMapLayer>('standard');
 
   const load = useCallback(async (isRefresh: boolean) => {
     if (isRefresh) {
@@ -482,6 +487,7 @@ export default function WeighingStationsMapScreen() {
           initialRegion={initialRegion}
           pins={pins}
           tracksViewChanges={tracksViewChanges}
+          mapType={mapLayer}
           onPinPress={onPinPress}
         />
       ) : (
@@ -526,13 +532,63 @@ export default function WeighingStationsMapScreen() {
       ) : null}
 
       <View style={[styles.floatingBar, { bottom: insets.bottom + 16 }]}>
-        <Pressable
-          onPress={onRefresh}
-          style={({ pressed }) => [styles.fabChip, pressed && styles.fabChipPressed]}
-          disabled={refreshing}>
-          <MaterialIcons name="refresh" size={18} color={S.primary} />
-          <Text style={styles.fabChipText}>{refreshing ? 'Đang làm mới…' : 'Làm mới'}</Text>
-        </Pressable>
+        <View style={styles.floatingLeftStack}>
+          <Pressable
+            onPress={onRefresh}
+            style={({ pressed }) => [styles.fabChip, pressed && styles.fabChipPressed]}
+            disabled={refreshing}>
+            <MaterialIcons name="refresh" size={18} color={S.primary} />
+            <Text style={styles.fabChipText}>{refreshing ? 'Đang làm mới…' : 'Làm mới'}</Text>
+          </Pressable>
+          <View style={styles.mapLayerRow}>
+            <Pressable
+              onPress={() => setMapLayer('standard')}
+              style={({ pressed }) => [
+                styles.mapLayerChip,
+                mapLayer === 'standard' && styles.mapLayerChipOn,
+                pressed && styles.fabChipPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Bản đồ đường"
+              accessibilityState={{ selected: mapLayer === 'standard' }}>
+              <MaterialIcons
+                name="map"
+                size={18}
+                color={mapLayer === 'standard' ? '#fff' : S.primary}
+              />
+              <Text
+                style={[
+                  styles.mapLayerChipText,
+                  mapLayer === 'standard' && styles.mapLayerChipTextOn,
+                ]}>
+                Đường
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setMapLayer('satellite')}
+              style={({ pressed }) => [
+                styles.mapLayerChip,
+                mapLayer === 'satellite' && styles.mapLayerChipOn,
+                pressed && styles.fabChipPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Ảnh vệ tinh"
+              accessibilityState={{ selected: mapLayer === 'satellite' }}>
+              <MaterialIcons
+                name="satellite"
+                size={18}
+                color={mapLayer === 'satellite' ? '#fff' : S.primary}
+              />
+              <Text
+                style={[
+                  styles.mapLayerChipText,
+                  mapLayer === 'satellite' && styles.mapLayerChipTextOn,
+                ]}>
+                Vệ tinh
+              </Text>
+            </Pressable>
+          </View>
+        </View>
         <View style={styles.legend}>
           <View style={styles.legendRow}>
             <MaterialIcons name="scale" size={16} color={S.primary} />
@@ -655,6 +711,39 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     gap: 12,
+  },
+  floatingLeftStack: {
+    gap: 8,
+    flexShrink: 1,
+  },
+  mapLayerRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  mapLayerChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderWidth: 1,
+    borderColor: S.outlineVariant,
+  },
+  mapLayerChipOn: {
+    backgroundColor: S.primary,
+    borderColor: S.primary,
+  },
+  mapLayerChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: S.primary,
+  },
+  mapLayerChipTextOn: {
+    color: '#fff',
   },
   fabChip: {
     flexDirection: 'row',

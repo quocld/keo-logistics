@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FormDatePickerField } from '@/components/date/FormDatePickerField';
+import { FormFieldLabel } from '@/components/forms/FormFieldLabel';
 import { LocationMapPickerModal } from '@/components/location/LocationMapPickerModal';
 import { stitchHarvestFormStyles as styles } from '@/components/owner/stitch-harvest-form-styles';
 import { Brand } from '@/constants/brand';
@@ -312,7 +313,7 @@ export default function HarvestAreaFormScreen() {
         <View style={styles.sectionCard}>
           <Text style={styles.sectionEyebrow}>Thông tin cơ bản</Text>
 
-          <Text style={styles.fieldLabel}>Tên khu khai thác</Text>
+          <FormFieldLabel required>Tên khu khai thác</FormFieldLabel>
           <TextInput
             value={name}
             onChangeText={setName}
@@ -323,7 +324,7 @@ export default function HarvestAreaFormScreen() {
 
           <View style={styles.twoCol}>
             <View style={styles.colHalf}>
-              <Text style={styles.fieldLabel}>Diện tích (ha)</Text>
+              <FormFieldLabel>Diện tích (ha)</FormFieldLabel>
               <FieldIconInput
                 icon="straighten"
                 value={areaHectares}
@@ -333,7 +334,7 @@ export default function HarvestAreaFormScreen() {
               />
             </View>
             <View style={styles.colHalf}>
-              <Text style={styles.fieldLabel}>Sản lượng dự kiến (tấn)</Text>
+              <FormFieldLabel>Sản lượng dự kiến (tấn)</FormFieldLabel>
               <FieldIconInput
                 icon="fitness-center"
                 value={targetTons}
@@ -344,7 +345,7 @@ export default function HarvestAreaFormScreen() {
             </View>
           </View>
 
-          <Text style={styles.fieldLabel}>Quản lý khu trực tiếp</Text>
+          <FormFieldLabel>Quản lý khu trực tiếp</FormFieldLabel>
           <View style={styles.fieldIconRow}>
             <MaterialIcons name="person" size={20} color={`${S.outline}99`} style={styles.fieldIcon} />
             <TextInput
@@ -356,7 +357,7 @@ export default function HarvestAreaFormScreen() {
             />
           </View>
 
-          <Text style={[styles.fieldLabel, { marginTop: 18 }]}>Trạng thái</Text>
+          <FormFieldLabel style={{ marginTop: 18 }}>Trạng thái</FormFieldLabel>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
             {STATUS_OPTIONS.map((o) => {
               const sel = status === o.value;
@@ -465,7 +466,7 @@ export default function HarvestAreaFormScreen() {
               </Pressable>
             </>
           )}
-          <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Google Place ID (tuỳ chọn)</Text>
+          <FormFieldLabel style={{ marginTop: 12 }}>Google Place ID (tuỳ chọn)</FormFieldLabel>
           <TextInput
             value={googlePlaceId}
             onChangeText={setGooglePlaceId}
@@ -478,7 +479,7 @@ export default function HarvestAreaFormScreen() {
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionEyebrow}>Liên hệ & ghi chú</Text>
-          <Text style={styles.fieldLabel}>Số điện thoại</Text>
+          <FormFieldLabel>Số điện thoại</FormFieldLabel>
           <TextInput
             value={siteContactPhone}
             onChangeText={setSiteContactPhone}
@@ -487,7 +488,7 @@ export default function HarvestAreaFormScreen() {
             style={styles.inputSoft}
             placeholderTextColor={`${S.outline}80`}
           />
-          <Text style={styles.fieldLabel}>Email</Text>
+          <FormFieldLabel>Email</FormFieldLabel>
           <TextInput
             value={siteContactEmail}
             onChangeText={setSiteContactEmail}
@@ -497,7 +498,7 @@ export default function HarvestAreaFormScreen() {
             style={styles.inputSoft}
             placeholderTextColor={`${S.outline}80`}
           />
-          <Text style={styles.fieldLabel}>Ghi chú</Text>
+          <FormFieldLabel>Ghi chú</FormFieldLabel>
           <TextInput
             value={siteNotes}
             onChangeText={setSiteNotes}
@@ -511,7 +512,7 @@ export default function HarvestAreaFormScreen() {
         {!isEdit && user?.role === 'admin' ? (
           <View style={styles.sectionCard}>
             <Text style={styles.sectionEyebrow}>Quản trị</Text>
-            <Text style={styles.fieldLabel}>Owner ID *</Text>
+            <FormFieldLabel required>Owner ID</FormFieldLabel>
             <TextInput
               value={ownerIdStr}
               onChangeText={setOwnerIdStr}

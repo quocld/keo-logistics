@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FormFieldLabel } from '@/components/forms/FormFieldLabel';
 import { stitchHarvestFormStyles as styles } from '@/components/owner/stitch-harvest-form-styles';
 import { Brand } from '@/constants/brand';
 import { getDefaultUserStatusId, getDriverRoleId } from '@/constants/ops-roles';
@@ -198,7 +199,7 @@ export default function DriverCreateFormScreen() {
             )}
           </Text>
 
-          <Text style={styles.fieldLabel}>Email *</Text>
+          <FormFieldLabel required>Email</FormFieldLabel>
           <FieldIconInput
             icon="email"
             value={email}
@@ -207,7 +208,7 @@ export default function DriverCreateFormScreen() {
             keyboardType="email-address"
           />
 
-          <Text style={styles.fieldLabel}>Mật khẩu *</Text>
+          <FormFieldLabel required>Mật khẩu</FormFieldLabel>
           <FieldIconInput
             icon="lock"
             value={password}
@@ -218,11 +219,11 @@ export default function DriverCreateFormScreen() {
 
           <View style={styles.twoCol}>
             <View style={styles.colHalf}>
-              <Text style={styles.fieldLabel}>Họ</Text>
+              <FormFieldLabel>Họ</FormFieldLabel>
               <FieldIconInput icon="account-box" value={lastName} onChangeText={setLastName} placeholder="Nguyễn" />
             </View>
             <View style={styles.colHalf}>
-              <Text style={styles.fieldLabel}>Tên</Text>
+              <FormFieldLabel>Tên</FormFieldLabel>
               <FieldIconInput icon="person" value={firstName} onChangeText={setFirstName} placeholder="Văn A" />
             </View>
           </View>

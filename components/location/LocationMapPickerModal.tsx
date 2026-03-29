@@ -13,12 +13,14 @@ import {
   Text,
   View,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE, type MapType, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Brand } from '@/constants/brand';
 
 const S = Brand.stitch;
+
+type PickerMapLayer = Extract<MapType, 'standard' | 'satellite'>;
 
 const DEFAULT_CENTER = { latitude: 16.0, longitude: 108.0 };
 const DEFAULT_DELTA = { latitudeDelta: 0.12, longitudeDelta: 0.12 };
@@ -60,6 +62,7 @@ export function LocationMapPickerModal({
   const [mapNonce, setMapNonce] = useState(0);
   const [tracksViewChanges, setTracksViewChanges] = useState(true);
   const [gpsBusy, setGpsBusy] = useState(false);
+  const [mapLayer, setMapLayer] = useState<PickerMapLayer>('standard');
 
   const initialRegion: Region = {
     latitude: draft.latitude,
@@ -157,7 +160,32 @@ export function LocationMapPickerModal({
           <Text style={styles.topTitle} numberOfLines={1}>
             {title}
           </Text>
-          <View style={styles.topSpacer} />
+          <View style={styles.topMapTypeGroup}>
+            <Pressable
+              onPress={() => setMapLayer('standard')}
+              style={[styles.topMapTypeBtn, mapLayer === 'standard' && styles.topMapTypeBtnOn]}
+              accessibilityLabel="Bản đồ đường"
+              accessibilityRole="button"
+              accessibilityState={{ selected: mapLayer === 'standard' }}>
+              <MaterialIcons
+                name="map"
+                size={20}
+                color={mapLayer === 'standard' ? '#fff' : S.primary}
+              />
+            </Pressable>
+            <Pressable
+              onPress={() => setMapLayer('satellite')}
+              style={[styles.topMapTypeBtn, mapLayer === 'satellite' && styles.topMapTypeBtnOn]}
+              accessibilityLabel="Ảnh vệ tinh"
+              accessibilityRole="button"
+              accessibilityState={{ selected: mapLayer === 'satellite' }}>
+              <MaterialIcons
+                name="satellite"
+                size={20}
+                color={mapLayer === 'satellite' ? '#fff' : S.primary}
+              />
+            </Pressable>
+          </View>
         </View>
 
         <MapView
@@ -166,6 +194,7 @@ export function LocationMapPickerModal({
           provider={PROVIDER_GOOGLE}
           style={styles.map}
           initialRegion={initialRegion}
+          mapType={mapLayer}
           onPress={onMapPress}
           rotateEnabled={false}
           pitchEnabled={false}
@@ -247,8 +276,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: S.primary,
   },
-  topSpacer: {
-    width: 56,
+  topMapTypeGroup: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: S.outlineVariant,
+    backgroundColor: S.surfaceContainerLow,
+  },
+  topMapTypeBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  topMapTypeBtnOn: {
+    backgroundColor: S.primary,
   },
   hint: {
     position: 'absolute',

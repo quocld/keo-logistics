@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FormFieldLabel } from '@/components/forms/FormFieldLabel';
 import { Brand } from '@/constants/brand';
 import { formatIsoDateVi, parseIsoDateToLocal, toIsoDateString } from '@/lib/date/iso-date';
 
@@ -19,6 +20,7 @@ const S = Brand.stitch;
 
 export type FormDatePickerFieldProps = {
   label: string;
+  required?: boolean;
   /** `YYYY-MM-DD` or empty */
   value: string;
   onChangeValue: (iso: string) => void;
@@ -37,6 +39,7 @@ function startOfToday(): Date {
 
 export function FormDatePickerField({
   label,
+  required,
   value,
   onChangeValue,
   placeholder = 'Chọn ngày',
@@ -94,7 +97,7 @@ export function FormDatePickerField({
   if (Platform.OS === 'web') {
     return (
       <View style={styles.wrap}>
-        <Text style={styles.label}>{label}</Text>
+        <FormFieldLabel required={required}>{label}</FormFieldLabel>
         <TextInput
           value={value}
           onChangeText={onChangeValue}
@@ -111,7 +114,7 @@ export function FormDatePickerField({
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
+      <FormFieldLabel required={required}>{label}</FormFieldLabel>
       <Pressable
         onPress={openPicker}
         style={({ pressed }) => [styles.fieldRow, pressed && styles.fieldRowPressed]}
@@ -180,12 +183,6 @@ export function FormDatePickerField({
 const styles = StyleSheet.create({
   wrap: {
     marginBottom: 4,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Brand.ink,
-    marginBottom: 8,
   },
   fieldRow: {
     flexDirection: 'row',
