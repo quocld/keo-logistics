@@ -22,6 +22,7 @@ import { ownerStitchListStyles as os } from '@/components/owner/owner-stitch-lis
 import { Brand } from '@/constants/brand';
 import { getErrorMessage } from '@/lib/api/errors';
 import { approveReceipt, listReceipts, rejectReceipt } from '@/lib/api/receipts';
+import { firstReceiptImageUrl } from '@/lib/receipt/receipt-image-urls';
 import type { Receipt } from '@/lib/types/ops';
 
 const S = Brand.stitch;
@@ -71,15 +72,6 @@ function harvestAreaLine(r: Receipt): string {
   return '—';
 }
 
-function firstImageUrl(r: Receipt): string | null {
-  const urls = r.imageUrls;
-  if (Array.isArray(urls) && urls.length > 0 && typeof urls[0] === 'string') {
-    return urls[0];
-  }
-  const legacy = (r as { receiptImageUrl?: string }).receiptImageUrl;
-  return typeof legacy === 'string' && legacy ? legacy : null;
-}
-
 function formatVnd(n: number): string {
   return `${n.toLocaleString('vi-VN')} VND`;
 }
@@ -104,7 +96,7 @@ function ReceiptCard({
   const weight = item.weight != null && Number.isFinite(Number(item.weight)) ? Number(item.weight) : null;
   const amount = item.amount != null && Number.isFinite(Number(item.amount)) ? Number(item.amount) : null;
   const displayId = item.billCode?.trim() ? item.billCode.trim() : formatReceiptKtCode(item.id);
-  const hasImage = Boolean(firstImageUrl(item));
+  const hasImage = Boolean(firstReceiptImageUrl(item));
 
   return (
     <View style={cardStyles.wrap}>
@@ -508,7 +500,7 @@ export default function ReceiptApprovalScreen() {
               onApprove={() => runApprove(item)}
               onReject={() => runReject(item)}
               onPreview={() => {
-                const u = firstImageUrl(item);
+                const u = firstReceiptImageUrl(item);
                 if (u) setPreviewUrl(u);
               }}
               onOpenDetail={() => router.push(`/receipt/${String(item.id)}`)}

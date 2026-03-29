@@ -15,14 +15,16 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { stitchHarvestFormStyles as headerStyles } from '@/components/owner/stitch-harvest-form-styles';
 import { Brand } from '@/constants/brand';
 import { useAuth } from '@/contexts/auth-context';
 import { getErrorMessage } from '@/lib/api/errors';
 import { approveReceipt, getReceipt, rejectReceipt } from '@/lib/api/receipts';
+import { collectReceiptImageUrls } from '@/lib/receipt/receipt-image-urls';
 import type { Receipt, TripDriverRef } from '@/lib/types/ops';
 
 const S = Brand.stitch;
+
+const HERO_H = 248;
 
 function normalizeReceiptStatus(raw: unknown): string {
   if (raw == null) return '';
@@ -33,10 +35,10 @@ function normalizeReceiptStatus(raw: unknown): string {
 }
 
 function statusPillLabel(st: string): string {
-  if (st === 'pending') return 'CHỜ DUYỆT';
-  if (st === 'approved') return 'ĐÃ DUYỆT';
-  if (st === 'rejected') return 'TỪ CHỐI';
-  return st ? st.toUpperCase() : '—';
+  if (st === 'pending') return 'Chờ duyệt';
+  if (st === 'approved') return 'Đã duyệt';
+  if (st === 'rejected') return 'Từ chối';
+  return st ? st : '—';
 }
 
 function formatReceiptKtCode(id: string | number): string {
@@ -76,19 +78,6 @@ function weighingStationLine(r: Receipt): string {
   return '—';
 }
 
-function receiptImageUrls(r: Receipt): string[] {
-  const out: string[] = [];
-  const urls = r.imageUrls;
-  if (Array.isArray(urls)) {
-    for (const u of urls) {
-      if (typeof u === 'string' && u) out.push(u);
-    }
-  }
-  const legacy = (r as { receiptImageUrl?: string }).receiptImageUrl;
-  if (typeof legacy === 'string' && legacy) out.push(legacy);
-  return out;
-}
-
 function formatVnd(n: number): string {
   return `${n.toLocaleString('vi-VN')} ₫`;
 }
@@ -110,17 +99,63 @@ function formatReceiptDate(raw: string | null | undefined): string {
   }
 }
 
-function pillColors(st: string): { bg: string; fg: string } {
+function statusChipStyle(st: string): { bg: string; border: string; text: string } {
   switch (st) {
     case 'pending':
-      return { bg: `${S.primary}18`, fg: S.primary };
+      return { bg: 'rgba(255,193,7,0.95)', border: 'rgba(255,179,0,0.4)', text: '#3e2723' };
     case 'approved':
-      return { bg: `${Brand.forest}22`, fg: Brand.forest };
+      return { bg: 'rgba(26,138,74,0.95)', border: 'rgba(255,255,255,0.35)', text: '#fff' };
     case 'rejected':
-      return { bg: '#ffebee', fg: '#c62828' };
+      return { bg: 'rgba(198,40,40,0.95)', border: 'rgba(255,255,255,0.25)', text: '#fff' };
     default:
-      return { bg: S.surfaceContainerHigh, fg: S.onSurfaceVariant };
+      return { bg: 'rgba(0,0,0,0.45)', border: 'rgba(255,255,255,0.2)', text: '#fff' };
   }
+}
+
+function DetailRow({
+  icon,
+  label,
+  value,
+  sub,
+  onPress,
+  actionLabel,
+}: {
+  icon: keyof typeof MaterialIcons.glyphMap;
+  label: string;
+  value: string;
+  sub?: string | null;
+  onPress?: () => void;
+  actionLabel?: string;
+}) {
+  const inner = (
+    <>
+      <View style={styles.rowIconWrap}>
+        <MaterialIcons name={icon} size={22} color={S.primary} />
+      </View>
+      <View style={styles.rowText}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={styles.rowValue}>{value}</Text>
+        {sub ? <Text style={styles.rowSub}>{sub}</Text> : null}
+        {onPress && actionLabel ? (
+          <View style={styles.rowActionHint}>
+            <Text style={styles.rowActionText}>{actionLabel}</Text>
+            <MaterialIcons name="chevron-right" size={18} color={S.primary} />
+          </View>
+        ) : null}
+      </View>
+    </>
+  );
+  if (onPress) {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.listRow, pressed && styles.listRowPressed]}
+        accessibilityRole="button">
+        {inner}
+      </Pressable>
+    );
+  }
+  return <View style={styles.listRow}>{inner}</View>;
 }
 
 export default function ReceiptDetailScreen() {
@@ -168,11 +203,14 @@ export default function ReceiptDetailScreen() {
     : receipt
       ? formatReceiptKtCode(receipt.id)
       : '—';
-  const images = useMemo(() => (receipt ? receiptImageUrls(receipt) : []), [receipt]);
+  const images = useMemo(() => (receipt ? collectReceiptImageUrls(receipt) : []), [receipt]);
+  const heroUri = images[0] ?? null;
+  const extraImages = images.slice(1);
   const tripId = (receipt as { tripId?: string | number | null })?.tripId;
   const rejectedReason = (receipt as { rejectedReason?: string | null })?.rejectedReason;
   const notes =
     receipt?.notes != null && String(receipt.notes).trim() ? String(receipt.notes).trim() : null;
+  const chip = statusChipStyle(st);
 
   const onApprove = () => {
     if (!receipt || !id) return;
@@ -253,173 +291,166 @@ export default function ReceiptDetailScreen() {
     );
   }
 
-  const pc = pillColors(st);
+  const bottomPad = insets.bottom + (canModerate && pending ? 108 : 20);
 
   return (
     <View style={styles.flex}>
-      <View style={[headerStyles.header, { paddingTop: Math.max(insets.top, 12) }]}>
-        <View style={headerStyles.headerLeft}>
-          <Pressable onPress={() => router.back()} hitSlop={12} style={headerStyles.backBtn}>
-            <MaterialIcons name="arrow-back" size={24} color={Brand.ink} />
-          </Pressable>
-          <MaterialIcons name="receipt-long" size={22} color={Brand.forest} />
-          <Text style={headerStyles.headerTitle} numberOfLines={1}>
-            Chi tiết phiếu cân
-          </Text>
-        </View>
-        <View style={headerStyles.headerRight}>
-          <Pressable
-            style={headerStyles.helpBtn}
-            hitSlop={8}
-            onPress={() =>
-              Alert.alert('API', 'GET /receipts/:id — Phê duyệt: POST …/approve | …/reject (KeoTram Ops).')
-            }>
-            <MaterialIcons name="help-outline" size={20} color={Brand.ink} />
-            <Text style={headerStyles.helpBtnText}>Hỗ trợ</Text>
-          </Pressable>
-        </View>
-      </View>
-      <View style={headerStyles.headerHairline} />
-
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + (canModerate && pending ? 120 : 28) }]}
+        contentContainerStyle={{ paddingBottom: bottomPad }}
         showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <Text style={styles.heroEyebrow}>Phiếu cân · KeoTram Ops</Text>
-          <Text style={styles.heroCode}>{displayId}</Text>
-          <View style={styles.heroStatusRow}>
-            <View style={[styles.statusPill, { backgroundColor: pc.bg }]}>
-              <Text style={[styles.statusPillText, { color: pc.fg }]} numberOfLines={1}>
-                {statusPillLabel(st)}
-              </Text>
+        <View style={styles.heroWrap}>
+          {heroUri ? (
+            <Image source={{ uri: heroUri }} style={styles.heroImage} contentFit="cover" />
+          ) : (
+            <View style={styles.heroPlaceholder}>
+              <LinearGradient
+                colors={['#e8f5e9', S.surfaceContainerLow, '#c8e6c9']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <MaterialIcons name="receipt-long" size={56} color={S.primary} style={{ opacity: 0.85 }} />
+              <Text style={styles.heroPlaceholderHint}>Chưa có ảnh phiếu</Text>
             </View>
+          )}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.65)']}
+            locations={[0, 0.45, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={[styles.heroTop, { paddingTop: Math.max(insets.top, 10) }]}>
+            <Pressable
+              onPress={() => router.back()}
+              hitSlop={12}
+              style={({ pressed }) => [styles.heroCircleBtn, pressed && styles.heroCircleBtnPressed]}
+              accessibilityLabel="Quay lại">
+              <MaterialIcons name="arrow-back" size={22} color="#fff" />
+            </Pressable>
+            <View style={{ flex: 1 }} />
+            <Pressable
+              onPress={() =>
+                Alert.alert('Phiếu cân', 'GET /receipts/:id · POST …/approve · …/reject (KeoTram Ops).')
+              }
+              hitSlop={8}
+              style={({ pressed }) => [styles.heroCircleBtn, pressed && styles.heroCircleBtnPressed]}>
+              <MaterialIcons name="help-outline" size={22} color="#fff" />
+            </Pressable>
           </View>
-          <View style={styles.heroAccent}>
-            <LinearGradient
-              colors={['#e8f5e9', S.surfaceContainerLow, '#f1f8e9']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <MaterialIcons name="scale" size={40} color={S.primary} style={{ opacity: 0.85 }} />
-            <Text style={styles.heroAccentHint}>Cân hàng & chứng từ</Text>
+          <View
+            style={[
+              styles.statusChip,
+              { backgroundColor: chip.bg, borderColor: chip.border },
+            ]}>
+            <Text style={[styles.statusChipText, { color: chip.text }]}>{statusPillLabel(st)}</Text>
+          </View>
+          <View style={styles.heroBottom}>
+            <Text style={styles.heroEyebrow}>Phiếu cân</Text>
+            <Text style={styles.heroTitle}>{displayId}</Text>
+            <Text style={styles.heroDate}>{formatReceiptDate(receipt.receiptDate)}</Text>
           </View>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.metricsScroll}>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricEyebrow}>Trọng lượng</Text>
-            <Text style={styles.metricValue}>{weight != null ? `${weight} tấn` : '—'}</Text>
+        <View style={[styles.sheet, { marginTop: -28 }]}>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryGrid}>
+              <View style={styles.summaryCell}>
+                <Text style={styles.summaryLabel}>Trọng lượng</Text>
+                <Text style={styles.summaryNum}>{weight != null ? `${weight}` : '—'}</Text>
+                <Text style={styles.summaryUnit}>tấn</Text>
+              </View>
+              <View style={styles.summaryDividerV} />
+              <View style={styles.summaryCell}>
+                <Text style={styles.summaryLabel}>Thành tiền</Text>
+                <Text style={styles.summaryMoney} numberOfLines={2}>
+                  {amount != null ? formatVnd(amount) : '—'}
+                </Text>
+              </View>
+            </View>
           </View>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricEyebrow}>Thành tiền</Text>
-            <Text style={styles.metricValue} numberOfLines={2}>
-              {amount != null ? formatVnd(amount) : '—'}
-            </Text>
-          </View>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricEyebrow}>Thời gian phiếu</Text>
-            <Text style={styles.metricValue} numberOfLines={2}>
-              {formatReceiptDate(receipt.receiptDate)}
-            </Text>
-          </View>
-        </ScrollView>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionEyebrow}>Thông tin vận hành</Text>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Tài xế</Text>
-            <Text style={styles.infoValue}>{driverName(receipt)}</Text>
-            {driverEmail(receipt) ? (
-              <Text style={styles.infoSub}>{driverEmail(receipt)}</Text>
+          <Text style={styles.blockTitle}>Thông tin chi tiết</Text>
+          <View style={styles.listCard}>
+            <DetailRow icon="person" label="Tài xế" value={driverName(receipt)} sub={driverEmail(receipt)} />
+            <View style={styles.listHairline} />
+            <DetailRow
+              icon="eco"
+              label="Khu khai thác"
+              value={harvestAreaLine(receipt)}
+              onPress={receipt.harvestAreaId != null && user?.role === 'owner' ? openHarvestArea : undefined}
+              actionLabel={receipt.harvestAreaId != null && user?.role === 'owner' ? 'Xem khu' : undefined}
+            />
+            <View style={styles.listHairline} />
+            <DetailRow icon="scale" label="Trạm cân" value={weighingStationLine(receipt)} />
+            {tripId != null && tripId !== '' ? (
+              <>
+                <View style={styles.listHairline} />
+                <DetailRow icon="local-shipping" label="Chuyến" value={`#${String(tripId)}`} />
+              </>
             ) : null}
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Khu khai thác</Text>
-            <Text style={styles.infoValue}>{harvestAreaLine(receipt)}</Text>
-            {receipt.harvestAreaId != null && user?.role === 'owner' ? (
-              <Pressable onPress={openHarvestArea} style={styles.linkRow}>
-                <Text style={styles.linkText}>Mở chi tiết khu</Text>
-                <MaterialIcons name="chevron-right" size={18} color={S.primary} />
-              </Pressable>
-            ) : null}
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Trạm cân</Text>
-            <Text style={styles.infoValue}>{weighingStationLine(receipt)}</Text>
-          </View>
-          {tripId != null && tripId !== '' ? (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Chuyến (trip)</Text>
-              <Text style={styles.infoValueMono}>#{String(tripId)}</Text>
+
+          {st === 'rejected' && rejectedReason ? (
+            <View style={styles.rejectCard}>
+              <MaterialIcons name="block" size={22} color="#c62828" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rejectCardTitle}>Lý do từ chối</Text>
+                <Text style={styles.rejectCardBody}>{String(rejectedReason)}</Text>
+              </View>
             </View>
           ) : null}
-        </View>
 
-        {st === 'rejected' && rejectedReason ? (
-          <View style={styles.rejectBanner}>
-            <MaterialIcons name="error-outline" size={22} color="#c62828" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rejectTitle}>Lý do từ chối</Text>
-              <Text style={styles.rejectBody}>{String(rejectedReason)}</Text>
+          {notes ? (
+            <View style={styles.notesCard}>
+              <View style={styles.notesHead}>
+                <MaterialIcons name="sticky-note-2" size={20} color={S.tertiary} />
+                <Text style={styles.notesTitle}>Ghi chú</Text>
+              </View>
+              <Text style={styles.notesBody}>{notes}</Text>
             </View>
-          </View>
-        ) : null}
+          ) : null}
 
-        {notes ? (
-          <View style={styles.noticeCard}>
-            <View style={styles.noticeHead}>
-              <MaterialIcons name="notes" size={20} color={S.tertiary} />
-              <Text style={styles.noticeTitle}>Ghi chú</Text>
-            </View>
-            <Text style={styles.noticeBody}>{notes}</Text>
-          </View>
-        ) : null}
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionEyebrow}>Ảnh chứng từ</Text>
-          {images.length === 0 ? (
-            <View style={styles.imageEmpty}>
-              <MaterialIcons name="hide-image" size={36} color={`${S.outline}66`} />
-              <Text style={styles.imageEmptyText}>Chưa có ảnh đính kèm</Text>
-            </View>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageStrip}>
-              {images.map((uri) => (
-                <Pressable key={uri} onPress={() => setPreviewUrl(uri)} style={styles.imageThumbWrap}>
-                  <Image source={{ uri }} style={styles.imageThumb} contentFit="cover" />
-                  <View style={styles.imageZoomBadge}>
-                    <MaterialIcons name="zoom-in" size={18} color="#fff" />
-                  </View>
-                </Pressable>
-              ))}
-            </ScrollView>
-          )}
+          {extraImages.length > 0 ? (
+            <>
+              <Text style={styles.blockTitle}>Ảnh khác ({extraImages.length})</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.thumbRow}>
+                {extraImages.map((uri) => (
+                  <Pressable key={uri} onPress={() => setPreviewUrl(uri)} style={styles.thumb}>
+                    <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" />
+                    <View style={styles.thumbZoom}>
+                      <MaterialIcons name="zoom-in" size={16} color="#fff" />
+                    </View>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </>
+          ) : null}
         </View>
       </ScrollView>
 
       {canModerate && pending ? (
-        <View style={[styles.footerBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <Pressable
-            onPress={onReject}
-            disabled={busy}
-            style={({ pressed }) => [styles.footerReject, pressed && styles.footerRejectPressed, busy && styles.disabled]}>
-            <Text style={styles.footerRejectText}>Từ chối</Text>
-          </Pressable>
-          <Pressable
-            onPress={onApprove}
-            disabled={busy}
-            style={({ pressed }) => [styles.footerApprove, pressed && styles.footerApprovePressed, busy && styles.disabled]}>
-            {busy ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.footerApproveText}>Phê duyệt</Text>
-            )}
-          </Pressable>
+        <View style={[styles.footerDock, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+          <View style={styles.footerInner}>
+            <Pressable
+              onPress={onReject}
+              disabled={busy}
+              style={({ pressed }) => [styles.btnOutline, pressed && styles.btnOutlinePressed, busy && styles.disabled]}>
+              <Text style={styles.btnOutlineText}>Từ chối</Text>
+            </Pressable>
+            <Pressable
+              onPress={onApprove}
+              disabled={busy}
+              style={({ pressed }) => [styles.btnFill, pressed && styles.btnFillPressed, busy && styles.disabled]}>
+              {busy ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.btnFillText}>Phê duyệt</Text>
+              )}
+            </Pressable>
+          </View>
         </View>
       ) : null}
 
@@ -445,10 +476,6 @@ export default function ReceiptDetailScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: Brand.canvas },
   scroll: { flex: 1 },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -472,271 +499,353 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   disabled: { opacity: 0.55 },
-  hero: {
-    marginBottom: 20,
+
+  heroWrap: {
+    height: HERO_H,
+    width: '100%',
+    backgroundColor: '#1a1c1a',
   },
-  heroEyebrow: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    color: S.onSurfaceVariant,
-    marginBottom: 8,
+  heroImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
-  heroCode: {
-    fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    color: Brand.ink,
-    marginBottom: 10,
-  },
-  heroStatusRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
-  },
-  statusPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-  },
-  statusPillText: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-  },
-  heroAccent: {
-    height: 120,
-    borderRadius: 14,
-    overflow: 'hidden',
+  heroPlaceholder: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: S.surfaceContainerLow,
   },
-  heroAccentHint: {
-    marginTop: 8,
+  heroPlaceholderHint: {
+    marginTop: 10,
+    fontSize: 14,
+    fontWeight: '600',
+    color: S.onSurfaceVariant,
+  },
+  heroTop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+  },
+  heroCircleBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  heroCircleBtnPressed: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  statusChip: {
+    position: 'absolute',
+    top: HERO_H * 0.38,
+    alignSelf: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  statusChipText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  heroBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
+  },
+  heroEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.85)',
+    marginBottom: 4,
+  },
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+    color: '#fff',
+    marginBottom: 4,
+  },
+  heroDate: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.88)',
+  },
+
+  sheet: {
+    paddingHorizontal: 16,
+  },
+  summaryCard: {
+    backgroundColor: Brand.surface,
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 8,
+    marginBottom: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: `${S.outlineVariant}99`,
+    shadowColor: Brand.ink,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 4,
+  },
+  summaryGrid: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  summaryCell: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  summaryDividerV: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: S.outlineVariant,
+    marginVertical: 4,
+  },
+  summaryLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: S.onSurfaceVariant,
+    marginBottom: 6,
+  },
+  summaryNum: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: Brand.ink,
+    letterSpacing: -1,
+  },
+  summaryUnit: {
     fontSize: 13,
     fontWeight: '600',
     color: S.onSurfaceVariant,
+    marginTop: 2,
   },
-  metricsScroll: {
-    gap: 12,
-    paddingBottom: 4,
-    marginBottom: 18,
+  summaryMoney: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: Brand.ink,
+    textAlign: 'center',
+    lineHeight: 22,
   },
-  metricCard: {
-    width: 168,
+
+  blockTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: S.onSurfaceVariant,
+    marginBottom: 10,
+    marginLeft: 4,
+  },
+  listCard: {
     backgroundColor: Brand.surface,
-    borderRadius: 14,
-    padding: 16,
-    marginRight: 4,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 18,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: `${S.outlineVariant}88`,
-    shadowColor: Brand.ink,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
   },
-  metricEyebrow: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    color: S.onSurfaceVariant,
-    marginBottom: 8,
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    gap: 12,
   },
-  metricValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Brand.ink,
-    letterSpacing: -0.2,
+  listRowPressed: {
+    backgroundColor: `${S.primary}08`,
   },
-  sectionCard: {
-    backgroundColor: Brand.surface,
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: `${S.outlineVariant}66`,
-    shadowColor: Brand.ink,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 2,
+  listHairline: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: S.outlineVariant,
+    marginLeft: 56,
   },
-  sectionEyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: S.onSurfaceVariant,
-    marginBottom: 14,
+  rowIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: `${S.primary}12`,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  infoRow: {
-    marginBottom: 16,
-  },
-  infoLabel: {
+  rowText: { flex: 1, minWidth: 0 },
+  rowLabel: {
     fontSize: 12,
-    color: S.onSurfaceVariant,
-    marginBottom: 4,
-  },
-  infoValue: {
-    fontSize: 16,
     fontWeight: '600',
-    color: Brand.ink,
+    color: S.onSurfaceVariant,
+    marginBottom: 2,
   },
-  infoSub: {
+  rowValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Brand.ink,
+    lineHeight: 22,
+  },
+  rowSub: {
     fontSize: 13,
     color: S.onSurfaceVariant,
     marginTop: 4,
   },
-  infoValueMono: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Brand.ink,
-  },
-  linkRow: {
+  rowActionHint: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 8,
     gap: 2,
   },
-  linkText: {
+  rowActionText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: S.primary,
   },
-  rejectBanner: {
+
+  rejectCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    backgroundColor: '#fff5f5',
-    borderRadius: 12,
-    padding: 14,
+    backgroundColor: '#fff8f8',
+    borderRadius: 14,
+    padding: 16,
     marginBottom: 18,
     borderWidth: 1,
     borderColor: '#ffcdd2',
   },
-  rejectTitle: {
-    fontSize: 13,
-    fontWeight: '700',
+  rejectCardTitle: {
+    fontSize: 12,
+    fontWeight: '800',
     color: '#b71c1c',
     marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
-  rejectBody: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#5d1a1a',
+  rejectCardBody: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#4e1616',
   },
-  noticeCard: {
+
+  notesCard: {
     backgroundColor: S.tertiaryFixed,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 16,
     marginBottom: 18,
     borderWidth: 1,
-    borderColor: `${S.tertiary}33`,
+    borderColor: `${S.tertiary}28`,
   },
-  noticeHead: {
+  notesHead: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     marginBottom: 8,
   },
-  noticeTitle: {
+  notesTitle: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     color: S.onTertiaryFixed,
   },
-  noticeBody: {
-    fontSize: 14,
-    lineHeight: 21,
+  notesBody: {
+    fontSize: 15,
+    lineHeight: 22,
     color: S.onTertiaryFixed,
   },
-  imageEmpty: {
-    alignItems: 'center',
-    paddingVertical: 28,
-    gap: 8,
+
+  thumbRow: {
+    gap: 10,
+    paddingBottom: 8,
   },
-  imageEmptyText: {
-    fontSize: 14,
-    color: S.onSurfaceVariant,
-  },
-  imageStrip: {
-    gap: 12,
-    paddingVertical: 4,
-  },
-  imageThumbWrap: {
-    width: 140,
-    height: 140,
+  thumb: {
+    width: 96,
+    height: 96,
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: S.surfaceContainerLow,
   },
-  imageThumb: {
-    width: '100%',
-    height: '100%',
-  },
-  imageZoomBadge: {
+  thumbImg: { width: '100%', height: '100%' },
+  thumbZoom: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderRadius: 8,
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 6,
     padding: 4,
   },
-  footerBar: {
+
+  footerDock: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingTop: 12,
     backgroundColor: Brand.canvas,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: S.outlineVariant,
+    paddingTop: 12,
+    paddingHorizontal: 16,
   },
-  footerReject: {
+  footerInner: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  btnOutline: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#ffcdd2',
+    paddingVertical: 15,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#e8a0a8',
+    backgroundColor: Brand.surface,
+  },
+  btnOutlinePressed: {
     backgroundColor: '#fff5f5',
   },
-  footerRejectPressed: {
-    backgroundColor: '#ffebee',
-  },
-  footerRejectText: {
+  btnOutlineText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#c62828',
   },
-  footerApprove: {
+  btnFill: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 15,
+    borderRadius: 14,
     backgroundColor: S.primary,
+    shadowColor: S.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  footerApprovePressed: {
-    opacity: 0.92,
+  btnFillPressed: {
+    opacity: 0.94,
   },
-  footerApproveText: {
+  btnFillText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#fff',
   },
+
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.72)',
+    backgroundColor: 'rgba(0,0,0,0.75)',
     justifyContent: 'center',
     padding: 20,
   },
@@ -757,7 +866,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '800',
     color: Brand.ink,
   },
   modalImage: {

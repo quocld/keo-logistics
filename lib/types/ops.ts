@@ -126,6 +126,8 @@ export type Receipt = {
   billCode?: string | null;
   weighingStationId?: string | number | null;
   imageUrls?: string[] | null;
+  /** GET detail/list — ảnh từ DB (S3), mỗi phần tử có imageUrl */
+  images?: Array<{ id?: string; imageUrl?: string; isPrimary?: boolean }> | null;
   notes?: string | null;
   [key: string]: unknown;
 };
