@@ -47,10 +47,8 @@ TaskManager.defineTask(DRIVER_LOCATION_TASK_NAME, async ({ data, error }) => {
     latitude: loc.coords.latitude,
     longitude: loc.coords.longitude,
     accuracy: loc.coords.accuracy ?? null,
-    altitude: loc.coords.altitude ?? null,
-    heading: loc.coords.heading ?? null,
     speed: loc.coords.speed ?? null,
-    recordedAt: new Date(loc.timestamp).toISOString(),
+    timestamp: new Date(loc.timestamp).toISOString(),
   });
 
   await setLastSentTimestampMs(now);

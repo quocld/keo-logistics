@@ -1459,6 +1459,72 @@
       ]
     },
     {
+      "name": "Tracking / Locations",
+      "description": "Driver GPS tracking MVP v2.\n\n- **Driver ping (ngoài trip):** `POST /drivers/me/location` (204)\n- **Driver ping (trong trip):** `POST /trips/:id/locations` (204) — trip phải `in_progress`\n- **Owner live map polling:** `GET /owner/drivers/locations/latest` (200) — trả last-known cho managed drivers (Redis ưu tiên, fallback DB).\n\nCần chạy **Setup – Ops tokens** trước để có `driverAccessToken` / `ownerAccessToken`.",
+      "item": [
+        {
+          "name": "POST /drivers/me/location (driver ping – ngoài trip)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 10.12345678,\n  \"longitude\": 106.12345678,\n  \"accuracy\": 10,\n  \"speed\": 12.5,\n  \"timestamp\": \"{{$isoTimestamp}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/drivers/me/location",
+              "host": ["{{baseUrl}}"],
+              "path": ["drivers", "me", "location"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /trips/:id/locations (driver ping – trong trip in_progress)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 10.3333,\n  \"longitude\": 106.4444,\n  \"accuracy\": 20,\n  \"speed\": 30,\n  \"timestamp\": \"{{$isoTimestamp}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/trips/{{tripId}}/locations",
+              "host": ["{{baseUrl}}"],
+              "path": ["trips", "{{tripId}}", "locations"]
+            },
+            "description": "Tạo trip `startNow: true` (hoặc start) trước để trip ở trạng thái `in_progress`."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /owner/drivers/locations/latest (owner polling)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/owner/drivers/locations/latest?page=1&limit=200",
+              "host": ["{{baseUrl}}"],
+              "path": ["owner", "drivers", "locations", "latest"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "200" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Receipts",
       "description": "Trước khi test: **Setup – Ops tokens** (driver + owner + admin); có `harvestAreaId`, trạm **owner** (`ownerWeighingStationId`), và **PUT gán bãi** cho managed driver (giống flow Trip).\n\n**Phase 2:**\n- **Submit:** **Driver** — như cũ (không gửi `driverUserId`). **Owner** — bắt buộc `driverUserId` (id user tài xế managed), bãi thuộc owner, driver đã gán bãi; trạm thuộc owner nếu gửi `weighingStationId`.\n- Submit **bắt buộc** ít nhất một ảnh: `imageUrls` (URL) và/hoặc `imageFileIds` (UUID sau **POST /files/upload**).\n- **GET /receipts**: driver chỉ phiếu của mình; owner theo khu sở hữu; admin tất cả. Query: `page`, `limit`, `status` (pending|approved|rejected), `receiptDateFrom`, `receiptDateTo`, `harvestAreaId` (chỉ admin).\n- **GET /receipts/:id**: chi tiết một phiếu (cùng phạm vi quyền; sai quyền hoặc không tồn tại → 404).\n- **Approve** tạo `finance_records`: `revenue = weight × unit_price` của trạm. Trạm lấy từ receipt, hoặc từ trip, hoặc gửi `weighingStationId` trong body khi phiếu chưa có trạm.\n\n**Phase 3 (gắn trip):** Khi gửi `tripId`, trip phải `in_progress` và cùng driver + `harvestAreaId` với trip; trạm cân trên phiếu **tự lấy từ trip** (có thể bỏ `weighingStationId` hoặc gửi trùng với trip).",
       "item": [
@@ -1768,6 +1834,244 @@
       ]
     },
     {
+      "name": "Analytics",
+      "description": "Analytics MVP (HTTP polling): dashboard summary + reports (receipts/finance/trips) + detail driver/trạm-khu-khai-thác. Lưu ý: để có `profit/revenue` cần ít nhất 1 receipt đã `approve` (tạo `finance_records`). `GET /analytics/dashboard/summary` (owner) có thêm KPI/breakdown như `totalWeight`, `dailyAvgWeight`, `marginPercent`, trend (`revenueTrendPercent`/`profitTrendPercent`/`transportGrowthPercent30d`), `fleetStatus`, và `topDrivers[].revenue`/`topDrivers[].deliveries`.",
+      "item": [
+        {
+          "name": "GET /analytics/dashboard/summary (driver)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/dashboard/summary?range=today",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "dashboard", "summary"],
+              "query": [
+                { "key": "range", "value": "today" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /analytics/dashboard/summary (owner)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/dashboard/summary?range=today",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "dashboard", "summary"],
+              "query": [
+                { "key": "range", "value": "today" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /analytics/dashboard/summary (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/dashboard/summary?range=today",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "dashboard", "summary"],
+              "query": [
+                { "key": "range", "value": "today" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /analytics/reports/receipts (driver)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/reports/receipts?range=today&groupBy=day&status=all",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "reports", "receipts"],
+              "query": [
+                { "key": "range", "value": "today" },
+                { "key": "groupBy", "value": "day" },
+                { "key": "status", "value": "all" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /analytics/reports/finance (owner)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/reports/finance?range=today&groupBy=day",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "reports", "finance"],
+              "query": [
+                { "key": "range", "value": "today" },
+                { "key": "groupBy", "value": "day" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /analytics/reports/trips (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/reports/trips?range=today&groupBy=status",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "reports", "trips"],
+              "query": [
+                { "key": "range", "value": "today" },
+                { "key": "groupBy", "value": "status" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /analytics/drivers/me/detail (driver)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/drivers/me/detail?range=today",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "drivers", "me", "detail"],
+              "query": [
+                { "key": "range", "value": "today" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /analytics/drivers/:driverId/detail (owner)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/drivers/{{managedDriverUserId}}/detail?range=today",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "drivers", "{{managedDriverUserId}}", "detail"],
+              "query": [
+                { "key": "range", "value": "today" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /analytics/weighing-stations/:id/detail (owner/driver)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/weighing-stations/{{ownerWeighingStationId}}/detail?range=today",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "weighing-stations", "{{ownerWeighingStationId}}", "detail"],
+              "query": [
+                { "key": "range", "value": "today" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /analytics/harvest-areas/:id/detail (owner/driver)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/harvest-areas/{{harvestAreaId}}/detail?range=today",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "harvest-areas", "{{harvestAreaId}}", "detail"],
+              "query": [
+                { "key": "range", "value": "today" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notifications (Expo Push)",
+      "description": "Đăng ký Expo push token (`expo-notifications`) cho user đã đăng nhập. Chạy **Setup – Ops tokens** login trước. Bearer JWT: mọi role (driver / owner / admin). `expoPushToken` lấy từ app (ví dụ `Notifications.getExpoPushTokenAsync()`). `platform`: `ios` hoặc `android`. `enabled: false` để tắt token. `easProjectId` / `easEnvironment` tùy chọn (tách môi trường EAS).\n\nBiến `{{expoPushToken}}`: dán token thật; giá trị mặc định chỉ là placeholder.",
+      "item": [
+        {
+          "name": "POST /notifications/expo/register (driver)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expoPushToken\": \"{{expoPushToken}}\",\n  \"platform\": \"android\",\n  \"easProjectId\": \"\",\n  \"easEnvironment\": \"\",\n  \"enabled\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications/expo/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "expo", "register"]
+            },
+            "description": "HTTP 200. Response: entity thiết bị push (user, expoPushToken, platform, isEnabled, …). Xóa hoặc để rỗng `easProjectId`/`easEnvironment` nếu không dùng."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /notifications/expo/register (owner)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expoPushToken\": \"{{expoPushToken}}\",\n  \"platform\": \"ios\",\n  \"easProjectId\": \"\",\n  \"easEnvironment\": \"\",\n  \"enabled\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications/expo/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "expo", "register"]
+            },
+            "description": "Giống bản driver; dùng `ownerAccessToken` sau khi login owner."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Files",
       "description": "Upload JWT: **driverAccessToken** khi gắn ảnh phiếu (Receipts).\n\n**`FILE_DRIVER=s3-presigned`:** (1) `POST /files/upload` JSON `fileName` + `fileSize` → `uploadSignedUrl` + `file.id`. `fileSize` dùng để kiểm tra giới hạn trên API (≤ maxFileSize). (2) `PUT` body binary lên `uploadSignedUrl` (không Bearer). Chỉ đuôi jpg/jpeg/png/gif.\n\n**`FILE_DRIVER=local` hoặc `s3`:** **POST /files/upload (multipart)** bên dưới.",
       "item": [
@@ -1903,6 +2207,7 @@
     { "key": "fileUploadSize", "value": "1024" },
     { "key": "uploadedFileId", "value": "" },
     { "key": "vehicleId", "value": "" },
-    { "key": "vehicleExpenseId", "value": "" }
+    { "key": "vehicleExpenseId", "value": "" },
+    { "key": "expoPushToken", "value": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]" }
   ]
 }

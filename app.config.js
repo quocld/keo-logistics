@@ -7,12 +7,26 @@ const appJson = require('./app.json');
 
 const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY ?? '';
 
+/** Phải có trong Info.plist của app native (không chỉ Expo Go). Trùng app.json + plugin expo-location. */
+const IOS_LOCATION = {
+  NSLocationWhenInUseUsageDescription:
+    'KeoTram cần vị trí khi bạn chọn điểm trên bản đồ, đặt trạm cân / khu khai thác, hoặc theo dõi chuyến xe.',
+  NSLocationAlwaysAndWhenInUseUsageDescription:
+    'KeoTram cần vị trí nền để chủ vườn theo dõi chuyến khi bạn không mở app.',
+  NSLocationAlwaysUsageDescription:
+    'KeoTram cần vị trí nền để chủ vườn theo dõi chuyến khi bạn không mở app.',
+};
+
 module.exports = {
   expo: {
     ...appJson.expo,
     ios: {
       ...appJson.expo.ios,
       bundleIdentifier: 'com.keo.app',
+      infoPlist: {
+        ...(appJson.expo.ios?.infoPlist ?? {}),
+        ...IOS_LOCATION,
+      },
       config: {
         ...(appJson.expo.ios?.config ?? {}),
         googleMapsApiKey,

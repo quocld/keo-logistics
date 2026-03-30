@@ -5,25 +5,71 @@ import { DRIVER_LOCATION_QUEUE_KEY } from '@/lib/tracking/storage-keys';
 
 const MAX_QUEUE = 50;
 
-export type DriverLocationPayload = {
-  tripId: string | number;
+/**
+ * Body cho `POST /trips/:id/locations` và `POST /drivers/me/location` (KeoTram Ops Postman — Tracking / Locations).
+ * Response 204 No Content khi thành công.
+ */
+export type DriverLocationPingBody = {
   latitude: number;
   longitude: number;
   accuracy: number | null;
-  altitude?: number | null;
-  heading?: number | null;
-  speed?: number | null;
-  recordedAt: string;
+  speed: number | null;
+  timestamp: string;
 };
 
-type QueuedPayload = DriverLocationPayload;
+export type DriverTripLocationPayload = DriverLocationPingBody & {
+  tripId: string | number;
+};
+
+type QueuedPayload = DriverTripLocationPayload;
+
+function pingBody(p: DriverLocationPingBody): Record<string, unknown> {
+  const b: Record<string, unknown> = {
+    latitude: p.latitude,
+    longitude: p.longitude,
+    timestamp: p.timestamp,
+  };
+  if (p.accuracy != null) b.accuracy = p.accuracy;
+  if (p.speed != null) b.speed = p.speed;
+  return b;
+}
+
+function migrateQueuedItem(raw: unknown): QueuedPayload | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  if (o.tripId == null) return null;
+  const lat = o.latitude;
+  const lng = o.longitude;
+  if (typeof lat !== 'number' || typeof lng !== 'number') return null;
+  const timestamp =
+    typeof o.timestamp === 'string'
+      ? o.timestamp
+      : typeof o.recordedAt === 'string'
+        ? o.recordedAt
+        : null;
+  if (!timestamp) return null;
+  return {
+    tripId: o.tripId as string | number,
+    latitude: lat,
+    longitude: lng,
+    accuracy: o.accuracy == null ? null : Number(o.accuracy),
+    speed: o.speed == null ? null : Number(o.speed),
+    timestamp,
+  };
+}
 
 async function readQueue(): Promise<QueuedPayload[]> {
   try {
     const raw = await AsyncStorage.getItem(DRIVER_LOCATION_QUEUE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as QueuedPayload[]) : [];
+    if (!Array.isArray(parsed)) return [];
+    const out: QueuedPayload[] = [];
+    for (const item of parsed) {
+      const n = migrateQueuedItem(item);
+      if (n) out.push(n);
+    }
+    return out;
   } catch {
     return [];
   }
@@ -40,40 +86,35 @@ async function enqueue(payload: QueuedPayload): Promise<void> {
   await writeQueue(q);
 }
 
-function bodyFromPayload(p: DriverLocationPayload): Record<string, unknown> {
-  return {
-    latitude: p.latitude,
-    longitude: p.longitude,
-    accuracy: p.accuracy,
-    altitude: p.altitude,
-    heading: p.heading,
-    speed: p.speed,
-    recordedAt: p.recordedAt,
-  };
+/**
+ * Tài xế ping khi không trong trip (Postman: POST /drivers/me/location → 204).
+ */
+export async function postDriverMeLocation(body: DriverLocationPingBody): Promise<void> {
+  const res = await apiFetch('/drivers/me/location', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(pingBody(body)),
+  });
+  if (!res.ok) {
+    throw new Error(`POST /drivers/me/location failed: ${res.status}`);
+  }
 }
 
 /**
- * POST placeholder until BE defines contract. 404/501 treated as no-op (no queue).
- * Network / 5xx → enqueue for later flush.
+ * Ping trong trip `in_progress` (Postman: POST /trips/:id/locations → 204).
+ * Lỗi mạng / 5xx → enqueue để flush sau.
  */
-export async function postDriverLocationSample(payload: DriverLocationPayload): Promise<void> {
+export async function postDriverLocationSample(payload: DriverTripLocationPayload): Promise<void> {
   const path = `/trips/${encodeURIComponent(String(payload.tripId))}/locations`;
 
   try {
     const res = await apiFetch(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(bodyFromPayload(payload)),
+      body: JSON.stringify(pingBody(payload)),
     });
 
     if (res.ok) {
-      return;
-    }
-
-    if (res.status === 404 || res.status === 501) {
-      if (__DEV__) {
-        console.warn('[driver-location] endpoint not available', res.status, path);
-      }
       return;
     }
 
@@ -95,9 +136,9 @@ export async function flushLocationQueue(): Promise<void> {
       const res = await apiFetch(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyFromPayload(item)),
+        body: JSON.stringify(pingBody(item)),
       });
-      if (!res.ok && res.status !== 404 && res.status !== 501) {
+      if (!res.ok) {
         remaining.push(item);
       }
     } catch {

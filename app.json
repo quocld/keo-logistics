@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "KeoTram cần vị trí khi bạn chọn điểm trên bản đồ, đặt trạm cân / khu khai thác, hoặc theo dõi chuyến xe.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "KeoTram cần vị trí nền để chủ vườn theo dõi chuyến khi bạn không mở app."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -56,7 +60,17 @@
           "isAndroidBackgroundLocationEnabled": true
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#E6F4FE",
+          "defaultChannel": "default",
+          "sounds": [],
+          "enableBackgroundRemoteNotifications": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
