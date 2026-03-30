@@ -17,12 +17,14 @@ import { QueryReceiptDto } from '../../dto/query-receipt.dto';
 import { ReceiptEntity } from '../../infrastructure/persistence/relational/entities/receipt.entity';
 import { ReceiptImageEntity } from '../../infrastructure/persistence/relational/entities/receipt-image.entity';
 import { FinanceRecordEntity } from '../../infrastructure/persistence/relational/entities/finance-record.entity';
+import { HarvestAreaEntity } from '../../infrastructure/persistence/relational/entities/harvest-area.entity';
 import { WeighingStationEntity } from '../../infrastructure/persistence/relational/entities/weighing-station.entity';
 import { TripEntity } from '../../infrastructure/persistence/relational/entities/trip.entity';
 import { TripStatusEnum } from '../../domain/trip-status.enum';
 import { OpsAuthorizationService } from './ops-authorization.service';
 import { infinityPagination } from '../../../utils/infinity-pagination';
 import { InfinityPaginationResponseDto } from '../../../utils/dto/infinity-pagination-response.dto';
+import { NotificationsService } from '../../../notifications/presentation/services/notifications.service';
 
 function revenueFromWeightAndUnitPrice(
   weightStr: string,
@@ -46,8 +48,11 @@ export class ReceiptsService {
     private readonly weighingStationsRepository: Repository<WeighingStationEntity>,
     @InjectRepository(TripEntity)
     private readonly tripsRepository: Repository<TripEntity>,
+    @InjectRepository(HarvestAreaEntity)
+    private readonly harvestAreasRepository: Repository<HarvestAreaEntity>,
     private readonly opsAuthorizationService: OpsAuthorizationService,
     private readonly filesService: FilesService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async findMany(
@@ -327,6 +332,28 @@ export class ReceiptsService {
     );
 
     await this.hydrateReceiptImageUrls(submitted);
+
+    const harvestArea = await this.harvestAreasRepository.findOne({
+      where: { id: dto.harvestAreaId },
+      relations: ['owner'],
+    });
+
+    const ownerId = harvestArea?.owner?.id;
+    if (ownerId) {
+      const receiptCodeOrId = submitted.billCode ?? submitted.id;
+      await this.notificationsService.createNotificationAndEnqueue({
+        userId: Number(ownerId),
+        title: 'Phiếu mới',
+        message: `Phiếu ${receiptCodeOrId} đã được tạo, đang chờ duyệt.`,
+        type: 'receipt_created',
+        pushData: {
+          type: 'receipt_created',
+          receiptId: submitted.id,
+          status: 'pending',
+        },
+      });
+    }
+
     return submitted;
   }
 
@@ -340,6 +367,7 @@ export class ReceiptsService {
     const receipt = await this.receiptsRepository.findOne({
       where: { id: receiptId },
       relations: [
+        'driver',
         'harvestArea',
         'harvestArea.owner',
         'weighingStation',
@@ -485,6 +513,23 @@ export class ReceiptsService {
     );
 
     await this.hydrateReceiptImageUrls(approved);
+
+    const driverId = receipt.driver?.id;
+    if (driverId) {
+      const receiptCodeOrId = approved.billCode ?? approved.id;
+      await this.notificationsService.createNotificationAndEnqueue({
+        userId: Number(driverId),
+        title: 'Phiếu được duyệt',
+        message: `Phiếu ${receiptCodeOrId} đã được duyệt.`,
+        type: 'receipt_approved',
+        pushData: {
+          type: 'receipt_approved',
+          receiptId: approved.id,
+          status: 'approved',
+        },
+      });
+    }
+
     return approved;
   }
 
@@ -497,7 +542,7 @@ export class ReceiptsService {
 
     const receipt = await this.receiptsRepository.findOne({
       where: { id: receiptId },
-      relations: ['harvestArea', 'harvestArea.owner'],
+      relations: ['driver', 'harvestArea', 'harvestArea.owner'],
     });
 
     if (!receipt) {
@@ -520,6 +565,26 @@ export class ReceiptsService {
     receipt.approvedAt = null;
     receipt.rejectedReason = dto.rejectedReason;
 
-    return this.receiptsRepository.save(receipt);
+    const saved = await this.receiptsRepository.save(receipt);
+
+    const driverId = saved.driver?.id ?? receipt.driver?.id;
+    if (driverId) {
+      const receiptCodeOrId = saved.billCode ?? saved.id;
+      const reason = dto.rejectedReason?.trim();
+      const reasonText = reason ? ` Lý do: ${reason}` : '';
+      await this.notificationsService.createNotificationAndEnqueue({
+        userId: Number(driverId),
+        title: 'Phiếu bị từ chối',
+        message: `Phiếu ${receiptCodeOrId} bị từ chối.${reasonText}`,
+        type: 'receipt_rejected',
+        pushData: {
+          type: 'receipt_rejected',
+          receiptId: saved.id,
+          status: 'rejected',
+        },
+      });
+    }
+
+    return saved;
   }
 }

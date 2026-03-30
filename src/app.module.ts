@@ -33,6 +33,7 @@ import { BetterStackLogger } from './logging/better-stack.logger';
 import { HttpLoggingInterceptor } from './logging/http-logging.interceptor';
 import { HttpExceptionLoggerFilter } from './logging/http-exception-logger.filter';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 // <database-block>
 const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
@@ -100,6 +101,7 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     HomeModule,
     OpsModule,
     AnalyticsModule,
+    NotificationsModule,
   ],
   providers: [
     BetterStackLogger,

@@ -29,10 +29,12 @@ import { WeighingStationsService } from './presentation/services/weighing-statio
 import { ReceiptsService } from './presentation/services/receipts.service';
 import { TripsService } from './presentation/services/trips.service';
 import { OpsAuthorizationService } from './presentation/services/ops-authorization.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     FilesModule,
+    NotificationsModule,
     TypeOrmModule.forFeature([
       HarvestAreaEntity,
       DriverHarvestAreaEntity,
