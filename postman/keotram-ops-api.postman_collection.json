@@ -1459,6 +1459,72 @@
       ]
     },
     {
+      "name": "Tracking / Locations",
+      "description": "Driver GPS tracking MVP v2.\n\n- **Driver ping (ngoài trip):** `POST /drivers/me/location` (204)\n- **Driver ping (trong trip):** `POST /trips/:id/locations` (204) — trip phải `in_progress`\n- **Owner live map polling:** `GET /owner/drivers/locations/latest` (200) — trả last-known cho managed drivers (Redis ưu tiên, fallback DB).\n\nCần chạy **Setup – Ops tokens** trước để có `driverAccessToken` / `ownerAccessToken`.",
+      "item": [
+        {
+          "name": "POST /drivers/me/location (driver ping – ngoài trip)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 10.12345678,\n  \"longitude\": 106.12345678,\n  \"accuracy\": 10,\n  \"speed\": 12.5,\n  \"timestamp\": \"{{$isoTimestamp}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/drivers/me/location",
+              "host": ["{{baseUrl}}"],
+              "path": ["drivers", "me", "location"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /trips/:id/locations (driver ping – trong trip in_progress)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 10.3333,\n  \"longitude\": 106.4444,\n  \"accuracy\": 20,\n  \"speed\": 30,\n  \"timestamp\": \"{{$isoTimestamp}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/trips/{{tripId}}/locations",
+              "host": ["{{baseUrl}}"],
+              "path": ["trips", "{{tripId}}", "locations"]
+            },
+            "description": "Tạo trip `startNow: true` (hoặc start) trước để trip ở trạng thái `in_progress`."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /owner/drivers/locations/latest (owner polling)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/owner/drivers/locations/latest?page=1&limit=200",
+              "host": ["{{baseUrl}}"],
+              "path": ["owner", "drivers", "locations", "latest"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "200" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Receipts",
       "description": "Trước khi test: **Setup – Ops tokens** (driver + owner + admin); có `harvestAreaId`, trạm **owner** (`ownerWeighingStationId`), và **PUT gán bãi** cho managed driver (giống flow Trip).\n\n**Phase 2:**\n- **Submit:** **Driver** — như cũ (không gửi `driverUserId`). **Owner** — bắt buộc `driverUserId` (id user tài xế managed), bãi thuộc owner, driver đã gán bãi; trạm thuộc owner nếu gửi `weighingStationId`.\n- Submit **bắt buộc** ít nhất một ảnh: `imageUrls` (URL) và/hoặc `imageFileIds` (UUID sau **POST /files/upload**).\n- **GET /receipts**: driver chỉ phiếu của mình; owner theo khu sở hữu; admin tất cả. Query: `page`, `limit`, `status` (pending|approved|rejected), `receiptDateFrom`, `receiptDateTo`, `harvestAreaId` (chỉ admin).\n- **GET /receipts/:id**: chi tiết một phiếu (cùng phạm vi quyền; sai quyền hoặc không tồn tại → 404).\n- **Approve** tạo `finance_records`: `revenue = weight × unit_price` của trạm. Trạm lấy từ receipt, hoặc từ trip, hoặc gửi `weighingStationId` trong body khi phiếu chưa có trạm.\n\n**Phase 3 (gắn trip):** Khi gửi `tripId`, trip phải `in_progress` và cùng driver + `harvestAreaId` với trip; trạm cân trên phiếu **tự lấy từ trip** (có thể bỏ `weighingStationId` hoặc gửi trùng với trip).",
       "item": [

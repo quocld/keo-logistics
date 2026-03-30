@@ -122,6 +122,10 @@ Không có OCR ở MVP (sẽ làm sau). Hiện tại dùng manual entry + chụp
 - Gửi vị trí GPS định kỳ (10–15 giây khi di chuyển, 30–60 giây khi dừng)
 - Không có nút tắt tracking
 - Driver xem được vị trí của chính mình
+- **API (backend):**
+  - **Ngoài trip (online / roaming):** `POST /drivers/me/location` (token driver) → lưu `driver_locations` + cache Redis last-known.
+  - **Trong trip:** `POST /trips/:id/locations` (token driver, trip phải `in_progress`) → lưu history `vehicle_locations` + cache Redis last-known (theo driver + theo trip).
+  - **Owner live map (polling):** `GET /owner/drivers/locations/latest` (token owner/admin) → lấy last-known cho toàn bộ managed drivers (Redis ưu tiên, fallback DB).
 
 ### 6.5 History
 
@@ -151,6 +155,7 @@ Không có OCR ở MVP (sẽ làm sau). Hiện tại dùng manual entry + chụp
 - Lọc: xe đang bận / xe đang rảnh / tất cả
 - Click marker xem chi tiết Trip
 - Cập nhật realtime (mỗi 10–20 giây)
+- **API (backend):** Owner polling `GET /owner/drivers/locations/latest?page=&limit=` để lấy vị trí mới nhất của các tài xế managed.
 
 ### 7.3 Receipt approval
 
@@ -227,7 +232,8 @@ Không có OCR ở MVP (sẽ làm sau). Hiện tại dùng manual entry + chụp
 - `receipts` (status: pending / approved / rejected; `trip_id` tùy chọn, ràng buộc khớp chuyến khi có)
 - `receipt_images`
 - `finance_records`
-- `vehicle_locations` (tracking realtime; trong một số tài liệu gọi là driver locations)
+- `driver_locations` (tracking vị trí tài xế ngoài trip; dùng cho live map “xe rảnh/online”)
+- `vehicle_locations` (tracking vị trí theo trip `in_progress`; phục vụ history/audit theo chuyến)
 - `vehicles` (`owner_id`, biển số unique, `assigned_driver_id` unique nullable — owner gán tài xế managed)
 - `vehicle_expenses` (chi phí theo xe: `repair` / `fuel` / `other`, số tiền, `occurred_at`)
 - `audit_logs`
@@ -253,7 +259,7 @@ Không có OCR ở MVP (sẽ làm sau). Hiện tại dùng manual entry + chụp
 | Trip                                       | **Có** `GET/POST /trips`, start/complete/cancel; **POST** yêu cầu driver có owner quản lý, **bãi đã gán**, trạm cùng owner và `active`; một trip `in_progress` / tài xế; complete/cancel: driver + owner (khu) + admin |
 | Receipt gắn Trip                           | **Có** `tripId` khi submit: khớp driver + khu + trip `in_progress`; trạm cân **auto** theo trip; backend kiểm tra lại phạm vi bãi/trạm/owner |
 | Trip `total_tons` / `total_receipts`       | **Có** cộng khi **approve** phiếu có `trip_id` |
-| Live tracking / map                        | Bảng `vehicle_locations` có trong DB; **chưa** có API ghi/đọc vị trí theo BRD |
+| Live tracking / map                        | **Có** bảng `vehicle_locations` (theo trip) + `driver_locations` (ngoài trip) và API: `POST /drivers/me/location`, `POST /trips/:id/locations`, `GET /owner/drivers/locations/latest` (Redis last-known + fallback DB) |
 | Dashboard, báo cáo, alert                  | Dashboard summary & reports (HTTP polling): **Có** `/analytics/dashboard/summary` + `/analytics/reports/*` + detail driver/trạm/khu (đã có thêm KPI như `totalWeight/margin/trend/fleetStatus` cho Owner); map realtime và alert đầy đủ: **chưa** |
 | Audit log, notifications                   | Bảng có trong DB; **chưa** có service/API đầy đủ theo BRD |
 | Duplicate `bill_code`, anti-fraud nâng cao | **Chưa** rule kiểm tra trùng |

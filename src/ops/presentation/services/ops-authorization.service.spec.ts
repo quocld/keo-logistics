@@ -12,23 +12,35 @@ describe('OpsAuthorizationService', () => {
     }) as any;
 
   it('should bypass owner harvest-area check for admin', async () => {
-    const repo = {
+    const harvestAreasRepo = {
       findOne: jest.fn(),
     } as unknown as Repository<HarvestAreaEntity>;
-    const service = new OpsAuthorizationService(repo);
+    const service = new OpsAuthorizationService(
+      harvestAreasRepo,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
 
     await expect(
       service.assertOwnerOwnsHarvestArea(makeActor(RoleEnum.admin), 'any-uuid'),
     ).resolves.toBeUndefined();
 
-    expect(repo.findOne).not.toHaveBeenCalled();
+    expect(harvestAreasRepo.findOne).not.toHaveBeenCalled();
   });
 
   it('should throw Forbidden when owner does not own harvest-area', async () => {
-    const repo = {
+    const harvestAreasRepo = {
       findOne: jest.fn().mockResolvedValue(null),
     } as unknown as Repository<HarvestAreaEntity>;
-    const service = new OpsAuthorizationService(repo);
+    const service = new OpsAuthorizationService(
+      harvestAreasRepo,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
 
     await expect(
       service.assertOwnerOwnsHarvestArea(makeActor(RoleEnum.owner), 'any-uuid'),
@@ -36,12 +48,18 @@ describe('OpsAuthorizationService', () => {
   });
 
   it('should resolve when owner owns harvest-area', async () => {
-    const repo = {
+    const harvestAreasRepo = {
       findOne: jest.fn().mockResolvedValue({
         id: 'any-uuid',
       }),
     } as unknown as Repository<HarvestAreaEntity>;
-    const service = new OpsAuthorizationService(repo);
+    const service = new OpsAuthorizationService(
+      harvestAreasRepo,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
 
     await expect(
       service.assertOwnerOwnsHarvestArea(makeActor(RoleEnum.owner), 'any-uuid'),
