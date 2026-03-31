@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Brand } from '@/constants/brand';
+import { pickDefaultAvatar } from '@/constants/images';
 import { useAuth } from '@/contexts/auth-context';
 import { getErrorMessage } from '@/lib/api/errors';
 import { approveReceipt, getReceipt, rejectReceipt } from '@/lib/api/receipts';
@@ -200,6 +201,12 @@ export default function ReceiptDetailScreen() {
   const heroSource = imageSources[0];
   const heroUri = heroSource?.uri ?? null;
   const extraSources = imageSources.slice(1);
+  const driverSeed = receipt
+    ? Number(
+        (receipt as { driverId?: unknown }).driverId ??
+          ((receipt as { driver?: { id?: unknown } | null }).driver?.id ?? 0),
+      ) || 0
+    : 0;
 
   useEffect(() => {
     if (images.length === 0) return;
@@ -379,9 +386,7 @@ export default function ReceiptDetailScreen() {
                     contentFit="cover"
                   />
                 ) : (
-                  <View style={styles.avatarFallback}>
-                    <Text style={styles.avatarInitials}>{driverInitials(receipt)}</Text>
-                  </View>
+                  <Image source={pickDefaultAvatar(driverSeed)} style={styles.avatarImg} contentFit="cover" />
                 )}
                 <View style={styles.avatarOnlineDot} />
               </View>

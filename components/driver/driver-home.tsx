@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, type Href } from 'expo-router';
 import { useCallback, useMemo } from 'react';
@@ -9,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NotificationBellButton } from '@/components/notifications/NotificationBellButton';
 import { ownerStitchListStyles as os } from '@/components/owner/owner-stitch-list-styles';
 import { Brand } from '@/constants/brand';
+import { pickDefaultAvatar } from '@/constants/images';
 import { useDriverTrip } from '@/contexts/driver-trip-context';
 import { useUnreadNotificationBadge } from '@/hooks/use-unread-notification-badge';
 import type { AuthUser } from '@/lib/auth/types';
@@ -128,7 +130,7 @@ export function DriverHome({ user }: DriverHomeProps) {
               <Text style={styles.heroDate}>{todayLine}</Text>
             </View>
             <View style={styles.avatar}>
-              <Text style={styles.avatarTxt}>{initials(user)}</Text>
+              <Image source={pickDefaultAvatar(user.id)} style={styles.avatarImg} contentFit="cover" />
             </View>
           </View>
           <Text style={styles.heroSub}>
@@ -327,12 +329,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: `${S.primary}44`,
+    overflow: 'hidden',
   },
-  avatarTxt: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: S.primary,
-  },
+  avatarImg: { width: 56, height: 56 },
   sectionLabel: {
     fontSize: 11,
     fontWeight: '800',

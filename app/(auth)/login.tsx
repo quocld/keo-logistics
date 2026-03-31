@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -15,8 +16,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { KeoTramLogo } from '@/components/keotram-logo';
 import { Brand } from '@/constants/brand';
+import { Images } from '@/constants/images';
 import { getPostLoginPath, useAuth } from '@/contexts/auth-context';
 import { getErrorMessage } from '@/lib/api/errors';
 import { forgotPasswordApi } from '@/lib/auth/api';
@@ -79,7 +80,7 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <View style={styles.logoCard}>
-            <KeoTramLogo size={108} />
+            <Image source={Images.keoTramLogo} style={styles.logoImg} contentFit="contain" />
           </View>
           <Text style={styles.wordmark}>KeoTram</Text>
           <Text style={styles.tagline}>Vận tải gỗ · Logistics chuyên nghiệp</Text>
@@ -174,6 +175,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 24,
     elevation: 8,
+  },
+  logoImg: {
+    width: 108,
+    height: 108,
   },
   wordmark: {
     fontSize: 32,
