@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,7 +23,11 @@ import { getPostLoginPath, useAuth } from '@/contexts/auth-context';
 import { getErrorMessage } from '@/lib/api/errors';
 import { forgotPasswordApi } from '@/lib/auth/api';
 
+/** Intrinsic size of `assets/images/keotram-login-hero.png`. */
+const KEO_TRAM_LOGIN_HERO_ASPECT = 1076 / 992;
+
 export default function LoginScreen() {
+  const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { signIn } = useAuth();
@@ -63,6 +68,9 @@ export default function LoginScreen() {
     }
   }
 
+  const horizontalPad = 28;
+  const logoMaxW = Math.min(windowWidth - horizontalPad * 2, 340);
+
   return (
     <KeyboardAvoidingView
       style={styles.flex}
@@ -72,16 +80,19 @@ export default function LoginScreen() {
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingTop: Math.max(insets.top, 24),
-            paddingBottom: Math.max(insets.bottom, 24),
+            paddingTop: Math.max(insets.top, 20),
+            paddingBottom: Math.max(insets.bottom, 28),
           },
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <View style={styles.logoCard}>
-            <Image source={Images.keoTramLogo} style={styles.logoImg} contentFit="contain" />
-          </View>
+          <Image
+            source={Images.keoTramLoginHero}
+            style={[styles.logoImg, { width: logoMaxW, aspectRatio: KEO_TRAM_LOGIN_HERO_ASPECT }]}
+            contentFit="contain"
+            accessibilityLabel="KEO TRÀM, ứng dụng lâm nghiệp"
+          />
         </View>
 
         <View style={styles.form}>
@@ -149,27 +160,15 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flexGrow: 1,
+    justifyContent: 'center',
     paddingHorizontal: 28,
   },
   hero: {
     alignItems: 'center',
-    marginBottom: 20,
-  },
-  logoCard: {
-    backgroundColor: Brand.surface,
-    borderRadius: 28,
-    paddingVertical: 20,
-    paddingHorizontal: 24,
-    marginBottom: 16,
-    shadowColor: Brand.forest,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 8,
+    marginBottom: 28,
   },
   logoImg: {
-    width: 108,
-    height: 108,
+    maxWidth: '100%',
   },
   form: {
     width: '100%',

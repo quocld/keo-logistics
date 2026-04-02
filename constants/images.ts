@@ -28,6 +28,8 @@ export function pickDefaultAvatar(seed: number | undefined | null) {
 
 export const Images = {
   keoTramLogo: require('@/assets/images/keotram-logo.png'),
+  /** Full KEO TRÀM marketing art for login / splash-style screens */
+  keoTramLoginHero: require('@/assets/images/keotram-login-hero.png'),
   defaultAvatars: DEFAULT_AVATARS,
 } as const;
 
