@@ -79,6 +79,34 @@ export class UsersService {
       photo = null;
     }
 
+    let isCustomAvatar = false;
+    let appAvatar: string | null = null;
+
+    if (photo) {
+      isCustomAvatar = true;
+      appAvatar = null;
+    } else if (
+      createUserDto.appAvatar != null &&
+      String(createUserDto.appAvatar).trim() !== ''
+    ) {
+      isCustomAvatar = false;
+      appAvatar = String(createUserDto.appAvatar).trim();
+    } else if (createUserDto.isCustomAvatar === true) {
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: {
+          photo: 'customAvatarRequiresPhoto',
+        },
+      });
+    } else if (createUserDto.isCustomAvatar === false) {
+      isCustomAvatar = false;
+      appAvatar =
+        createUserDto.appAvatar != null &&
+        String(createUserDto.appAvatar).trim() !== ''
+          ? String(createUserDto.appAvatar).trim()
+          : null;
+    }
+
     let role: Role | undefined = undefined;
 
     if (createUserDto.role?.id) {
@@ -178,6 +206,8 @@ export class UsersService {
       provider: createUserDto.provider ?? AuthProvidersEnum.email,
       socialId: createUserDto.socialId,
       managedByOwner,
+      isCustomAvatar,
+      appAvatar,
     });
   }
 
@@ -346,6 +376,44 @@ export class UsersService {
       photo = null;
     }
 
+    let isCustomAvatar: boolean | undefined = undefined;
+    let appAvatar: string | null | undefined = undefined;
+
+    if (updateUserDto.photo?.id) {
+      isCustomAvatar = true;
+      appAvatar = null;
+    } else if (updateUserDto.photo === null) {
+      if (updateUserDto.appAvatar !== undefined) {
+        isCustomAvatar = false;
+        appAvatar =
+          updateUserDto.appAvatar != null &&
+          String(updateUserDto.appAvatar).trim() !== ''
+            ? String(updateUserDto.appAvatar).trim()
+            : null;
+      } else if (updateUserDto.isCustomAvatar === false) {
+        isCustomAvatar = false;
+      } else {
+        isCustomAvatar = false;
+        appAvatar = null;
+      }
+    } else if (updateUserDto.isCustomAvatar === true) {
+      isCustomAvatar = true;
+      appAvatar = null;
+    } else if (
+      updateUserDto.isCustomAvatar === false ||
+      updateUserDto.appAvatar !== undefined
+    ) {
+      isCustomAvatar = false;
+      photo = null;
+      if (updateUserDto.appAvatar !== undefined) {
+        appAvatar =
+          updateUserDto.appAvatar != null &&
+          String(updateUserDto.appAvatar).trim() !== ''
+            ? String(updateUserDto.appAvatar).trim()
+            : null;
+      }
+    }
+
     let role: Role | undefined = undefined;
 
     if (updateUserDto.role?.id) {
@@ -434,6 +502,8 @@ export class UsersService {
       provider: updateUserDto.provider,
       socialId: updateUserDto.socialId,
       managedByOwner,
+      isCustomAvatar,
+      appAvatar,
     });
   }
 

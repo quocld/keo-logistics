@@ -1,5 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { FileDto } from '../../files/dto/file.dto';
 import { Transform } from 'class-transformer';
 import { lowerCaseTransformer } from '../../utils/transformers/lower-case.transformer';
@@ -8,6 +16,24 @@ export class AuthUpdateDto {
   @ApiPropertyOptional({ type: () => FileDto })
   @IsOptional()
   photo?: FileDto | null;
+
+  @ApiPropertyOptional({
+    description:
+      'True: profile image is user-uploaded (photo). False: preset avatar from app (appAvatar).',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isCustomAvatar?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Key of preset avatar in the app when isCustomAvatar is false.',
+    example: 'truck_blue',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  appAvatar?: string | null;
 
   @ApiPropertyOptional({ example: 'John' })
   @IsOptional()

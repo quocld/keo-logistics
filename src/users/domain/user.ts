@@ -60,6 +60,20 @@ export class User {
   photo?: FileType | null;
 
   @ApiProperty({
+    description:
+      'True when the profile picture is a user-uploaded file (photo). False when using a preset avatar from the app (appAvatar).',
+    example: true,
+  })
+  isCustomAvatar: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'When isCustomAvatar is false: key/name of the preset avatar bundled in the app.',
+    example: 'truck_blue',
+  })
+  appAvatar?: string | null;
+
+  @ApiProperty({
     type: () => Role,
   })
   role?: Role | null;

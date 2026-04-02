@@ -2,7 +2,14 @@ import { PartialType, ApiPropertyOptional } from '@nestjs/swagger';
 import { CreateUserDto } from './create-user.dto';
 
 import { Transform, Type } from 'class-transformer';
-import { IsEmail, IsOptional, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { FileDto } from '../../files/dto/file.dto';
 import { RoleDto } from '../../roles/dto/role.dto';
 import { StatusDto } from '../../statuses/dto/status.dto';
@@ -35,6 +42,24 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @ApiPropertyOptional({ type: () => FileDto })
   @IsOptional()
   photo?: FileDto | null;
+
+  @ApiPropertyOptional({
+    description:
+      'True: profile image is user-uploaded (photo). False: preset avatar from app (appAvatar).',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isCustomAvatar?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Key of preset avatar in the app when isCustomAvatar is false.',
+    example: 'truck_blue',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  appAvatar?: string | null;
 
   @ApiPropertyOptional({ type: () => RoleDto })
   @IsOptional()

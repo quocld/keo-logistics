@@ -55,6 +55,12 @@ export class UserEntity extends EntityRelationalHelper {
   @JoinColumn()
   photo?: FileEntity | null;
 
+  @Column({ default: false })
+  isCustomAvatar: boolean;
+
+  @Column({ type: String, nullable: true })
+  appAvatar: string | null;
+
   @ManyToOne(() => RoleEntity, {
     eager: true,
   })

@@ -17,7 +17,11 @@ export class UserMapper {
     domainEntity.lastName = raw.lastName;
     if (raw.photo) {
       domainEntity.photo = FileMapper.toDomain(raw.photo);
+    } else if (raw.photo === null) {
+      domainEntity.photo = null;
     }
+    domainEntity.isCustomAvatar = raw.isCustomAvatar ?? false;
+    domainEntity.appAvatar = raw.appAvatar ?? null;
     domainEntity.role = raw.role;
     domainEntity.status = raw.status;
     if (raw.managedByOwner) {
@@ -67,6 +71,8 @@ export class UserMapper {
     persistenceEntity.firstName = domainEntity.firstName;
     persistenceEntity.lastName = domainEntity.lastName;
     persistenceEntity.photo = photo;
+    persistenceEntity.isCustomAvatar = domainEntity.isCustomAvatar ?? false;
+    persistenceEntity.appAvatar = domainEntity.appAvatar ?? null;
     persistenceEntity.role = role;
     persistenceEntity.status = status;
     if (domainEntity.managedByOwner) {

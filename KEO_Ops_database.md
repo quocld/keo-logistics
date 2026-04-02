@@ -35,20 +35,24 @@ path        VARCHAR NOT NULL
 #### `user` (existing)
 
 ```sql
-id          SERIAL PRIMARY KEY
-email       VARCHAR UNIQUE
-password    VARCHAR
-provider    VARCHAR NOT NULL DEFAULT 'email'
-socialId    VARCHAR
-firstName   VARCHAR
-lastName    VARCHAR
-photoId     UUID UNIQUE REFERENCES file(id)
-roleId      INTEGER REFERENCES role(id)
-statusId    INTEGER REFERENCES status(id)
-createdAt   TIMESTAMP DEFAULT NOW()
-updatedAt   TIMESTAMP DEFAULT NOW()
-deletedAt   TIMESTAMP
+id                  SERIAL PRIMARY KEY
+email               VARCHAR UNIQUE
+password            VARCHAR
+provider            VARCHAR NOT NULL DEFAULT 'email'
+socialId            VARCHAR
+firstName           VARCHAR
+lastName            VARCHAR
+photoId             UUID UNIQUE REFERENCES file(id)
+is_custom_avatar    BOOLEAN NOT NULL DEFAULT false
+app_avatar          VARCHAR
+roleId              INTEGER REFERENCES role(id)
+statusId            INTEGER REFERENCES status(id)
+createdAt           TIMESTAMP DEFAULT NOW()
+updatedAt           TIMESTAMP DEFAULT NOW()
+deletedAt           TIMESTAMP
 ```
+
+> `is_custom_avatar`: true = ảnh upload (`photo`); false = avatar preset trong app (`app_avatar`).
 
 #### `session` (existing)
 

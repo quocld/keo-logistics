@@ -52,6 +52,15 @@ export class UserSchemaClass extends EntityDocumentHelper {
   })
   photo?: FileSchemaClass | null;
 
+  @Prop({ default: false })
+  isCustomAvatar: boolean;
+
+  @Prop({
+    type: String,
+    default: null,
+  })
+  appAvatar: string | null;
+
   @Prop({
     type: RoleSchema,
   })

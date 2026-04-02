@@ -272,13 +272,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"User\"\n}"
+              "raw": "{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"User\",\n  \"isCustomAvatar\": false,\n  \"appAvatar\": \"truck_blue\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/me",
               "host": ["{{baseUrl}}"],
               "path": ["auth", "me"]
-            }
+            },
+            "description": "User tự cập nhật profile. Avatar: `isCustomAvatar` + `appAvatar` (preset) hoặc `photo: { \"id\": \"<uuid>\" }` (sau **POST /files/upload**, biến `uploadedFileId`). Gán `accessToken` từ login hoặc dùng `driverAccessToken` / `ownerAccessToken`."
           },
           "response": []
         },
@@ -350,7 +351,7 @@
     },
     {
       "name": "Users (Admin only)",
-      "description": "**POST /users (driver + managedByOwnerId):** chỉ khi `role.id` = 3 (driver). `managedByOwnerId` = id user có role owner (dùng `ownerUserId` sau login owner trong Setup).\n\n**PATCH /users/:id:** có thể gửi `managedByOwnerId` (hoặc `null`) cho user role driver; đổi `role` khác driver sẽ xóa gán owner.",
+      "description": "**POST /users (driver + managedByOwnerId):** chỉ khi `role.id` = 3 (driver). `managedByOwnerId` = id user có role owner (dùng `ownerUserId` sau login owner trong Setup).\n\n**PATCH /users/:id:** có thể gửi `managedByOwnerId` (hoặc `null`) cho user role driver; đổi `role` khác driver sẽ xóa gán owner.\n\n**Avatar:** Response user có `isCustomAvatar` (boolean), `appAvatar` (string|null), `photo` (file|null). `isCustomAvatar: true` = ảnh upload (`photo.id`); `false` = avatar có sẵn trong app (`appAvatar` = key preset). Gửi `photo: { \"id\": \"<uuid>\" }` sau **POST /files/upload**; preset: `isCustomAvatar: false` + `appAvatar`. Chi tiết body xem các request **PATCH … (avatar – …)** bên dưới.",
       "item": [
         {
           "name": "POST /users",
@@ -439,7 +440,50 @@
               "raw": "{{baseUrl}}/users/{{userId}}",
               "host": ["{{baseUrl}}"],
               "path": ["users", "{{userId}}"]
-            }
+            },
+            "description": "Cập nhật tên / email / role / … Avatar: dùng request **PATCH … (avatar – app preset)** hoặc **(avatar – file upload)**."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /users/:id (avatar – app preset)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isCustomAvatar\": false,\n  \"appAvatar\": \"truck_blue\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            },
+            "description": "`appAvatar` = key preset do app định nghĩa (client map sang asset). Server xóa `photo` (file) khi chuyển sang preset."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /users/:id (avatar – file upload)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isCustomAvatar\": true,\n  \"photo\": {\n    \"id\": \"{{uploadedFileId}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            },
+            "description": "Upload ảnh trước (**Files** → POST /files/upload), gán `uploadedFileId` = `file.id`. `photo.id` là UUID."
           },
           "response": []
         },
@@ -460,7 +504,7 @@
     },
     {
       "name": "Owner drivers (owner only)",
-      "description": "Cần **ownerAccessToken** (Setup – login owner).\n\nOwner tạo/xem/sửa/xoá **chỉ** các tài khoản driver có `managed_by_owner_id` = chính owner đó.\n\n**Gán bãi khai thác:** `GET` / `PUT /owner/drivers/:driverId/harvest-areas` — `PUT` body `{ \"harvestAreaIds\": [\"uuid\", ...] }` thay thế toàn bộ danh sách; mảng rỗng xóa hết gán. Bãi phải thuộc owner; driver phải là managed driver của owner.\n\nBiến **managedDriverUserId**: gán bằng test script ở POST (hoặc nhập tay từ response).",
+      "description": "Cần **ownerAccessToken** (Setup – login owner).\n\nOwner tạo/xem/sửa/xoá **chỉ** các tài khoản driver có `managed_by_owner_id` = chính owner đó.\n\n**PATCH /owner/drivers/:id:** có thể gửi `isCustomAvatar`, `appAvatar`, `photo` (giống PATCH /users — avatar preset hoặc file upload).\n\n**Gán bãi khai thác:** `GET` / `PUT /owner/drivers/:driverId/harvest-areas` — `PUT` body `{ \"harvestAreaIds\": [\"uuid\", ...] }` thay thế toàn bộ danh sách; mảng rỗng xóa hết gán. Bãi phải thuộc owner; driver phải là managed driver của owner.\n\nBiến **managedDriverUserId**: gán bằng test script ở POST (hoặc nhập tay từ response).",
       "item": [
         {
           "name": "POST /owner/drivers",
@@ -535,14 +579,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"firstName\": \"Tên mới\",\n  \"lastName\": \"Họ mới\"\n}"
+              "raw": "{\n  \"firstName\": \"Tên mới\",\n  \"lastName\": \"Họ mới\",\n  \"isCustomAvatar\": false,\n  \"appAvatar\": \"truck_blue\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/owner/drivers/{{managedDriverUserId}}",
               "host": ["{{baseUrl}}"],
               "path": ["owner", "drivers", "{{managedDriverUserId}}"]
             },
-            "description": "Không gửi `role` hay `managedByOwnerId` ở đây (chỉ admin qua PATCH /users)."
+            "description": "Không gửi `role` hay `managedByOwnerId` ở đây (chỉ admin qua PATCH /users). Tùy chọn: `isCustomAvatar`, `appAvatar`, `photo: { \"id\": \"<uuid>\" }` (avatar)."
           },
           "response": []
         },

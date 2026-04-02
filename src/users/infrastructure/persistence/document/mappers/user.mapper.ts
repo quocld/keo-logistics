@@ -23,6 +23,9 @@ export class UserMapper {
       domainEntity.photo = null;
     }
 
+    domainEntity.isCustomAvatar = raw.isCustomAvatar ?? false;
+    domainEntity.appAvatar = raw.appAvatar ?? null;
+
     if (raw.role) {
       domainEntity.role = new Role();
       domainEntity.role.id = raw.role._id;
@@ -54,12 +57,14 @@ export class UserMapper {
       role._id = domainEntity.role.id.toString();
     }
 
-    let photo: FileSchemaClass | undefined = undefined;
+    let photo: FileSchemaClass | null | undefined = undefined;
 
     if (domainEntity.photo) {
       photo = new FileSchemaClass();
       photo._id = domainEntity.photo.id;
       photo.path = domainEntity.photo.path;
+    } else if (domainEntity.photo === null) {
+      photo = null;
     }
 
     let status: StatusSchema | undefined = undefined;
@@ -80,6 +85,8 @@ export class UserMapper {
     persistenceSchema.firstName = domainEntity.firstName;
     persistenceSchema.lastName = domainEntity.lastName;
     persistenceSchema.photo = photo;
+    persistenceSchema.isCustomAvatar = domainEntity.isCustomAvatar ?? false;
+    persistenceSchema.appAvatar = domainEntity.appAvatar ?? null;
     persistenceSchema.role = role;
     persistenceSchema.status = status;
     if (domainEntity.managedByOwner !== undefined) {
