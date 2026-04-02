@@ -3,22 +3,11 @@ import { useCallback, useRef, useState } from 'react';
 
 import {
   fetchOwnerDriversLocationsLatest,
-  type OwnerDriverLatestLocation,
+  normalizeOwnerDriverLatestRow,
+  type NormalizedOwnerDriverLatestLocation,
 } from '@/lib/api/owner-driver-locations';
 
-export type DriverLocationEntry = OwnerDriverLatestLocation & {
-  latitude: number;
-  longitude: number;
-};
-
-function hasValidCoords(loc: OwnerDriverLatestLocation): loc is DriverLocationEntry {
-  return (
-    loc.latitude != null &&
-    loc.longitude != null &&
-    Number.isFinite(loc.latitude) &&
-    Number.isFinite(loc.longitude)
-  );
-}
+export type DriverLocationEntry = NormalizedOwnerDriverLatestLocation;
 
 /**
  * Polls GET /owner/drivers/locations/latest while the screen is focused.
@@ -35,7 +24,11 @@ export function useDriverLocationsPolling(intervalMs = 5_000) {
     try {
       const res = await fetchOwnerDriversLocationsLatest({ page: 1, limit: 200 });
       if (!mountedRef.current) return;
-      setLocations(res.data.filter(hasValidCoords));
+      const raw = res.data ?? [];
+      const filtered = raw
+        .map((row) => normalizeOwnerDriverLatestRow(row))
+        .filter((x): x is NormalizedOwnerDriverLatestLocation => x != null);
+      setLocations(filtered);
       setError(null);
     } catch (e: unknown) {
       if (!mountedRef.current) return;

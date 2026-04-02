@@ -1,7 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, type Href } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -20,9 +20,25 @@ import { DriverHome } from '@/components/driver/driver-home';
 import { NotificationBellButton } from '@/components/notifications/NotificationBellButton';
 import { ownerStitchListStyles as os } from '@/components/owner/owner-stitch-list-styles';
 import { Brand } from '@/constants/brand';
+import { Images } from '@/constants/images';
 import { useAuth } from '@/contexts/auth-context';
 import { useUnreadNotificationBadge } from '@/hooks/use-unread-notification-badge';
+import {
+  buildPerformanceBarsFromFinanceReport,
+  chartMaxValue,
+  dailyAvgWeightFromSummary,
+  fleetFromStatus,
+  formatSignedPercent,
+  marginPercentFromSummary,
+  profitFromSummary,
+  revenueFromSummary,
+  topDriverFromSummary,
+  totalWeightFromSummary,
+  trendFromPercent,
+} from '@/lib/analytics/owner-home-map';
+import { getDashboardSummary, getFinanceReportLast7Days } from '@/lib/api/analytics';
 import { listReceipts } from '@/lib/api/receipts';
+import type { OwnerDashboardSummary } from '@/lib/types/analytics';
 
 const S = Brand.stitch;
 
@@ -35,23 +51,10 @@ function OwnerNotificationBell() {
   );
 }
 
-const WEEKDAYS_VI = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
-
 function displayName(user: { firstName: string | null; lastName: string | null; email: string }): string {
   const parts = [user.firstName, user.lastName].filter(Boolean);
   if (parts.length) return parts.join(' ');
   return user.email.split('@')[0] ?? user.email;
-}
-
-function greetingByHour(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Chào buổi sáng';
-  if (h < 18) return 'Chào buổi chiều';
-  return 'Chào buổi tối';
-}
-
-function formatTodayVi(d: Date): string {
-  return `Hôm nay là ${WEEKDAYS_VI[d.getDay()]}, ngày ${d.getDate()} tháng ${d.getMonth() + 1} năm ${d.getFullYear()}`;
 }
 
 function formatVndCompact(n: number): string {
@@ -69,20 +72,30 @@ type QuickAction = {
   icon: ImageSourcePropType;
 };
 
-function QuickActions({ items, onPress }: { items: QuickAction[]; onPress: (href: Href) => void }) {
+function QuickActions({
+  items,
+  itemWidth,
+  gap,
+  onPress,
+}: {
+  items: QuickAction[];
+  itemWidth: number;
+  gap: number;
+  onPress: (href: Href) => void;
+}) {
   return (
-    <View style={qa.wrap}>
+    <View style={[qa.wrap, { gap }]}>
       {items.map((it) => (
         <Pressable
           key={it.label}
           onPress={() => onPress(it.href)}
-          style={({ pressed }) => [qa.item, pressed && { opacity: 0.92 }]}
+          style={({ pressed }) => [qa.item, { width: itemWidth }, pressed && { opacity: 0.88 }]}
           accessibilityRole="button"
           accessibilityLabel={it.label}>
           <View style={qa.iconWrap}>
             <Image source={it.icon} style={qa.icon} />
           </View>
-          <Text style={qa.label} numberOfLines={1}>
+          <Text style={qa.label} numberOfLines={2}>
             {it.label}
           </Text>
         </Pressable>
@@ -125,7 +138,7 @@ function StatTile({
   );
 }
 
-/** Demo 7 ngày — thay bằng series từ API dashboard */
+/** Fallback khi không có GET /analytics/reports/finance (7 ngày) */
 const DEMO_PERFORMANCE_BARS = [
   { value: 45, label: 'CN' },
   { value: 72, label: 'T2' },
@@ -147,6 +160,12 @@ export default function HomeScreen() {
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [pendingHasMore, setPendingHasMore] = useState(false);
 
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summary, setSummary] = useState<OwnerDashboardSummary | null>(null);
+  const [summaryFailed, setSummaryFailed] = useState(false);
+  const [performanceBars, setPerformanceBars] = useState<{ value: number; label: string }[] | null>(null);
+  const [financeReportFailed, setFinanceReportFailed] = useState(false);
+
   const loadPending = useCallback(async () => {
     if (!isOwner) return;
     setPendingLoading(true);
@@ -167,22 +186,80 @@ export default function HomeScreen() {
     }
   }, [isOwner]);
 
+  const loadDashboard = useCallback(async () => {
+    if (!isOwner) return;
+    setSummaryLoading(true);
+    setSummaryFailed(false);
+    setFinanceReportFailed(false);
+    try {
+      const [sumRes, finRes] = await Promise.all([
+        getDashboardSummary({ range: 'today' }),
+        getFinanceReportLast7Days(),
+      ]);
+      if (sumRes.ok) {
+        setSummary(sumRes.body);
+      } else {
+        setSummary(null);
+        setSummaryFailed(true);
+      }
+      if (finRes.ok) {
+        const bars = buildPerformanceBarsFromFinanceReport(finRes.body);
+        setPerformanceBars(bars);
+        setFinanceReportFailed(!bars?.length);
+      } else {
+        setPerformanceBars(null);
+        setFinanceReportFailed(true);
+      }
+    } catch {
+      setSummary(null);
+      setSummaryFailed(true);
+      setPerformanceBars(null);
+      setFinanceReportFailed(true);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [isOwner]);
+
   useFocusEffect(
     useCallback(() => {
       void loadPending();
-    }, [loadPending]),
+      void loadDashboard();
+    }, [loadPending, loadDashboard]),
   );
 
   const greeting = user ? displayName(user) : 'bạn';
-  const todayLine = useMemo(() => formatTodayVi(new Date()), []);
 
   const performanceChartWidth = Math.max(260, windowWidth - 40 - 36);
 
-  /** Minh họa UI theo Stitch — thay bằng API tổng hợp khi backend có dashboard */
-  const demoRevenue = 28_500_000;
-  const demoProfit = 10_200_000;
-  const demoWeight = 124.5;
-  const demoMargin = 18.2;
+  /** Lưới 4 cột: scroll padding 20×2 + card paddingHorizontal 4×2 */
+  const quickActionGap = 8;
+  const quickActionCols = 4;
+  const quickActionsInnerWidth = windowWidth - 40 - 8;
+  const quickActionItemWidth =
+    (quickActionsInnerWidth - quickActionGap * (quickActionCols - 1)) / quickActionCols;
+
+  const revNum = summary ? revenueFromSummary(summary) : null;
+  const profitNum = summary ? profitFromSummary(summary) : null;
+  const weightNum = summary ? totalWeightFromSummary(summary) : null;
+  const dailyAvg = summary ? dailyAvgWeightFromSummary(summary) : null;
+  const marginNum = summary ? marginPercentFromSummary(summary) : null;
+
+  const revTrendLabel = formatSignedPercent(summary?.revenueTrendPercent);
+  const profitTrendLabel = formatSignedPercent(summary?.profitTrendPercent);
+  const marginTrendLabel = formatSignedPercent(summary?.marginTrendPercent);
+
+  const revTrend = trendFromPercent(summary?.revenueTrendPercent);
+  const profitTrend = trendFromPercent(summary?.profitTrendPercent);
+  const marginTrend = trendFromPercent(summary?.marginTrendPercent);
+
+  const fleetUi = fleetFromStatus(summary?.fleetStatus);
+  const topDriverUi = topDriverFromSummary(summary?.topDrivers?.[0]);
+
+  const growth30 = summary?.transportGrowthPercent30d;
+  const growth30Num = typeof growth30 === 'number' && Number.isFinite(growth30) ? growth30 : null;
+
+  const chartBars = performanceBars?.length ? performanceBars : [...DEMO_PERFORMANCE_BARS];
+  const chartMax = chartMaxValue(chartBars);
 
   const pendingLine =
     pendingCount == null
@@ -198,28 +275,26 @@ export default function HomeScreen() {
   const quickActions: QuickAction[] = [
     { label: 'Trạm cân', href: '/weighing-stations' as Href, icon: require('../../../new icons/tramcan.png') },
     { label: 'Tài xế', href: '/drivers' as Href, icon: require('@/assets/images/default-avatars/avatar-02-driver.png') },
-    { label: 'Xe', href: '/vehicles' as Href, icon: require('../../../new icons/xetai.png') },
+    { label: 'Xe', href: '/vehicles' as Href, icon: require('../../../new icons/xemuc.png') },
     { label: 'Bản đồ', href: '/weighing-stations-map' as Href, icon: require('../../../new icons/map.png') },
-    { label: 'Theo dõi TX', href: '/driver-tracking-map' as Href, icon: require('../../../new icons/xetai.png') },
+    {
+      label: 'Theo dõi TX',
+      href: '/driver-tracking-map' as Href,
+      icon: require('../../../new icons/xetai.png'),
+    },
   ];
 
   return (
     <View style={os.root}>
       <View style={[os.topBar, { paddingTop: Math.max(insets.top, 8) }]}>
         <View style={os.topBarLeft}>
-          <MaterialIcons name="eco" size={26} color={Brand.forest} />
-          <Text style={os.topTitleStitch} numberOfLines={1}>
-            KeoTram Ops
+          <Image source={Images.keoTramLogo} style={st.topBarAppIcon} resizeMode="contain" />
+          <Text style={st.topBarHello} numberOfLines={1}>
+            Chào, {greeting}
           </Text>
         </View>
         <View style={os.topBarRight}>
           <OwnerNotificationBell />
-          <Pressable
-            onPress={() => router.push('/settings')}
-            style={({ pressed }) => [os.iconBtn, pressed && os.iconBtnPressed]}
-            accessibilityLabel="Cài đặt">
-            <MaterialIcons name="settings" size={24} color={S.onSurfaceVariant} />
-          </Pressable>
         </View>
       </View>
       <View style={os.hairline} />
@@ -228,44 +303,66 @@ export default function HomeScreen() {
         style={os.flatListFlex}
         contentContainerStyle={[st.scrollPad, { paddingBottom: insets.bottom + 36 }]}
         showsVerticalScrollIndicator={false}>
-        <Text style={st.heroGreet}>
-          {greetingByHour()}, {greeting}
-        </Text>
-        <Text style={st.dateMuted}>{todayLine}</Text>
+        {summaryFailed ? (
+          <Text style={st.demoHint}>Không tải được tổng quan — kéo để thử lại hoặc kiểm tra kết nối.</Text>
+        ) : null}
 
-        <Text style={st.demoHint}>Số liệu ô tổng quan minh họa — đồng bộ API sau</Text>
-
-        <View style={st.statGrid}>
-          <StatTile
-            label="Doanh thu hôm nay"
-            value={`${formatVndCompact(demoRevenue)} VND`}
-            trend="up"
-            trendLabel="12%"
-          />
-          <StatTile
-            label="Lợi nhuận"
-            value={`${formatVndCompact(demoProfit)} VND`}
-            trend="up"
-            trendLabel="8%"
-          />
-          <StatTile label="Tổng khối lượng" value={`${demoWeight} tấn`} subLabel="Trung bình ngày" />
-          <StatTile
-            label="Biên lợi nhuận"
-            value={`${demoMargin}%`}
-            trend="down"
-            trendLabel="0,5%"
-          />
-        </View>
+        {summaryLoading ? (
+          <View style={st.summaryLoadingWrap}>
+            <ActivityIndicator size="small" color={S.primary} />
+            <Text style={st.summaryLoadingTxt}>Đang tải số liệu…</Text>
+          </View>
+        ) : (
+          <View style={st.statGrid}>
+            <StatTile
+              label="Doanh thu hôm nay"
+              value={revNum != null ? `${formatVndCompact(revNum)} VND` : '—'}
+              trend={revTrendLabel ? revTrend : undefined}
+              trendLabel={revTrendLabel ?? undefined}
+            />
+            <StatTile
+              label="Lợi nhuận"
+              value={profitNum != null ? `${formatVndCompact(profitNum)} VND` : '—'}
+              trend={profitTrendLabel ? profitTrend : undefined}
+              trendLabel={profitTrendLabel ?? undefined}
+            />
+            <StatTile
+              label="Tổng khối lượng"
+              value={weightNum != null ? `${weightNum.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tấn` : '—'}
+              subLabel={
+                dailyAvg != null
+                  ? `Trung bình ngày: ${dailyAvg.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tấn`
+                  : 'Trung bình ngày'
+              }
+            />
+            <StatTile
+              label="Biên lợi nhuận"
+              value={marginNum != null ? `${marginNum.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%` : '—'}
+              trend={marginTrendLabel ? marginTrend : undefined}
+              trendLabel={marginTrendLabel ?? undefined}
+            />
+          </View>
+        )}
 
         <View style={qa.card}>
-          <QuickActions items={quickActions} onPress={(href) => router.push(href)} />
+          <QuickActions
+            items={quickActions}
+            itemWidth={quickActionItemWidth}
+            gap={quickActionGap}
+            onPress={(href) => router.push(href)}
+          />
         </View>
 
         <Pressable
           onPress={() => router.push('/receipt-approval')}
           style={({ pressed }) => [st.pendingCard, pressed && { opacity: 0.96 }]}>
           <View style={st.pendingIcon}>
-            <MaterialIcons name="fact-check" size={26} color={S.primary} />
+            <Image
+              source={require('../../../new icons/phieu.png')}
+              style={st.pendingIconImg}
+              resizeMode="contain"
+              accessibilityIgnoresInvertColors
+            />
           </View>
           <View style={st.pendingBody}>
             <Text style={st.pendingTitle}>Phiếu đang chờ duyệt</Text>
@@ -292,11 +389,16 @@ export default function HomeScreen() {
         <View style={st.sectionCard}>
           <Text style={st.sectionTitle}>Phân tích hiệu suất</Text>
           <Text style={st.sectionBody}>
-            Tăng trưởng vận tải trong 30 ngày qua đạt mức ổn định 14%. Theo dõi xu hướng khi dashboard API sẵn sàng.
+            {growth30Num != null
+              ? `Tăng trưởng vận tải trong 30 ngày qua khoảng ${Math.abs(growth30Num).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%${growth30Num >= 0 ? ' so với giai đoạn trước' : ''}.`
+              : 'Theo dõi xu hướng vận tải trong 30 ngày qua.'}
           </Text>
+          {financeReportFailed && !performanceBars?.length ? (
+            <Text style={st.chartFallbackHint}>Biểu đồ minh họa — đồng bộ báo cáo theo ngày khi API có dữ liệu.</Text>
+          ) : null}
           <View style={st.chartWrap}>
             <BarChart
-              data={DEMO_PERFORMANCE_BARS.map((d) => ({
+              data={chartBars.map((d) => ({
                 value: d.value,
                 label: d.label,
                 frontColor: S.primary,
@@ -312,7 +414,7 @@ export default function HomeScreen() {
               isAnimated
               animationDuration={550}
               noOfSections={4}
-              maxValue={100}
+              maxValue={chartMax}
               hideRules={false}
               rulesType="solid"
               rulesColor={`${S.outline}40`}
@@ -332,21 +434,23 @@ export default function HomeScreen() {
           <View style={st.fleetHead}>
             <MaterialIcons name="local-shipping" size={28} color={S.primary} />
             <View>
-              <Text style={st.fleetRatio}>12/15</Text>
+              <Text style={st.fleetRatio}>
+                {fleetUi ? `${fleetUi.active}/${fleetUi.total}` : '—'}
+              </Text>
               <Text style={st.fleetCap}>Xe đang hoạt động</Text>
             </View>
           </View>
           <View style={st.fleetBreak}>
             <View style={st.fleetItem}>
-              <Text style={st.fleetItemVal}>12</Text>
+              <Text style={st.fleetItemVal}>{fleetUi ? String(fleetUi.active) : '—'}</Text>
               <Text style={st.fleetItemLab}>Đang chạy</Text>
             </View>
             <View style={st.fleetItem}>
-              <Text style={st.fleetItemVal}>2</Text>
+              <Text style={st.fleetItemVal}>{fleetUi ? String(fleetUi.maintenance) : '—'}</Text>
               <Text style={st.fleetItemLab}>Bảo trì</Text>
             </View>
             <View style={st.fleetItem}>
-              <Text style={st.fleetItemVal}>1</Text>
+              <Text style={st.fleetItemVal}>{fleetUi ? String(fleetUi.idle) : '—'}</Text>
               <Text style={st.fleetItemLab}>Nghỉ</Text>
             </View>
           </View>
@@ -360,28 +464,44 @@ export default function HomeScreen() {
 
         <View style={st.sectionCard}>
           <Text style={st.sectionTitle}>Tài xế tiêu biểu</Text>
-          <View style={st.driverCardInner}>
-            <View style={st.avatar}>
-              <Text style={st.avatarTxt}>N</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={st.topDriverName}>Trần Văn Nam</Text>
-              <View style={st.tierRow}>
-                <MaterialIcons name="star" size={16} color="#b8860b" />
-                <Text style={st.tierText}>Hạng Bạch kim</Text>
+          {topDriverUi ? (
+            <View style={st.driverCardInner}>
+              <View style={st.avatar}>
+                <Text style={st.avatarTxt}>{topDriverUi.initial}</Text>
               </View>
-              <View style={st.topStats}>
-                <View>
-                  <Text style={st.topStatLab}>Chuyến</Text>
-                  <Text style={st.topStatVal}>48</Text>
-                </View>
-                <View>
-                  <Text style={st.topStatLab}>Đánh giá</Text>
-                  <Text style={st.topStatVal}>4,9/5,0</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={st.topDriverName}>{topDriverUi.name}</Text>
+                {topDriverUi.tier ? (
+                  <View style={st.tierRow}>
+                    <MaterialIcons name="star" size={16} color="#b8860b" />
+                    <Text style={st.tierText}>{topDriverUi.tier}</Text>
+                  </View>
+                ) : null}
+                <View style={st.topStats}>
+                  <View>
+                    <Text style={st.topStatLab}>Chuyến</Text>
+                    <Text style={st.topStatVal}>
+                      {topDriverUi.deliveries != null ? String(topDriverUi.deliveries) : '—'}
+                    </Text>
+                  </View>
+                  <View>
+                    <Text style={st.topStatLab}>
+                      {topDriverUi.rating != null ? 'Đánh giá' : 'Doanh thu'}
+                    </Text>
+                    <Text style={st.topStatVal}>
+                      {topDriverUi.rating != null
+                        ? `${topDriverUi.rating.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}/5`
+                        : topDriverUi.revenue != null
+                          ? `${formatVndCompact(topDriverUi.revenue)} VND`
+                          : '—'}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
+          ) : (
+            <Text style={st.chartFallbackHint}>Chưa có dữ liệu tài xế.</Text>
+          )}
           <Pressable
             onPress={() => router.push('/drivers')}
             style={({ pressed }) => [st.linkDrivers, pressed && { opacity: 0.85 }]}>
@@ -406,22 +526,39 @@ const st = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
   },
-  heroGreet: {
-    fontSize: 26,
-    fontWeight: '700',
-    letterSpacing: -0.4,
-    color: Brand.ink,
-    marginBottom: 6,
+  topBarAppIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
   },
-  dateMuted: {
-    fontSize: 14,
-    color: S.onSurfaceVariant,
-    marginBottom: 8,
+  topBarHello: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    color: Brand.ink,
+    flex: 1,
+    minWidth: 0,
   },
   demoHint: {
     fontSize: 11,
     color: `${S.outline}b3`,
     marginBottom: 16,
+    fontStyle: 'italic',
+  },
+  summaryLoadingWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  summaryLoadingTxt: {
+    fontSize: 13,
+    color: S.onSurfaceVariant,
+  },
+  chartFallbackHint: {
+    fontSize: 12,
+    color: `${S.outline}b3`,
+    marginBottom: 12,
     fontStyle: 'italic',
   },
   statGrid: {
@@ -491,12 +628,14 @@ const st = StyleSheet.create({
     elevation: 3,
   },
   pendingIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: `${S.primary}14`,
+    width: 58,
+    height: 58,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  pendingIconImg: {
+    width: 58,
+    height: 58,
   },
   pendingBody: {
     flex: 1,
@@ -678,34 +817,23 @@ const qa = StyleSheet.create({
   card: {
     backgroundColor: Brand.surface,
     borderRadius: 16,
-    padding: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
     marginBottom: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: `${S.outlineVariant}99`,
   },
   wrap: {
     flexDirection: 'row',
-    flexWrap: 'nowrap',
-    gap: 8,
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    alignContent: 'flex-start',
   },
   item: {
-    flexBasis: '23%',
-    flexGrow: 0,
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    backgroundColor: `${S.primary}08`,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: `${S.primary}22`,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingVertical: 6,
   },
   iconWrap: {
     width: 46,
     height: 46,
-    borderRadius: 12,
-    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -717,8 +845,10 @@ const qa = StyleSheet.create({
     resizeMode: 'contain',
   },
   label: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: Brand.ink,
+    lineHeight: 14,
+    textAlign: 'center',
   },
 });

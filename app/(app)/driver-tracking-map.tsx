@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -15,7 +16,10 @@ import {
 import MapView, { Callout, Marker, PROVIDER_GOOGLE, type MapType, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DriverTrackingMapMarker } from '@/components/map/driver-tracking-map-marker';
 import { Brand } from '@/constants/brand';
+import { pickDefaultAvatar } from '@/constants/images';
+import { extractDriverAvatarUri } from '@/lib/api/owner-driver-locations';
 import { listHarvestAreas } from '@/lib/api/harvest-areas';
 import { listWeighingStations } from '@/lib/api/weighing-stations';
 import {
@@ -75,16 +79,6 @@ function regionForCoordinates(coords: { latitude: number; longitude: number }[])
 // Pin marker components
 // ---------------------------------------------------------------------------
 
-function DriverPinMarker({ color }: { color: string }) {
-  return (
-    <View style={[pinStyles.ring, { borderColor: color }]}>
-      <View style={pinStyles.inner}>
-        <MaterialIcons name="local-shipping" size={20} color={color} />
-      </View>
-    </View>
-  );
-}
-
 function ContextPinMarker({ color, icon }: { color: string; icon: 'scale' | 'park' }) {
   return (
     <View style={[pinStyles.ctxRing, { borderColor: color }]}>
@@ -96,25 +90,6 @@ function ContextPinMarker({ color, icon }: { color: string; icon: 'scale' | 'par
 }
 
 const pinStyles = StyleSheet.create({
-  ring: {
-    borderWidth: 3,
-    borderRadius: 22,
-    padding: 2,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.22,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  inner: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-  },
   ctxRing: {
     borderWidth: 2,
     borderRadius: 14,
@@ -257,6 +232,8 @@ type DriverPin = {
   freshness: DriverFreshness;
   color: string;
   name: string;
+  avatarUri: string | null;
+  avatarSeed: number;
 };
 
 type ContextPin = {
@@ -306,18 +283,42 @@ const TrackingMapBody = memo(function TrackingMapBody({
           coordinate={{ latitude: p.loc.latitude, longitude: p.loc.longitude }}
           anchor={{ x: 0.5, y: 1 }}
           tracksViewChanges={tracksViewChanges}>
-          <DriverPinMarker color={p.color} />
+          <DriverTrackingMapMarker
+            borderColor={p.color}
+            freshness={p.freshness}
+            avatarUri={p.avatarUri}
+            avatarSeed={p.avatarSeed}
+          />
           <Callout tooltip={false}>
             <View style={calloutStyles.container}>
-              <Text style={calloutStyles.name}>{p.name}</Text>
-              <Text style={calloutStyles.detail}>
-                {freshnessLabel(p.freshness)} · {relativeTime(p.loc.timestamp)}
-              </Text>
-              {p.loc.speed != null && p.loc.speed > 0 ? (
-                <Text style={calloutStyles.detail}>
-                  {(p.loc.speed * 3.6).toFixed(0)} km/h
-                </Text>
-              ) : null}
+              <View style={calloutStyles.calloutRow}>
+                <View style={calloutStyles.calloutAvatarWrap}>
+                  {p.avatarUri ? (
+                    <Image
+                      source={{ uri: p.avatarUri }}
+                      style={calloutStyles.calloutAvatar}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <Image
+                      source={pickDefaultAvatar(p.avatarSeed)}
+                      style={calloutStyles.calloutAvatar}
+                      contentFit="cover"
+                    />
+                  )}
+                </View>
+                <View style={calloutStyles.calloutTextCol}>
+                  <Text style={calloutStyles.name}>{p.name}</Text>
+                  <Text style={calloutStyles.detail}>
+                    {freshnessLabel(p.freshness)} · {relativeTime(p.loc.timestamp)}
+                  </Text>
+                  {p.loc.speed != null && p.loc.speed > 0 ? (
+                    <Text style={calloutStyles.detail}>
+                      {(p.loc.speed * 3.6).toFixed(0)} km/h
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
             </View>
           </Callout>
         </Marker>
@@ -327,8 +328,20 @@ const TrackingMapBody = memo(function TrackingMapBody({
 });
 
 const calloutStyles = StyleSheet.create({
-  container: { minWidth: 140, padding: 8 },
-  name: { fontSize: 14, fontWeight: '700', color: '#1B1C1C', marginBottom: 2 },
+  container: { minWidth: 200, maxWidth: 280, padding: 10 },
+  calloutRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  calloutAvatarWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+    backgroundColor: '#e8ebe9',
+    borderWidth: 2,
+    borderColor: `${Brand.forest}33`,
+  },
+  calloutAvatar: { width: 44, height: 44, borderRadius: 22 },
+  calloutTextCol: { flex: 1, minWidth: 0 },
+  name: { fontSize: 14, fontWeight: '700', color: '#1B1C1C', marginBottom: 4 },
   detail: { fontSize: 12, color: '#5C6B62', lineHeight: 17 },
 });
 
@@ -383,6 +396,7 @@ export default function DriverTrackingMapScreen() {
     return locations.map((loc) => {
       const freshness = getDriverFreshness(loc.timestamp);
       const id = String(loc.driverId ?? loc.driverUserId ?? loc.userId ?? loc.latitude);
+      const seed = Number(loc.driverUserId ?? loc.userId ?? loc.driverId ?? 0);
       return {
         kind: 'driver',
         id,
@@ -390,6 +404,8 @@ export default function DriverTrackingMapScreen() {
         freshness,
         color: driverPinColor(freshness),
         name: driverDisplayName(loc),
+        avatarUri: extractDriverAvatarUri(loc),
+        avatarSeed: Number.isFinite(seed) ? seed : 0,
       };
     });
   }, [locations]);
@@ -509,7 +525,7 @@ export default function DriverTrackingMapScreen() {
       {/* Empty state overlay */}
       {driverPins.length === 0 && contextPins.length === 0 ? (
         <View style={[styles.emptyOverlay, { paddingTop: insets.top + 56 }]}>
-          <MaterialIcons name="local-shipping" size={40} color={S.onSurfaceVariant} />
+          <MaterialIcons name="gps-fixed" size={40} color={S.onSurfaceVariant} />
           <Text style={styles.bannerEmptyText}>
             Chưa có tài xế nào cập nhật vị trí. Khi tài xế bật theo dõi GPS, pin sẽ hiện trên bản đồ.
           </Text>
@@ -578,7 +594,7 @@ export default function DriverTrackingMapScreen() {
         {/* Legend */}
         <View style={styles.legend}>
           <View style={styles.legendRow}>
-            <MaterialIcons name="local-shipping" size={16} color="#006d42" />
+            <MaterialIcons name="gps-fixed" size={16} color="#006d42" />
             <Text style={styles.legendText}>Tài xế ({activeCount} hoạt động</Text>
             {staleCount > 0 ? <Text style={styles.legendText}>, {staleCount} mất tín hiệu</Text> : null}
             {offlineCount > 0 ? <Text style={styles.legendText}>, {offlineCount} offline</Text> : null}

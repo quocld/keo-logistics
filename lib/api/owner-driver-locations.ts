@@ -18,8 +18,91 @@ export type OwnerDriverLatestLocation = {
   accuracy?: number | null;
   speed?: number | null;
   timestamp?: string;
+  photo?: string | null;
+  avatarUrl?: string | null;
   [key: string]: unknown;
 };
+
+function isHttpUrl(v: unknown): v is string {
+  return typeof v === 'string' && /^\s*https?:\/\//i.test(v.trim());
+}
+
+/** Ảnh đại diện từ payload API (field phẳng hoặc nested user/driver). */
+export function extractDriverAvatarUri(loc: OwnerDriverLatestLocation): string | null {
+  const o = loc as Record<string, unknown>;
+  const tryKeys = ['photo', 'avatarUrl', 'avatar', 'profilePhotoUrl', 'imageUrl', 'picture'];
+  for (const k of tryKeys) {
+    const v = o[k];
+    if (isHttpUrl(v)) return v.trim();
+  }
+  for (const nest of ['user', 'driver', 'profile']) {
+    const n = o[nest];
+    if (n && typeof n === 'object') {
+      const r = n as Record<string, unknown>;
+      for (const k of tryKeys) {
+        const v = r[k];
+        if (isHttpUrl(v)) return v.trim();
+      }
+    }
+  }
+  return null;
+}
+
+/** Bản ghi đã gán được cặp tọa độ số (map / polling). */
+export type NormalizedOwnerDriverLatestLocation = OwnerDriverLatestLocation & {
+  latitude: number;
+  longitude: number;
+};
+
+function toFiniteNumber(v: unknown): number | null {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+/**
+ * Backend có thể trả tọa độ phẳng, nested (`location`, …), hoặc GeoJSON `coordinates: [lng, lat]`.
+ */
+export function normalizeOwnerDriverLatestRow(
+  loc: OwnerDriverLatestLocation,
+): NormalizedOwnerDriverLatestLocation | null {
+  const row = loc as Record<string, unknown>;
+
+  const directLat = toFiniteNumber(row.latitude) ?? toFiniteNumber(row.lat);
+  const directLng =
+    toFiniteNumber(row.longitude) ?? toFiniteNumber(row.lng) ?? toFiniteNumber(row.lon);
+  if (directLat != null && directLng != null) {
+    return { ...loc, latitude: directLat, longitude: directLng };
+  }
+
+  const nestedKeys = ['location', 'lastLocation', 'position', 'point', 'coords', 'coordinate'];
+  for (const k of nestedKeys) {
+    const n = row[k];
+    if (n && typeof n === 'object' && !Array.isArray(n)) {
+      const o = n as Record<string, unknown>;
+      const lat = toFiniteNumber(o.latitude) ?? toFiniteNumber(o.lat);
+      const lng =
+        toFiniteNumber(o.longitude) ?? toFiniteNumber(o.lng) ?? toFiniteNumber(o.lon);
+      if (lat != null && lng != null) {
+        return { ...loc, latitude: lat, longitude: lng };
+      }
+    }
+  }
+
+  const coords = row.coordinates;
+  if (Array.isArray(coords) && coords.length >= 2) {
+    const lng = toFiniteNumber(coords[0]);
+    const lat = toFiniteNumber(coords[1]);
+    if (lat != null && lng != null) {
+      return { ...loc, latitude: lat, longitude: lng };
+    }
+  }
+
+  return null;
+}
 
 export async function fetchOwnerDriversLocationsLatest(params?: {
   page?: number;
