@@ -781,6 +781,7 @@ const st = StyleSheet.create({
     alignSelf: 'stretch',
     width: '100%',
     justifyContent: 'space-between',
+    alignItems: 'center',
     minHeight: 40,
   },
   tileMoreText: {
