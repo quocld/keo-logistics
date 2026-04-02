@@ -14,6 +14,7 @@ import { SubmitReceiptDto } from '../../dto/submit-receipt.dto';
 import { RejectReceiptDto } from '../../dto/reject-receipt.dto';
 import { ApproveReceiptDto } from '../../dto/approve-receipt.dto';
 import { QueryReceiptDto } from '../../dto/query-receipt.dto';
+import { QueryReceiptsByWeighingStationDto } from '../../dto/query-receipts-by-weighing-station.dto';
 import { ReceiptEntity } from '../../infrastructure/persistence/relational/entities/receipt.entity';
 import { ReceiptImageEntity } from '../../infrastructure/persistence/relational/entities/receipt-image.entity';
 import { FinanceRecordEntity } from '../../infrastructure/persistence/relational/entities/finance-record.entity';
@@ -25,17 +26,14 @@ import { OpsAuthorizationService } from './ops-authorization.service';
 import { infinityPagination } from '../../../utils/infinity-pagination';
 import { InfinityPaginationResponseDto } from '../../../utils/dto/infinity-pagination-response.dto';
 import { NotificationsService } from '../../../notifications/presentation/services/notifications.service';
+import { WeighingStationsService } from './weighing-stations.service';
 
-function revenueFromWeightAndUnitPrice(
-  weightStr: string,
-  unitPriceStr: string,
-): string {
-  const w = Number(weightStr);
-  const u = Number(unitPriceStr);
-  if (!Number.isFinite(w) || !Number.isFinite(u)) {
+function revenueFromReceiptAmount(amountStr: string): string {
+  const a = Number(amountStr);
+  if (!Number.isFinite(a)) {
     throw new UnprocessableEntityException({ error: 'invalidRevenueInputs' });
   }
-  const cents = Math.round(w * u * 100);
+  const cents = Math.round(a * 100);
   return (cents / 100).toFixed(2);
 }
 
@@ -53,6 +51,7 @@ export class ReceiptsService {
     private readonly opsAuthorizationService: OpsAuthorizationService,
     private readonly filesService: FilesService,
     private readonly notificationsService: NotificationsService,
+    private readonly weighingStationsService: WeighingStationsService,
   ) {}
 
   async findMany(
@@ -107,6 +106,70 @@ export class ReceiptsService {
     if (query.harvestAreaId && this.opsAuthorizationService.isAdmin(actor)) {
       qb.andWhere('r.harvest_area_id = :haId', {
         haId: query.harvestAreaId,
+      });
+    }
+
+    const data = await qb.getMany();
+
+    await Promise.all(data.map((r) => this.hydrateReceiptImageUrls(r)));
+
+    return infinityPagination(data, { page, limit });
+  }
+
+  async findManyByWeighingStation(
+    actor: JwtPayloadType,
+    weighingStationId: string,
+    query: QueryReceiptsByWeighingStationDto,
+  ): Promise<InfinityPaginationResponseDto<ReceiptEntity>> {
+    if (
+      !this.opsAuthorizationService.isDriver(actor) &&
+      !this.opsAuthorizationService.isOwner(actor) &&
+      !this.opsAuthorizationService.isAdmin(actor)
+    ) {
+      throw new ForbiddenException({ error: 'forbidden' });
+    }
+
+    await this.weighingStationsService.findOne(actor, weighingStationId);
+
+    const page = query.page ?? 1;
+    const limit = Math.min(query.limit ?? 10, 50);
+    const skip = (page - 1) * limit;
+
+    const qb = this.receiptsRepository
+      .createQueryBuilder('r')
+      .leftJoinAndSelect('r.images', 'img')
+      .leftJoinAndSelect('r.harvestArea', 'ha')
+      .leftJoinAndSelect('r.weighingStation', 'ws')
+      .leftJoinAndSelect('r.driver', 'dr')
+      .leftJoinAndSelect('r.financeRecord', 'fr')
+      .leftJoin('r.trip', 't')
+      .andWhere(
+        '(r.weighing_station_id = :wsId OR t.weighing_station_id = :wsId)',
+        { wsId: weighingStationId },
+      )
+      .orderBy('r.receiptDate', 'DESC')
+      .skip(skip)
+      .take(limit);
+
+    if (this.opsAuthorizationService.isDriver(actor)) {
+      qb.andWhere('r.driver_id = :driverId', { driverId: actor.id });
+    } else if (this.opsAuthorizationService.isOwner(actor)) {
+      qb.andWhere('ha.owner_id = :ownerId', { ownerId: Number(actor.id) });
+    }
+
+    if (query.status) {
+      qb.andWhere('r.status = :status', { status: query.status });
+    }
+
+    if (query.receiptDateFrom) {
+      qb.andWhere('r.receipt_date >= :from', {
+        from: new Date(query.receiptDateFrom),
+      });
+    }
+
+    if (query.receiptDateTo) {
+      qb.andWhere('r.receipt_date <= :to', {
+        to: new Date(query.receiptDateTo),
       });
     }
 
@@ -463,10 +526,7 @@ export class ReceiptsService {
           row.weighingStation = resolvedStation;
         }
 
-        const revenue = revenueFromWeightAndUnitPrice(
-          row.weight,
-          resolvedStation.unitPrice,
-        );
+        const revenue = revenueFromReceiptAmount(row.amount);
 
         row.status = ReceiptStatusEnum.approved;
         row.approvedBy = { id: actor.id } as any;

@@ -15,6 +15,7 @@ import { FinanceRecordEntity } from '../../../ops/infrastructure/persistence/rel
 import { ReceiptEntity } from '../../../ops/infrastructure/persistence/relational/entities/receipt.entity';
 import { VehicleEntity } from '../../../ops/infrastructure/persistence/relational/entities/vehicle.entity';
 import { TripEntity } from '../../../ops/infrastructure/persistence/relational/entities/trip.entity';
+import { HarvestAreaCostEntryEntity } from '../../../ops/infrastructure/persistence/relational/entities/harvest-area-cost-entry.entity';
 import { ReceiptStatusEnum } from '../../../ops/domain/receipt-status.enum';
 import { TripStatusEnum } from '../../../ops/domain/trip-status.enum';
 
@@ -38,6 +39,8 @@ export class AnalyticsService {
     private readonly vehiclesRepository: Repository<VehicleEntity>,
     @InjectRepository(TripEntity)
     private readonly tripsRepository: Repository<TripEntity>,
+    @InjectRepository(HarvestAreaCostEntryEntity)
+    private readonly harvestAreaCostEntriesRepository: Repository<HarvestAreaCostEntryEntity>,
   ) {}
 
   private resolveRoleScope(
@@ -564,6 +567,120 @@ export class AnalyticsService {
         deliveries: string;
       }>();
 
+    let operatingCostSumTotal = 0;
+    let harvestAreaSummaries:
+      | {
+          harvestAreaId: string;
+          name: string | null;
+          revenue: number;
+          profitFromReceipts: number;
+          operatingCost: number;
+          profitAfterOperatingCosts: number;
+          marginPercent: number;
+        }[]
+      | undefined;
+
+    if (roleScope === 'owner') {
+      const ownerId = Number(actor.id);
+      const costTotalRaw = await this.harvestAreaCostEntriesRepository
+        .createQueryBuilder('e')
+        .innerJoin('e.harvestArea', 'ha')
+        .where('ha.owner_id = :ownerId', { ownerId })
+        .andWhere('e.incurred_at >= :from AND e.incurred_at <= :to', {
+          from,
+          to,
+        })
+        .select('COALESCE(SUM(e.amount), 0)', 's')
+        .getRawOne<{ s: string }>();
+      operatingCostSumTotal = Number(costTotalRaw?.s ?? 0);
+
+      const finByHa = await this.financeRecordsRepository
+        .createQueryBuilder('fr')
+        .innerJoin('fr.receipt', 'r')
+        .innerJoin('r.harvestArea', 'ha')
+        .where('fr.calculated_at >= :from AND fr.calculated_at <= :to', {
+          from,
+          to,
+        })
+        .andWhere('ha.owner_id = :ownerId', { ownerId })
+        .select('ha.id', 'harvestAreaId')
+        .addSelect('ha.name', 'harvestAreaName')
+        .addSelect('COALESCE(SUM(fr.revenue), 0)', 'revenueSum')
+        .addSelect('COALESCE(SUM(fr.profit), 0)', 'profitSum')
+        .groupBy('ha.id')
+        .addGroupBy('ha.name')
+        .getRawMany<{
+          harvestAreaId: string;
+          harvestAreaName: string;
+          revenueSum: string;
+          profitSum: string;
+        }>();
+
+      const costByHa = await this.harvestAreaCostEntriesRepository
+        .createQueryBuilder('e')
+        .innerJoin('e.harvestArea', 'ha')
+        .where('ha.owner_id = :ownerId', { ownerId })
+        .andWhere('e.incurred_at >= :from AND e.incurred_at <= :to', {
+          from,
+          to,
+        })
+        .select('ha.id', 'harvestAreaId')
+        .addSelect('ha.name', 'harvestAreaName')
+        .addSelect('COALESCE(SUM(e.amount), 0)', 'operatingCostSum')
+        .groupBy('ha.id')
+        .addGroupBy('ha.name')
+        .getRawMany<{
+          harvestAreaId: string;
+          harvestAreaName: string;
+          operatingCostSum: string;
+        }>();
+
+      const costMap = new Map(
+        costByHa.map((r) => [
+          r.harvestAreaId,
+          {
+            cost: Number(r.operatingCostSum ?? 0),
+            name: r.harvestAreaName,
+          },
+        ]),
+      );
+      const finIds = new Set(finByHa.map((r) => r.harvestAreaId));
+      harvestAreaSummaries = finByHa.map((row) => {
+        const opCost = costMap.get(row.harvestAreaId)?.cost ?? 0;
+        const rev = Number(row.revenueSum ?? 0);
+        const prof = Number(row.profitSum ?? 0);
+        const after = prof - opCost;
+        return {
+          harvestAreaId: row.harvestAreaId,
+          name: row.harvestAreaName,
+          revenue: rev,
+          profitFromReceipts: prof,
+          operatingCost: opCost,
+          profitAfterOperatingCosts: after,
+          marginPercent: rev > 0 ? (after / rev) * 100 : 0,
+        };
+      });
+      for (const c of costByHa) {
+        if (!finIds.has(c.harvestAreaId)) {
+          const opCost = Number(c.operatingCostSum ?? 0);
+          harvestAreaSummaries.push({
+            harvestAreaId: c.harvestAreaId,
+            name: c.harvestAreaName,
+            revenue: 0,
+            profitFromReceipts: 0,
+            operatingCost: opCost,
+            profitAfterOperatingCosts: -opCost,
+            marginPercent: 0,
+          });
+        }
+      }
+    }
+
+    const profitAfterOperatingGlobal =
+      roleScope === 'owner'
+        ? currentProfit - operatingCostSumTotal
+        : currentProfit;
+
     return {
       revenue: currentRevenue,
       profit: currentProfit,
@@ -594,6 +711,26 @@ export class AnalyticsService {
         revenue: Number(d.revenue ?? 0),
         deliveries: Number(d.deliveries ?? 0),
       })),
+      ...(roleScope === 'owner'
+        ? {
+            revenueRaw: totalsRaw?.revenue ?? '0',
+            profitRaw: totalsRaw?.profit ?? '0',
+            operatingCostSumTotal,
+            profitAfterOperatingCosts: profitAfterOperatingGlobal,
+            marginPercentAfterOperating:
+              currentRevenue > 0
+                ? (profitAfterOperatingGlobal / currentRevenue) * 100
+                : 0,
+            harvestAreaSummaries,
+            marginPercentNote:
+              'marginPercent uses receipt-level profit only; use marginPercentAfterOperating and harvestAreaSummaries for per-area operating costs.',
+            aggregationNotes: {
+              financeFilteredBy: 'calculated_at',
+              pendingReceiptsFilteredBy: 'submitted_at',
+              operatingCostsFilteredBy: 'incurred_at',
+            },
+          }
+        : {}),
     };
   }
 
@@ -1462,6 +1599,21 @@ export class AnalyticsService {
       .select('COUNT(DISTINCT t.id)', 'count')
       .getRawOne<{ count: string }>();
 
+    const operatingCostRaw = await this.harvestAreaCostEntriesRepository
+      .createQueryBuilder('e')
+      .where('e.harvest_area_id = :areaId', { areaId: harvestAreaId })
+      .andWhere('e.incurred_at >= :from AND e.incurred_at <= :to', {
+        from,
+        to,
+      })
+      .select('COALESCE(SUM(e.amount), 0)', 'operatingCostSum')
+      .getRawOne<{ operatingCostSum: string }>();
+
+    const operatingCostSum = Number(operatingCostRaw?.operatingCostSum ?? 0);
+    const profitSum = Number(financeAggRaw?.profitSum ?? 0);
+    const revenueSum = Number(financeAggRaw?.revenueSum ?? 0);
+    const profitAfterOperatingCosts = profitSum - operatingCostSum;
+
     return {
       area,
       currentTripsCount: Number(currentTripsCountRaw?.count ?? 0),
@@ -1472,11 +1624,20 @@ export class AnalyticsService {
         byStatus: receiptsByStatusMap,
       },
       financeSummary: {
-        revenueSum: Number(financeAggRaw?.revenueSum ?? 0),
+        revenueSum,
         costDriverSum: Number(financeAggRaw?.costDriverSum ?? 0),
         costHarvestSum: Number(financeAggRaw?.costHarvestSum ?? 0),
         otherCostSum: Number(financeAggRaw?.otherCostSum ?? 0),
-        profitSum: Number(financeAggRaw?.profitSum ?? 0),
+        profitSum,
+        operatingCostSum,
+        profitAfterOperatingCosts,
+        marginPercentAfterOperating:
+          revenueSum > 0 ? (profitAfterOperatingCosts / revenueSum) * 100 : 0,
+      },
+      aggregationNotes: {
+        receiptsFilteredBy: 'receipt_date',
+        financeFilteredBy: 'calculated_at',
+        operatingCostsFilteredBy: 'incurred_at',
       },
     };
   }

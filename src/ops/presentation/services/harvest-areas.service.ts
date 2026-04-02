@@ -7,7 +7,9 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { JwtPayloadType } from '../../../auth/strategies/types/jwt-payload.type';
+import { UserEntity } from '../../../users/infrastructure/persistence/relational/entities/user.entity';
 import { HarvestAreaEntity } from '../../infrastructure/persistence/relational/entities/harvest-area.entity';
+import { DriverHarvestAreaEntity } from '../../infrastructure/persistence/relational/entities/driver-harvest-area.entity';
 import { HarvestAreaStatusEnum } from '../../domain/harvest-area-status.enum';
 import { CreateHarvestAreaDto } from '../../dto/create-harvest-area.dto';
 import { UpdateHarvestAreaDto } from '../../dto/update-harvest-area.dto';
@@ -21,6 +23,8 @@ export class HarvestAreasService {
   constructor(
     @InjectRepository(HarvestAreaEntity)
     private readonly harvestAreasRepository: Repository<HarvestAreaEntity>,
+    @InjectRepository(DriverHarvestAreaEntity)
+    private readonly driverHarvestAreasRepository: Repository<DriverHarvestAreaEntity>,
     private readonly opsAuthorizationService: OpsAuthorizationService,
   ) {}
 
@@ -221,5 +225,19 @@ export class HarvestAreasService {
     }
 
     await this.harvestAreasRepository.softDelete(id);
+  }
+
+  async findDriversForHarvestArea(
+    actor: JwtPayloadType,
+    harvestAreaId: string,
+  ): Promise<UserEntity[]> {
+    await this.findOne(actor, harvestAreaId);
+
+    const rows = await this.driverHarvestAreasRepository.find({
+      where: { harvestArea: { id: harvestAreaId } },
+      relations: ['driver', 'driver.role', 'driver.status'],
+    });
+
+    return rows.map((r) => r.driver);
   }
 }

@@ -27,7 +27,12 @@ import { CreateWeighingStationDto } from '../../dto/create-weighing-station.dto'
 import { UpdateWeighingStationDto } from '../../dto/update-weighing-station.dto';
 import { QueryWeighingStationDto } from '../../dto/query-weighing-station.dto';
 import { WeighingStationEntity } from '../../infrastructure/persistence/relational/entities/weighing-station.entity';
+import { WeighingStationUnitPriceEntity } from '../../infrastructure/persistence/relational/entities/weighing-station-unit-price.entity';
+import { ReceiptEntity } from '../../infrastructure/persistence/relational/entities/receipt.entity';
 import { WeighingStationsService } from '../services/weighing-stations.service';
+import { ReceiptsService } from '../services/receipts.service';
+import { QueryWeighingStationUnitPriceHistoryDto } from '../../dto/query-weighing-station-unit-price-history.dto';
+import { QueryReceiptsByWeighingStationDto } from '../../dto/query-receipts-by-weighing-station.dto';
 import {
   InfinityPaginationResponse,
   InfinityPaginationResponseDto,
@@ -43,6 +48,7 @@ import {
 export class WeighingStationsController {
   constructor(
     private readonly weighingStationsService: WeighingStationsService,
+    private readonly receiptsService: ReceiptsService,
   ) {}
 
   @ApiCreatedResponse({ type: WeighingStationEntity })
@@ -65,6 +71,40 @@ export class WeighingStationsController {
     @Query() query: QueryWeighingStationDto,
   ): Promise<InfinityPaginationResponseDto<WeighingStationEntity>> {
     return this.weighingStationsService.findMany(request.user, query);
+  }
+
+  @ApiOkResponse({
+    type: InfinityPaginationResponse(WeighingStationUnitPriceEntity),
+  })
+  @Roles(RoleEnum.admin, RoleEnum.owner, RoleEnum.driver)
+  @Get(':id/unit-price-history')
+  @HttpCode(HttpStatus.OK)
+  unitPriceHistory(
+    @Request() request,
+    @Param('id') id: string,
+    @Query() query: QueryWeighingStationUnitPriceHistoryDto,
+  ): Promise<InfinityPaginationResponseDto<WeighingStationUnitPriceEntity>> {
+    return this.weighingStationsService.findUnitPriceHistory(
+      request.user,
+      id,
+      query,
+    );
+  }
+
+  @ApiOkResponse({ type: InfinityPaginationResponse(ReceiptEntity) })
+  @Roles(RoleEnum.admin, RoleEnum.owner, RoleEnum.driver)
+  @Get(':id/receipts')
+  @HttpCode(HttpStatus.OK)
+  receiptsByStation(
+    @Request() request,
+    @Param('id') id: string,
+    @Query() query: QueryReceiptsByWeighingStationDto,
+  ): Promise<InfinityPaginationResponseDto<ReceiptEntity>> {
+    return this.receiptsService.findManyByWeighingStation(
+      request.user,
+      id,
+      query,
+    );
   }
 
   @ApiOkResponse({ type: WeighingStationEntity })

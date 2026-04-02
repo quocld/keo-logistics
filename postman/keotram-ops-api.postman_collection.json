@@ -761,6 +761,76 @@
           "response": []
         },
         {
+          "name": "GET /harvest-areas/:id/trips",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}/trips?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["harvest-areas", "{{harvestAreaId}}", "trips"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            },
+            "description": "Lịch sử chuyến theo khu."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /harvest-areas/:id/drivers",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}/drivers",
+              "host": ["{{baseUrl}}"],
+              "path": ["harvest-areas", "{{harvestAreaId}}", "drivers"]
+            },
+            "description": "Tài xế đã gán bãi (driver_harvest_areas)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /harvest-areas/:id/cost-entries",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}/cost-entries?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["harvest-areas", "{{harvestAreaId}}", "cost-entries"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            },
+            "description": "Chi phí vận hành khu (làm đường, bốc hàng, công nhân…)."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /harvest-areas/:id/cost-entries",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"labor\",\n  \"amount\": 5000000,\n  \"incurredAt\": \"2026-04-02T00:00:00.000Z\",\n  \"notes\": \"Chi công nhân\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}/cost-entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["harvest-areas", "{{harvestAreaId}}", "cost-entries"]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "GET /harvest-areas/:id (detail – admin)",
           "request": {
             "method": "GET",
@@ -1024,6 +1094,42 @@
               "host": ["{{baseUrl}}"],
               "path": ["weighing-stations", "{{weighingStationId}}"]
             }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /weighing-stations/:id/unit-price-history",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/weighing-stations/{{ownerWeighingStationId}}/unit-price-history?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["weighing-stations", "{{ownerWeighingStationId}}", "unit-price-history"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            },
+            "description": "Lịch sử giá trạm (mới nhất trước). Mỗi lần PATCH `unitPrice` khác giá hiện tại thêm một dòng."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /weighing-stations/:id/receipts",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/weighing-stations/{{ownerWeighingStationId}}/receipts?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["weighing-stations", "{{ownerWeighingStationId}}", "receipts"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            },
+            "description": "Phiếu gắn trạm (`weighing_station_id` hoặc trip). Query tùy chọn: status, receiptDateFrom, receiptDateTo."
           },
           "response": []
         },
@@ -1629,7 +1735,7 @@
     },
     {
       "name": "Receipts",
-      "description": "Trước khi test: **Setup – Ops tokens** (driver + owner + admin); có `harvestAreaId`, trạm **owner** (`ownerWeighingStationId`), và **PUT gán bãi** cho managed driver (giống flow Trip).\n\n**Phase 2:**\n- **Submit:** **Driver** — như cũ (không gửi `driverUserId`). **Owner** — bắt buộc `driverUserId` (id user tài xế managed), bãi thuộc owner, driver đã gán bãi; trạm thuộc owner nếu gửi `weighingStationId`.\n- Submit **bắt buộc** ít nhất một ảnh: `imageUrls` (URL) và/hoặc `imageFileIds` (UUID sau **POST /files/upload**).\n- **GET /receipts**: driver chỉ phiếu của mình; owner theo khu sở hữu; admin tất cả. Query: `page`, `limit`, `status` (pending|approved|rejected), `receiptDateFrom`, `receiptDateTo`, `harvestAreaId` (chỉ admin).\n- **GET /receipts/:id**: chi tiết một phiếu (cùng phạm vi quyền; sai quyền hoặc không tồn tại → 404).\n- **Approve** tạo `finance_records`: `revenue = weight × unit_price` của trạm. Trạm lấy từ receipt, hoặc từ trip, hoặc gửi `weighingStationId` trong body khi phiếu chưa có trạm.\n\n**Phase 3 (gắn trip):** Khi gửi `tripId`, trip phải `in_progress` và cùng driver + `harvestAreaId` với trip; trạm cân trên phiếu **tự lấy từ trip** (có thể bỏ `weighingStationId` hoặc gửi trùng với trip).",
+      "description": "Trước khi test: **Setup – Ops tokens** (driver + owner + admin); có `harvestAreaId`, trạm **owner** (`ownerWeighingStationId`), và **PUT gán bãi** cho managed driver (giống flow Trip).\n\n**Phase 2:**\n- **Submit:** **Driver** — như cũ (không gửi `driverUserId`). **Owner** — bắt buộc `driverUserId` (id user tài xế managed), bãi thuộc owner, driver đã gán bãi; trạm thuộc owner nếu gửi `weighingStationId`.\n- Submit **bắt buộc** ít nhất một ảnh: `imageUrls` (URL) và/hoặc `imageFileIds` (UUID sau **POST /files/upload**).\n- **GET /receipts**: driver chỉ phiếu của mình; owner theo khu sở hữu; admin tất cả. Query: `page`, `limit`, `status` (pending|approved|rejected), `receiptDateFrom`, `receiptDateTo`, `harvestAreaId` (chỉ admin).\n- **GET /receipts/:id**: chi tiết một phiếu (cùng phạm vi quyền; sai quyền hoặc không tồn tại → 404).\n- **Approve** tạo `finance_records`: `revenue = amount` trên phiếu. Trạm lấy từ receipt, hoặc từ trip, hoặc gửi `weighingStationId` trong body khi phiếu chưa có trạm.\n\n**Phase 3 (gắn trip):** Khi gửi `tripId`, trip phải `in_progress` và cùng driver + `harvestAreaId` với trip; trạm cân trên phiếu **tự lấy từ trip** (có thể bỏ `weighingStationId` hoặc gửi trùng với trip).",
       "item": [
         {
           "name": "POST /receipts (driver – imageUrls)",
@@ -1889,7 +1995,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["receipts", "{{receiptId}}", "approve"]
             },
-            "description": "Khi phiếu đã có `weighingStationId` hoặc suy ra từ trip. Response có `financeRecord` (revenue = weight × unit_price)."
+            "description": "Khi phiếu đã có `weighingStationId` hoặc suy ra từ trip. Response có `financeRecord` (revenue = `amount` trên phiếu)."
           },
           "response": []
         },
@@ -1938,7 +2044,7 @@
     },
     {
       "name": "Analytics",
-      "description": "Analytics MVP (HTTP polling): dashboard summary + reports (receipts/finance/trips) + detail driver/trạm-khu-khai-thác. Lưu ý: để có `profit/revenue` cần ít nhất 1 receipt đã `approve` (tạo `finance_records`). `GET /analytics/dashboard/summary` (owner) có thêm KPI/breakdown như `totalWeight`, `dailyAvgWeight`, `marginPercent`, trend (`revenueTrendPercent`/`profitTrendPercent`/`transportGrowthPercent30d`), `fleetStatus`, và `topDrivers[].revenue`/`topDrivers[].deliveries`.",
+      "description": "Analytics MVP (HTTP polling): dashboard summary + reports (receipts/finance/trips) + detail driver/trạm-khu-khai-thác. Tổng finance theo `finance_records.calculated_at` trong `range`. Owner: thêm `harvestAreaSummaries`, `operatingCostSumTotal`, `profitAfterOperatingCosts`, `marginPercentAfterOperating`, `revenueRaw`/`profitRaw`, `marginPercentNote`. Detail khu: `GET /analytics/harvest-areas/:id/detail` có `financeSummary.operatingCostSum`, `profitAfterOperatingCosts`, `aggregationNotes`.",
       "item": [
         {
           "name": "GET /analytics/dashboard/summary (driver)",

@@ -233,7 +233,7 @@ describe('Ops Receipts MVP', () => {
       .send({ weighingStationId });
 
     expect(approveResp.status).toBe(200);
-    expect(approveResp.body.financeRecord.revenue).toBe('2400.00');
+    expect(approveResp.body.financeRecord.revenue).toBe('2000.00');
   });
 
   it('should list receipts for driver, owner, and admin', async () => {

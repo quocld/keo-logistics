@@ -77,7 +77,7 @@ Không có OCR ở MVP (sẽ làm sau). Hiện tại dùng manual entry + chụp
 
 **Backend**
 
-1. Receipt Approved → tính `revenue = weight × unit_price` (theo trạm cân), ghi `finance_records`; nếu receipt có `trip_id` thì cộng dồn `total_tons` / `total_receipts` trên trip (**chỉ tính phiếu đã approved**)
+1. Receipt Approved → `revenue = amount` trên phiếu (VND), ghi `finance_records`; trạm cân có `unit_price` **mới nhất** (cache) và **lịch sử giá** khi đổi giá; nếu receipt có `trip_id` thì cộng dồn `total_tons` / `total_receipts` trên trip (**chỉ tính phiếu đã approved**)
 2. Tính profit → cập nhật dashboard realtime *(dashboard API có thể chưa có)*
 3. Tracking vị trí driver đang chạy nền *(API ghi/đọc vị trí có thể chưa có)*
 
@@ -178,7 +178,7 @@ Không có OCR ở MVP (sẽ làm sau). Hiện tại dùng manual entry + chụp
 ### 7.5 Weighing station management
 
 - List / tạo / sửa / xoá mềm trạm (API `weighing-stations`; **ghi:** admin + owner; **đọc:** thêm **driver** — chỉ trạm có owner trùng owner quản lý tài xế; trạm không gắn owner — ví dụ tạo bởi admin — driver **không** thấy)
-- Google Maps + `unit_price` (/tấn); giá vận chuyển receipt lấy theo trạm cân
+- Google Maps + `unit_price` (/tấn) **mới nhất** trên trạm; lịch sử giá qua API; doanh thu phiếu theo `amount` khi approve
 
 ### 7.6 Driver management
 
@@ -205,7 +205,7 @@ Không có OCR ở MVP (sẽ làm sau). Hiện tại dùng manual entry + chụp
 ## 9. Finance engine
 
 - Chỉ tính khi receipt **Approved**
-- `Revenue = weight × unit_price` (lấy từ Weighing Station)
+- `Revenue = amount` trên phiếu; `unit_price` trên trạm là giá niêm yết mới nhất (có lịch sử)
 - `Profit = Revenue − Cost` (driver cost + harvesting cost + other)
 - Aggregation theo: khu, trạm cân, driver, thời gian
 
@@ -250,17 +250,17 @@ Không có OCR ở MVP (sẽ làm sau). Hiện tại dùng manual entry + chụp
 | Hạng mục trong BRD                         | Trạng thái trong keo-be (backend) |
 | ------------------------------------------ | --------------------------------- |
 | Đăng ký / auth                             | Email + password + JWT (boilerplate); **không** có login OTP số điện thoại |
-| Harvest Area                               | **Có** CRUD + list/detail (admin/owner): `harvest-areas`. **Driver:** chỉ GET list/detail, phạm vi **bãi đã gán** + thuộc owner quản lý. Trạng thái: `inactive`, `preparing`, `active`, `paused`, `awaiting_renewal`, `completed`; `area_hectares`, `target_tons`; `site_*` |
+| Harvest Area                               | **Có** CRUD + list/detail (admin/owner): `harvest-areas`. **Driver:** chỉ GET list/detail, phạm vi **bãi đã gán** + thuộc owner quản lý. **GET** `.../harvest-areas/:id/trips`, `.../drivers` (lịch sử chuyến / tài xế bãi). **Chi phí** vận hành khu: `GET/POST/PATCH/DELETE .../cost-entries` (owner/admin; category `road|loading|labor|other`). Trạng thái: `inactive`, `preparing`, `active`, `paused`, `awaiting_renewal`, `completed`; `area_hectares`, `target_tons`; `site_*` |
 | Gán driver ↔ bãi (owner)                   | **Có** `GET` / `PUT /owner/drivers/:driverId/harvest-areas` (body `harvestAreaIds`); bãi phải của owner; driver phải managed bởi owner |
 | Weighing Station                           | **Có** CRUD + list/detail (admin + **owner**): `weighing-stations`. **Driver:** chỉ GET, phạm vi trạm có `owner_id` = owner quản lý tài xế |
 | Receipt submit / approve / reject          | **Có** `POST/GET /receipts` + approve/reject; **submit (driver):** cùng rule phạm vi bãi gán + trạm/owner như trip; **submit (owner):** bắt buộc `driverUserId` (managed driver + đã gán bãi + bãi/trạm thuộc owner); **bắt buộc** ít nhất một ảnh (`imageUrls` / `imageFileIds`); `GET` driver chỉ phiếu của mình, owner theo khu sở hữu |
 | Ảnh bill, nhiều ảnh                        | **Có** lưu `receipt_images`; upload qua `Files` + URL client |
-| Finance khi approve                        | **Có** tạo `finance_records`, `revenue = weight × unit_price` (trạm active) |
+| Finance khi approve                        | **Có** tạo `finance_records`, `revenue = amount` phiếu (trạm active); lịch sử giá trạm khi đổi `unit_price` |
 | Trip                                       | **Có** `GET/POST /trips`, start/complete/cancel; **POST** yêu cầu driver có owner quản lý, **bãi đã gán**, trạm cùng owner và `active`; một trip `in_progress` / tài xế; complete/cancel: driver + owner (khu) + admin |
 | Receipt gắn Trip                           | **Có** `tripId` khi submit: khớp driver + khu + trip `in_progress`; trạm cân **auto** theo trip; backend kiểm tra lại phạm vi bãi/trạm/owner |
 | Trip `total_tons` / `total_receipts`       | **Có** cộng khi **approve** phiếu có `trip_id` |
 | Live tracking / map                        | **Có** bảng `vehicle_locations` (theo trip) + `driver_locations` (ngoài trip) và API: `POST /drivers/me/location`, `POST /trips/:id/locations`, `GET /owner/drivers/locations/latest` (Redis last-known + fallback DB) |
-| Dashboard, báo cáo, alert                  | Dashboard summary & reports (HTTP polling): **Có** `/analytics/dashboard/summary` + `/analytics/reports/*` + detail driver/trạm/khu (đã có thêm KPI như `totalWeight/margin/trend/fleetStatus` cho Owner); map realtime và alert đầy đủ: **chưa** |
+| Dashboard, báo cáo, alert                  | Dashboard summary & reports (HTTP polling): **Có** `/analytics/dashboard/summary` (finance theo `calculated_at`; owner có `harvestAreaSummaries`, `operatingCostSumTotal`, `profitAfterOperatingCosts`, `marginPercentAfterOperating`) + `/analytics/reports/*` + detail driver/trạm/khu (`harvest-areas/:id/detail` có `operatingCostSum`, `profitAfterOperatingCosts`, `aggregationNotes`); map realtime và alert đầy đủ: **chưa** |
 | Audit log, notifications                   | Bảng có trong DB; **chưa** có service/API đầy đủ theo BRD |
 | Duplicate `bill_code`, anti-fraud nâng cao | **Chưa** rule kiểm tra trùng |
 | Admin user CRUD                            | **Có** (module Users, role admin) — một phần mục 8 |

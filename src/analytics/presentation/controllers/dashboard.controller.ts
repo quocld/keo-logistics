@@ -7,7 +7,12 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../../../roles/roles.guard';
 import { Roles } from '../../../roles/roles.decorator';
@@ -29,6 +34,11 @@ export class DashboardController {
 
   @Get('summary')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Dashboard summary',
+    description:
+      'Finance totals use finance_records.calculated_at (approval time) in the selected range, not receipt_date. Pending receipts use submitted_at. Owner responses include harvestAreaSummaries and operating costs (incurred_at) — see marginPercentNote.',
+  })
   @ApiOkResponse({ description: 'Dashboard summary (analytics MVP)' })
   summary(
     @Request() request: { user: JwtPayloadType },

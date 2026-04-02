@@ -3,11 +3,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { FilesModule } from '../files/files.module';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
 import { HarvestAreaEntity } from './infrastructure/persistence/relational/entities/harvest-area.entity';
+import { HarvestAreaCostEntryEntity } from './infrastructure/persistence/relational/entities/harvest-area-cost-entry.entity';
 import { DriverHarvestAreaEntity } from './infrastructure/persistence/relational/entities/driver-harvest-area.entity';
 import { DriverProfileEntity } from './infrastructure/persistence/relational/entities/driver-profile.entity';
 import { VehicleEntity } from './infrastructure/persistence/relational/entities/vehicle.entity';
 import { VehicleExpenseEntity } from './infrastructure/persistence/relational/entities/vehicle-expense.entity';
 import { WeighingStationEntity } from './infrastructure/persistence/relational/entities/weighing-station.entity';
+import { WeighingStationUnitPriceEntity } from './infrastructure/persistence/relational/entities/weighing-station-unit-price.entity';
 import { ReceiptEntity } from './infrastructure/persistence/relational/entities/receipt.entity';
 import { ReceiptImageEntity } from './infrastructure/persistence/relational/entities/receipt-image.entity';
 import { FinanceRecordEntity } from './infrastructure/persistence/relational/entities/finance-record.entity';
@@ -27,6 +29,7 @@ import { OwnerDriverLocationsController } from './presentation/controllers/owner
 import { VehicleExpensesController } from './presentation/controllers/vehicle-expenses.controller';
 import { VehiclesController } from './presentation/controllers/vehicles.controller';
 import { HarvestAreasService } from './presentation/services/harvest-areas.service';
+import { HarvestAreaCostEntriesService } from './presentation/services/harvest-area-cost-entries.service';
 import { OwnerDriverHarvestAreasService } from './presentation/services/owner-driver-harvest-areas.service';
 import { OwnerDriverVehicleService } from './presentation/services/owner-driver-vehicle.service';
 import { OwnerDriverLocationsService } from './presentation/services/owner-driver-locations.service';
@@ -47,11 +50,13 @@ import { TripLocationsService } from './presentation/services/trip-locations.ser
     NotificationsModule,
     TypeOrmModule.forFeature([
       HarvestAreaEntity,
+      HarvestAreaCostEntryEntity,
       DriverHarvestAreaEntity,
       DriverProfileEntity,
       VehicleEntity,
       VehicleExpenseEntity,
       WeighingStationEntity,
+      WeighingStationUnitPriceEntity,
       ReceiptEntity,
       ReceiptImageEntity,
       FinanceRecordEntity,
@@ -79,6 +84,7 @@ import { TripLocationsService } from './presentation/services/trip-locations.ser
     OpsAuthorizationService,
     LocationCacheService,
     HarvestAreasService,
+    HarvestAreaCostEntriesService,
     WeighingStationsService,
     OwnerDriverHarvestAreasService,
     OwnerDriverVehicleService,

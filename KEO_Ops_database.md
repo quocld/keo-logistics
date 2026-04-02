@@ -114,6 +114,21 @@ updated_at            TIMESTAMPTZ DEFAULT NOW()
 deleted_at            TIMESTAMPTZ
 ```
 
+### 1.3.1. `harvest_area_cost_entries` (Chi phi van hanh khu)
+
+```sql
+id                    UUID PRIMARY KEY DEFAULT gen_random_uuid()
+harvest_area_id       UUID NOT NULL REFERENCES harvest_areas(id) ON DELETE CASCADE
+category              VARCHAR(20) NOT NULL CHECK (category IN ('road','loading','labor','other'))
+amount                NUMERIC(15,2) NOT NULL
+incurred_at           TIMESTAMPTZ NOT NULL
+notes                 TEXT
+created_by            INTEGER REFERENCES "user"(id) ON DELETE SET NULL
+created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+```
+
+- Index gợi ý: `(harvest_area_id, incurred_at)`.
+
 ### 1.4. `weighing_stations` (Tram can)
 
 ```sql
@@ -127,7 +142,7 @@ latitude              NUMERIC(10, 8) NOT NULL
 longitude             NUMERIC(11, 8) NOT NULL
 formatted_address     TEXT NOT NULL
 
-unit_price            NUMERIC(12,2) NOT NULL -- Gia van chuyen / tan theo tram
+unit_price            NUMERIC(12,2) NOT NULL -- Gia moi nhat / tan (cache; lich su o bang duoi)
 status                VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active','inactive','maintenance'))
 
 notes                 TEXT
@@ -135,6 +150,17 @@ created_at            TIMESTAMPTZ DEFAULT NOW()
 updated_at            TIMESTAMPTZ DEFAULT NOW()
 deleted_at            TIMESTAMPTZ
 ```
+
+### 1.4.1. `weighing_station_unit_prices` (lich su gia tram)
+
+```sql
+id                    UUID PRIMARY KEY DEFAULT gen_random_uuid()
+weighing_station_id   UUID NOT NULL REFERENCES weighing_stations(id) ON DELETE CASCADE
+unit_price            NUMERIC(12,2) NOT NULL
+created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+```
+
+- Index gợi ý: `(weighing_station_id, created_at DESC)` để list lịch sử.
 
 ### 1.5. `trips`
 
@@ -283,7 +309,7 @@ CREATE INDEX idx_vehicle_locations_timestamp ON vehicle_locations(timestamp DESC
 
 ## 5. Business Rules
 
-- Finance chỉ tính khi `receipts.status = 'approved'`; bản ghi trong `finance_records`, `revenue = weight × weighing_stations.unit_price` (trạm active).
+- Finance chỉ tính khi `receipts.status = 'approved'`; bản ghi trong `finance_records`, `revenue = receipts.amount` (trạm active); `weighing_stations.unit_price` là giá mới nhất, mỗi lần đổi giá thêm dòng `weighing_station_unit_prices`.
 - Một `trip` đi từ một `harvest_area` đến một `weighing_station`.
 - `receipt.trip_id` nullable. Khi có `trip_id`: backend kiểm tra cùng `driver_id`, cùng `harvest_area_id` với trip, trip đang `in_progress`; trạm cân trên phiếu lấy theo trip (auto-fill).
 - Khi approve receipt có `trip_id`: cộng `weight` vào `trips.total_tons`, tăng `trips.total_receipts` (chỉ phiếu approved).

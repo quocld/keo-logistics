@@ -8,6 +8,7 @@ import { WeighingStationEntity } from '../ops/infrastructure/persistence/relatio
 import { TripEntity } from '../ops/infrastructure/persistence/relational/entities/trip.entity';
 import { ReceiptEntity } from '../ops/infrastructure/persistence/relational/entities/receipt.entity';
 import { FinanceRecordEntity } from '../ops/infrastructure/persistence/relational/entities/finance-record.entity';
+import { HarvestAreaCostEntryEntity } from '../ops/infrastructure/persistence/relational/entities/harvest-area-cost-entry.entity';
 import { VehicleEntity } from '../ops/infrastructure/persistence/relational/entities/vehicle.entity';
 import { AnalyticsService } from './presentation/services/analytics.service';
 import { DashboardController } from './presentation/controllers/dashboard.controller';
@@ -24,6 +25,7 @@ import { DetailsController } from './presentation/controllers/details.controller
       TripEntity,
       ReceiptEntity,
       FinanceRecordEntity,
+      HarvestAreaCostEntryEntity,
       VehicleEntity,
     ]),
   ],

@@ -193,7 +193,7 @@ describe('Analytics Scope & Metrics (no realtime)', () => {
       .expect(201);
 
     // Receipts: pending + approved for each driver
-    // Owner1 (unitPrice=1000, approvedWeight=2 => profit=2000)
+    // Owner1 (approved receipt amount=300, weight=2 => revenue/profit=300)
     await request(APP_URL)
       .post('/api/v1/receipts')
       .auth(driver1Token, { type: 'bearer' })
@@ -226,7 +226,7 @@ describe('Analytics Scope & Metrics (no realtime)', () => {
       .send({})
       .expect(200);
 
-    // Owner2 (unitPrice=2000, approvedWeight=2 => profit=4000)
+    // Owner2 (approved receipt amount=420, weight=2 => revenue/profit=420)
     await request(APP_URL)
       .post('/api/v1/receipts')
       .auth(driver2Token, { type: 'bearer' })
@@ -266,8 +266,8 @@ describe('Analytics Scope & Metrics (no realtime)', () => {
       .auth(owner1Token, { type: 'bearer' })
       .expect(200);
 
-    expect(dash.body.profit).toBe(2000);
-    expect(dash.body.revenue).toBe(2000);
+    expect(dash.body.profit).toBe(300);
+    expect(dash.body.revenue).toBe(300);
     expect(dash.body.pendingReceiptsCount).toBe(1);
 
     // Extended dashboard KPI (owner-scoped)
@@ -287,8 +287,8 @@ describe('Analytics Scope & Metrics (no realtime)', () => {
 
     expect(Array.isArray(dash.body.topDrivers)).toBe(true);
     expect(dash.body.topDrivers.length).toBeGreaterThan(0);
-    expect(dash.body.topDrivers[0].profit).toBe(2000);
-    expect(dash.body.topDrivers[0].revenue).toBe(2000);
+    expect(dash.body.topDrivers[0].profit).toBe(300);
+    expect(dash.body.topDrivers[0].revenue).toBe(300);
     expect(dash.body.topDrivers[0].deliveries).toBe(1);
   });
 
@@ -298,8 +298,8 @@ describe('Analytics Scope & Metrics (no realtime)', () => {
       .auth(owner2Token, { type: 'bearer' })
       .expect(200);
 
-    expect(dash.body.profit).toBe(4000);
-    expect(dash.body.revenue).toBe(4000);
+    expect(dash.body.profit).toBe(420);
+    expect(dash.body.revenue).toBe(420);
     expect(dash.body.pendingReceiptsCount).toBe(1);
 
     // Extended dashboard KPI (owner-scoped)
@@ -319,8 +319,8 @@ describe('Analytics Scope & Metrics (no realtime)', () => {
 
     expect(Array.isArray(dash.body.topDrivers)).toBe(true);
     expect(dash.body.topDrivers.length).toBeGreaterThan(0);
-    expect(dash.body.topDrivers[0].profit).toBe(4000);
-    expect(dash.body.topDrivers[0].revenue).toBe(4000);
+    expect(dash.body.topDrivers[0].profit).toBe(420);
+    expect(dash.body.topDrivers[0].revenue).toBe(420);
     expect(dash.body.topDrivers[0].deliveries).toBe(1);
   });
 
@@ -345,7 +345,7 @@ describe('Analytics Scope & Metrics (no realtime)', () => {
       (acc: number, r: { profitSum: number }) => acc + Number(r.profitSum ?? 0),
       0,
     );
-    expect(totalProfit).toBe(2000);
+    expect(totalProfit).toBe(300);
   });
 
   it('should reflect driver1 detail pending/approved + finance correctly', async () => {
@@ -356,6 +356,54 @@ describe('Analytics Scope & Metrics (no realtime)', () => {
 
     expect(detail.body.receiptsSummary.pendingCount).toBe(1);
     expect(detail.body.receiptsSummary.approvedCount).toBe(1);
-    expect(detail.body.financeSummary.profitSum).toBe(2000);
+    expect(detail.body.financeSummary.profitSum).toBe(300);
+  });
+
+  it('should include harvest area operating costs and per-area dashboard breakdown for owner', async () => {
+    const dash = await request(APP_URL)
+      .get('/api/v1/analytics/dashboard/summary?range=today')
+      .auth(owner1Token, { type: 'bearer' })
+      .expect(200);
+
+    expect(Array.isArray(dash.body.harvestAreaSummaries)).toBe(true);
+    expect(dash.body.harvestAreaSummaries.length).toBeGreaterThan(0);
+    expect(dash.body.marginPercentNote).toBeDefined();
+    expect(dash.body.operatingCostSumTotal).toBe(0);
+    expect(dash.body.profitAfterOperatingCosts).toBe(dash.body.profit);
+
+    await request(APP_URL)
+      .post(`/api/v1/harvest-areas/${harvestAreaId1}/cost-entries`)
+      .auth(owner1Token, { type: 'bearer' })
+      .send({
+        category: 'labor',
+        amount: 50,
+        incurredAt: new Date().toISOString(),
+      })
+      .expect(201);
+
+    const detail = await request(APP_URL)
+      .get(
+        `/api/v1/analytics/harvest-areas/${harvestAreaId1}/detail?range=today`,
+      )
+      .auth(owner1Token, { type: 'bearer' })
+      .expect(200);
+
+    expect(detail.body.financeSummary.operatingCostSum).toBe(50);
+    expect(detail.body.financeSummary.profitAfterOperatingCosts).toBe(
+      detail.body.financeSummary.profitSum - 50,
+    );
+    expect(detail.body.aggregationNotes.financeFilteredBy).toBe(
+      'calculated_at',
+    );
+
+    const dashAfter = await request(APP_URL)
+      .get('/api/v1/analytics/dashboard/summary?range=today')
+      .auth(owner1Token, { type: 'bearer' })
+      .expect(200);
+
+    expect(dashAfter.body.operatingCostSumTotal).toBe(50);
+    expect(dashAfter.body.profitAfterOperatingCosts).toBe(
+      dashAfter.body.profit - 50,
+    );
   });
 });

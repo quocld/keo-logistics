@@ -180,4 +180,32 @@ describe('Ops Weighing Stations (admin + owner)', () => {
 
     expect(getResp.status).toBe(404);
   });
+
+  it('should append unit price history and list unit-price-history', async () => {
+    await request(APP_URL)
+      .patch(`/api/v1/weighing-stations/${owner1StationId}`)
+      .auth(owner1Token, { type: 'bearer' })
+      .send({ unitPrice: 1111 })
+      .expect(200);
+
+    const hist = await request(APP_URL)
+      .get(`/api/v1/weighing-stations/${owner1StationId}/unit-price-history`)
+      .auth(owner1Token, { type: 'bearer' })
+      .query({ limit: 50 })
+      .expect(200);
+
+    expect(Array.isArray(hist.body.data)).toBe(true);
+    expect(hist.body.data.length).toBeGreaterThanOrEqual(2);
+    expect(hist.body.data[0].unitPrice).toBe('1111.00');
+  });
+
+  it('should list receipts for a weighing station', async () => {
+    const list = await request(APP_URL)
+      .get(`/api/v1/weighing-stations/${owner1StationId}/receipts`)
+      .auth(owner1Token, { type: 'bearer' })
+      .query({ limit: 20 })
+      .expect(200);
+
+    expect(Array.isArray(list.body.data)).toBe(true);
+  });
 });

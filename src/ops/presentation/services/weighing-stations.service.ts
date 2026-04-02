@@ -8,9 +8,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { JwtPayloadType } from '../../../auth/strategies/types/jwt-payload.type';
 import { WeighingStationEntity } from '../../infrastructure/persistence/relational/entities/weighing-station.entity';
+import { WeighingStationUnitPriceEntity } from '../../infrastructure/persistence/relational/entities/weighing-station-unit-price.entity';
 import { CreateWeighingStationDto } from '../../dto/create-weighing-station.dto';
 import { UpdateWeighingStationDto } from '../../dto/update-weighing-station.dto';
 import { QueryWeighingStationDto } from '../../dto/query-weighing-station.dto';
+import { QueryWeighingStationUnitPriceHistoryDto } from '../../dto/query-weighing-station-unit-price-history.dto';
 import { OpsAuthorizationService } from './ops-authorization.service';
 import { infinityPagination } from '../../../utils/infinity-pagination';
 import { InfinityPaginationResponseDto } from '../../../utils/dto/infinity-pagination-response.dto';
@@ -20,6 +22,8 @@ export class WeighingStationsService {
   constructor(
     @InjectRepository(WeighingStationEntity)
     private readonly weighingStationsRepository: Repository<WeighingStationEntity>,
+    @InjectRepository(WeighingStationUnitPriceEntity)
+    private readonly weighingStationUnitPricesRepository: Repository<WeighingStationUnitPriceEntity>,
     private readonly opsAuthorizationService: OpsAuthorizationService,
   ) {}
 
@@ -41,20 +45,39 @@ export class WeighingStationsService {
       throw new UnprocessableEntityException({ error: 'invalid payload' });
     }
 
-    const entity = this.weighingStationsRepository.create({
-      name: dto.name,
-      code: dto.code ?? null,
-      googlePlaceId: dto.googlePlaceId ?? null,
-      latitude: dto.latitude.toString(),
-      longitude: dto.longitude.toString(),
-      formattedAddress: dto.formattedAddress,
-      unitPrice: dto.unitPrice.toString(),
-      status: dto.status ?? undefined,
-      notes: dto.notes ?? null,
-      owner: owner as any,
-    });
+    const unitPriceStr = dto.unitPrice.toString();
 
-    return this.weighingStationsRepository.save(entity);
+    return this.weighingStationsRepository.manager.transaction(async (em) => {
+      const stationRepo = em.getRepository(WeighingStationEntity);
+      const priceRepo = em.getRepository(WeighingStationUnitPriceEntity);
+
+      const saved = await stationRepo.save(
+        stationRepo.create({
+          name: dto.name,
+          code: dto.code ?? null,
+          googlePlaceId: dto.googlePlaceId ?? null,
+          latitude: dto.latitude.toString(),
+          longitude: dto.longitude.toString(),
+          formattedAddress: dto.formattedAddress,
+          unitPrice: unitPriceStr,
+          status: dto.status ?? undefined,
+          notes: dto.notes ?? null,
+          owner: owner as any,
+        }),
+      );
+
+      await priceRepo.save(
+        priceRepo.create({
+          weighingStation: { id: saved.id } as WeighingStationEntity,
+          unitPrice: saved.unitPrice,
+        }),
+      );
+
+      return stationRepo.findOneOrFail({
+        where: { id: saved.id },
+        relations: ['owner'],
+      });
+    });
   }
 
   async findMany(
@@ -140,6 +163,27 @@ export class WeighingStationsService {
     return entity;
   }
 
+  async findUnitPriceHistory(
+    actor: JwtPayloadType,
+    stationId: string,
+    query: QueryWeighingStationUnitPriceHistoryDto,
+  ): Promise<InfinityPaginationResponseDto<WeighingStationUnitPriceEntity>> {
+    await this.findOne(actor, stationId);
+
+    const page = query.page ?? 1;
+    const limit = Math.min(query.limit ?? 10, 50);
+    const skip = (page - 1) * limit;
+
+    const data = await this.weighingStationUnitPricesRepository.find({
+      where: { weighingStation: { id: stationId } },
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+    });
+
+    return infinityPagination(data, { page, limit });
+  }
+
   async update(
     actor: JwtPayloadType,
     id: string,
@@ -158,6 +202,8 @@ export class WeighingStationsService {
       throw new NotFoundException({ error: 'weighing station not found' });
     }
 
+    const priorUnitPrice = entity.unitPrice;
+
     if (dto.name !== undefined) entity.name = dto.name;
     if (dto.code !== undefined) entity.code = dto.code ?? null;
     if (dto.googlePlaceId !== undefined)
@@ -171,6 +217,24 @@ export class WeighingStationsService {
       entity.unitPrice = dto.unitPrice.toString();
     if (dto.status !== undefined) entity.status = dto.status ?? entity.status;
     if (dto.notes !== undefined) entity.notes = dto.notes ?? null;
+
+    const unitPriceChanged =
+      dto.unitPrice !== undefined &&
+      Number(priorUnitPrice) !== Number(entity.unitPrice);
+
+    if (unitPriceChanged) {
+      return this.weighingStationsRepository.manager.transaction(async (em) => {
+        const stationRepo = em.getRepository(WeighingStationEntity);
+        const priceRepo = em.getRepository(WeighingStationUnitPriceEntity);
+        await priceRepo.save(
+          priceRepo.create({
+            weighingStation: { id: entity.id } as WeighingStationEntity,
+            unitPrice: entity.unitPrice,
+          }),
+        );
+        return stationRepo.save(entity);
+      });
+    }
 
     return this.weighingStationsRepository.save(entity);
   }

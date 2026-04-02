@@ -13,8 +13,10 @@ import { QueryTripDto } from '../../dto/query-trip.dto';
 import { TripEntity } from '../../infrastructure/persistence/relational/entities/trip.entity';
 import { WeighingStationEntity } from '../../infrastructure/persistence/relational/entities/weighing-station.entity';
 import { OpsAuthorizationService } from './ops-authorization.service';
+import { HarvestAreasService } from './harvest-areas.service';
 import { infinityPagination } from '../../../utils/infinity-pagination';
 import { InfinityPaginationResponseDto } from '../../../utils/dto/infinity-pagination-response.dto';
+import { QueryTripsByHarvestAreaDto } from '../../dto/query-trips-by-harvest-area.dto';
 
 @Injectable()
 export class TripsService {
@@ -24,6 +26,7 @@ export class TripsService {
     @InjectRepository(WeighingStationEntity)
     private readonly weighingStationsRepository: Repository<WeighingStationEntity>,
     private readonly opsAuthorizationService: OpsAuthorizationService,
+    private readonly harvestAreasService: HarvestAreasService,
   ) {}
 
   private async assertDriverHasNoInProgressTrip(
@@ -275,6 +278,54 @@ export class TripsService {
       qb.andWhere('t.driver_id = :filterDriverId', {
         filterDriverId: query.driverId,
       });
+    }
+
+    if (query.createdAtFrom) {
+      qb.andWhere('t.created_at >= :caf', {
+        caf: new Date(query.createdAtFrom),
+      });
+    }
+
+    if (query.createdAtTo) {
+      qb.andWhere('t.created_at <= :cat', {
+        cat: new Date(query.createdAtTo),
+      });
+    }
+
+    const data = await qb.getMany();
+
+    return infinityPagination(data, { page, limit });
+  }
+
+  async findManyByHarvestArea(
+    actor: JwtPayloadType,
+    harvestAreaId: string,
+    query: QueryTripsByHarvestAreaDto,
+  ): Promise<InfinityPaginationResponseDto<TripEntity>> {
+    await this.harvestAreasService.findOne(actor, harvestAreaId);
+
+    const page = query.page ?? 1;
+    const limit = Math.min(query.limit ?? 10, 50);
+    const skip = (page - 1) * limit;
+
+    const qb = this.tripsRepository
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.harvestArea', 'ha')
+      .leftJoinAndSelect('t.weighingStation', 'ws')
+      .leftJoinAndSelect('t.driver', 'dr')
+      .where('t.harvest_area_id = :haId', { haId: harvestAreaId })
+      .orderBy('t.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit);
+
+    if (this.opsAuthorizationService.isDriver(actor)) {
+      qb.andWhere('t.driver_id = :driverId', { driverId: actor.id });
+    } else if (this.opsAuthorizationService.isOwner(actor)) {
+      qb.andWhere('ha.owner_id = :ownerId', { ownerId: Number(actor.id) });
+    }
+
+    if (query.status) {
+      qb.andWhere('t.status = :status', { status: query.status });
     }
 
     if (query.createdAtFrom) {
