@@ -1,9 +1,10 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { JwtPayloadType } from '../../../auth/strategies/types/jwt-payload.type';
 import { infinityPagination } from '../../../utils/infinity-pagination';
 import { InfinityPaginationResponseDto } from '../../../utils/dto/infinity-pagination-response.dto';
+import { FilesService } from '../../../files/files.service';
 import { RoleEnum } from '../../../roles/roles.enum';
 import { UserEntity } from '../../../users/infrastructure/persistence/relational/entities/user.entity';
 import { DriverLocationPointDto } from '../../dto/driver-location-point.dto';
@@ -15,8 +16,22 @@ import {
 } from './location-cache.service';
 import { OpsAuthorizationService } from './ops-authorization.service';
 
+export type DriverLatestPhoto = {
+  id: string;
+  /** Resolved URL (local base URL or S3 presigned). */
+  path: string;
+};
+
 export type ManagedDriverLatestLocation = {
   driverId: number;
+  driverUserId: number;
+  userId: number;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  isCustomAvatar: boolean;
+  appAvatar: string | null;
+  photo: DriverLatestPhoto | null;
   location: LastKnownLocation | null;
 };
 
@@ -29,6 +44,7 @@ export class OwnerDriverLocationsService {
     private readonly driverLocationsRepository: Repository<DriverLocationEntity>,
     private readonly opsAuthorizationService: OpsAuthorizationService,
     private readonly locationCacheService: LocationCacheService,
+    private readonly filesService: FilesService,
   ) {}
 
   private async getVisibleDriverIds(actor: JwtPayloadType): Promise<number[]> {
@@ -105,10 +121,62 @@ export class OwnerDriverLocationsService {
       }
     }
 
-    return paged.map((driverId) => ({
-      driverId,
-      location: cached[driverId] ?? fallback[driverId] ?? null,
-    }));
+    const users =
+      paged.length > 0
+        ? await this.usersRepository.find({
+            where: { id: In(paged) },
+            relations: ['photo'],
+          })
+        : [];
+    const userById = new Map(users.map((u) => [Number(u.id), u]));
+
+    return Promise.all(
+      paged.map(async (driverId) => {
+        const user = userById.get(driverId);
+        const location = cached[driverId] ?? fallback[driverId] ?? null;
+        const profile = await this.buildDriverLatestProfile(driverId, user);
+        return {
+          driverId,
+          ...profile,
+          location,
+        };
+      }),
+    );
+  }
+
+  private async buildDriverLatestProfile(
+    driverId: number,
+    user: UserEntity | undefined,
+  ): Promise<Omit<ManagedDriverLatestLocation, 'driverId' | 'location'>> {
+    if (!user) {
+      return {
+        driverUserId: driverId,
+        userId: driverId,
+        firstName: null,
+        lastName: null,
+        email: null,
+        isCustomAvatar: false,
+        appAvatar: null,
+        photo: null,
+      };
+    }
+
+    let photo: DriverLatestPhoto | null = null;
+    if (user.photo?.id && user.photo.path) {
+      const path = await this.filesService.resolvePublicUrl(user.photo.path);
+      photo = { id: String(user.photo.id), path };
+    }
+
+    return {
+      driverUserId: Number(user.id),
+      userId: Number(user.id),
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      isCustomAvatar: user.isCustomAvatar ?? false,
+      appAvatar: user.appAvatar ?? null,
+      photo,
+    };
   }
 
   async listDriverLocationHistory(

@@ -30,7 +30,8 @@ export class OwnerDriverLocationsController {
   ) {}
 
   @ApiOkResponse({
-    description: 'Latest location for managed drivers (paged).',
+    description:
+      'Body: `{ data, page, limit }`. Each item: `driverId`, `driverUserId`, `userId`, `firstName`, `lastName`, `email`, `isCustomAvatar`, `appAvatar`, `photo` (`{ id, path }` with resolvable URL) or null, `location` (last-known point) or null.',
   })
   @Get('latest')
   @HttpCode(HttpStatus.OK)

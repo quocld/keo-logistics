@@ -110,6 +110,13 @@ describe('Ops Driver tracking (locations)', () => {
 
     const row = latest.body.data.find((r: any) => r.driverId === driverId);
     expect(row).toBeDefined();
+    expect(row.driverUserId).toBe(driverId);
+    expect(row.userId).toBe(driverId);
+    expect(row.firstName).toBe('Track');
+    expect(row.lastName).toBe('Driver');
+    expect(typeof row.isCustomAvatar).toBe('boolean');
+    expect(row).toHaveProperty('appAvatar');
+    expect(row).toHaveProperty('photo');
     expect(row.location).toBeDefined();
     expect(row.location.latitude).toBeCloseTo(10.12345678, 6);
     expect(row.location.longitude).toBeCloseTo(106.12345678, 6);
