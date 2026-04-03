@@ -130,34 +130,107 @@ export function topDriverFromSummary(d: AnalyticsTopDriver | null | undefined): 
   };
 }
 
-function extractBuckets(body: FinanceReportResponse): FinanceReportBucket[] {
-  if (Array.isArray(body.data)) return body.data;
-  if (Array.isArray(body.series)) return body.series;
-  if (Array.isArray(body.buckets)) return body.buckets;
+function asBucketArray(v: unknown): FinanceReportBucket[] | null {
+  if (Array.isArray(v)) return v as FinanceReportBucket[];
+  return null;
+}
+
+/** Lấy mảng bucket từ nhiều dạng response backend (data / series / items / nested). */
+export function extractFinanceReportBuckets(body: FinanceReportResponse | null | undefined): FinanceReportBucket[] {
+  if (!body || typeof body !== 'object') return [];
+  const o = body as Record<string, unknown>;
+  const direct =
+    asBucketArray(o.data) ??
+    asBucketArray(o.series) ??
+    asBucketArray(o.buckets) ??
+    asBucketArray(o.items) ??
+    asBucketArray(o.results) ??
+    asBucketArray(o.daily) ??
+    asBucketArray(o.points) ??
+    asBucketArray(o.rows);
+  if (direct?.length) return direct;
+
+  const nestedData = o.data;
+  if (nestedData && typeof nestedData === 'object') {
+    const inner = nestedData as Record<string, unknown>;
+    const nested =
+      asBucketArray(inner.data) ??
+      asBucketArray(inner.series) ??
+      asBucketArray(inner.buckets) ??
+      asBucketArray(inner.items) ??
+      asBucketArray(inner.days);
+    if (nested?.length) return nested;
+  }
   return [];
 }
 
 function bucketTimestamp(b: FinanceReportBucket): number {
-  const raw = b.date ?? b.bucketDate ?? b.period ?? b.label;
+  const o = b as Record<string, unknown>;
+  const raw =
+    o.date ??
+    o.bucketDate ??
+    o.period ??
+    o.day ??
+    o.startDate ??
+    o.dateKey ??
+    o.label;
   if (raw == null) return 0;
   const s = String(raw);
   const t = Date.parse(s);
   return Number.isFinite(t) ? t : 0;
 }
 
+function revenueFromNestedRecord(o: Record<string, unknown>): number | null {
+  for (const key of ['metrics', 'totals', 'summary', 'aggregate']) {
+    const inner = o[key];
+    if (inner && typeof inner === 'object') {
+      const n = firstNumber(inner as Record<string, unknown>, [
+        'revenue',
+        'totalRevenue',
+        'grossRevenue',
+        'netRevenue',
+        'amount',
+      ]);
+      if (n != null && n >= 0) return n;
+    }
+  }
+  return null;
+}
+
 function bucketValue(b: FinanceReportBucket): number {
   const o = b as Record<string, unknown>;
-  const v = firstNumber(o, ['revenue', 'totalRevenue', 'profit', 'amount', 'value']);
-  return v != null && v >= 0 ? v : 0;
+  const cents = firstNumber(o, ['revenueCents', 'amountCents']);
+  if (cents != null && cents >= 0) return cents / 100;
+
+  const direct = firstNumber(o, [
+    'revenue',
+    'totalRevenue',
+    'grossRevenue',
+    'netRevenue',
+    'sales',
+    'amount',
+    'value',
+    'sum',
+    'total',
+    'revenueTotal',
+    'dailyRevenue',
+  ]);
+  if (direct != null && direct >= 0) return direct;
+
+  const nested = revenueFromNestedRecord(o);
+  if (nested != null) return nested;
+
+  const profit = firstNumber(o, ['profit', 'totalProfit']);
+  return profit != null && profit >= 0 ? profit : 0;
 }
 
 export type ChartBar = { value: number; label: string };
 
-/** Chuẩn hoá báo cáo finance → tối đa 7 cột, nhãn theo thứ (VI). */
-export function buildPerformanceBarsFromFinanceReport(body: FinanceReportResponse | null | undefined): ChartBar[] | null {
-  if (!body) return null;
-  const buckets = extractBuckets(body);
-  if (!buckets.length) return null;
+/** Chuẩn hoá báo cáo finance → tối đa 7 cột, nhãn theo thứ (VI). Trả về `[]` khi không có bucket (API hợp lệ nhưng không có dữ liệu). */
+export function buildPerformanceBarsFromFinanceReport(body: FinanceReportResponse | null | undefined): ChartBar[] {
+  if (!body) return [];
+  const buckets = extractFinanceReportBuckets(body);
+  if (!buckets.length) return [];
 
   const withIdx = buckets.map((b, i) => ({ b, i, t: bucketTimestamp(b) }));
   const hasDates = withIdx.some((x) => x.t > 0);
@@ -178,7 +251,6 @@ export function buildPerformanceBarsFromFinanceReport(body: FinanceReportRespons
     return { value, label };
   });
 
-  if (!bars.length) return null;
   return bars;
 }
 

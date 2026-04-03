@@ -1,3 +1,4 @@
+import { extractFinanceReportBuckets } from '@/lib/analytics/owner-home-map';
 import type { FinanceReportResponse, OwnerDashboardSummary } from '@/lib/types/analytics';
 
 import { apiFetch } from './client';
@@ -78,14 +79,32 @@ export async function getFinanceReport(params: {
 }
 
 /** Thử lần lượt các giá trị `range` phổ biến cho 7 ngày (backend có thể khác tên). */
-const FINANCE_RANGE_7D_CANDIDATES = ['last_7_days', 'last7days', '7d', 'week'] as const;
+const FINANCE_RANGE_7D_CANDIDATES = [
+  'last_7_days',
+  'last7days',
+  'last7_days',
+  'last-7-days',
+  '7d',
+  '7_days',
+  'past_7_days',
+  'week',
+  'last_week',
+] as const;
 
 export async function getFinanceReportLast7Days(): Promise<FinanceReportResult> {
   let lastMessage = 'Không tải được báo cáo tài chính';
+  let lastOk: FinanceReportResult | null = null;
   for (const range of FINANCE_RANGE_7D_CANDIDATES) {
     const r = await getFinanceReport({ range, groupBy: 'day' });
-    if (r.ok) return r;
-    lastMessage = r.message;
+    if (!r.ok) {
+      lastMessage = r.message;
+      continue;
+    }
+    if (extractFinanceReportBuckets(r.body).length > 0) {
+      return r;
+    }
+    lastOk = r;
   }
+  if (lastOk) return lastOk;
   return { ok: false, message: lastMessage };
 }

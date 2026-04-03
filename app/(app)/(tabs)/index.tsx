@@ -1,7 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, type Href } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -106,6 +106,7 @@ function StatTile({
   moreLink,
   variant = 'default',
   compact,
+  valueLoading,
 }: {
   label: string;
   value: string;
@@ -117,6 +118,8 @@ function StatTile({
   variant?: 'hero' | 'default';
   /** Ô nhỏ gọn: ít padding, gộp chú thích vào tiêu đề */
   compact?: boolean;
+  /** Chỉ thay số liệu bằng spinner — giữ layout ô cố định */
+  valueLoading?: boolean;
 }) {
   const trendColor =
     trend === 'up' ? S.primary : trend === 'down' ? '#c62828' : S.onSurfaceVariant;
@@ -137,17 +140,34 @@ function StatTile({
             </Text>
           )}
         </View>
-        <Text
-          style={[st.tileValue, hero && st.tileValueHero, isCompact && st.tileValueCompact]}
-          numberOfLines={2}>
-          {value}
-        </Text>
-        {!isCompact && subLabel ? (
-          <Text style={[st.tileSub, hero && st.tileSubHero]} numberOfLines={2}>
-            {subLabel}
+        {valueLoading ? (
+          <View
+            style={[
+              st.tileValueLoading,
+              hero && st.tileValueLoadingHero,
+              isCompact && st.tileValueLoadingCompact,
+            ]}>
+            <ActivityIndicator size="small" color={S.primary} />
+          </View>
+        ) : (
+          <Text
+            style={[st.tileValue, hero && st.tileValueHero, isCompact && st.tileValueCompact]}
+            numberOfLines={2}>
+            {value}
           </Text>
+        )}
+        {!isCompact && subLabel ? (
+          valueLoading ? (
+            <View style={st.tileSubLoading}>
+              <ActivityIndicator size="small" color={`${S.primary}99`} />
+            </View>
+          ) : (
+            <Text style={[st.tileSub, hero && st.tileSubHero]} numberOfLines={2}>
+              {subLabel}
+            </Text>
+          )
         ) : null}
-        {trend && trendLabel ? (
+        {!valueLoading && trend && trendLabel ? (
           <View style={st.trendRow}>
             <MaterialIcons
               name={trend === 'up' ? 'trending-up' : trend === 'down' ? 'trending-down' : 'trending-flat'}
@@ -257,9 +277,8 @@ export default function HomeScreen() {
         setSummaryFailed(true);
       }
       if (finRes.ok) {
-        const bars = buildPerformanceBarsFromFinanceReport(finRes.body);
-        setPerformanceBars(bars);
-        setFinanceReportFailed(!bars?.length);
+        setPerformanceBars(buildPerformanceBarsFromFinanceReport(finRes.body));
+        setFinanceReportFailed(false);
       } else {
         setPerformanceBars(null);
         setFinanceReportFailed(true);
@@ -332,11 +351,35 @@ export default function HomeScreen() {
   const fleetUi = fleetFromStatus(summary?.fleetStatus);
   const topDriverUi = topDriverFromSummary(summary?.topDrivers?.[0]);
 
-  const growth30 = summary?.transportGrowthPercent30d;
-  const growth30Num = typeof growth30 === 'number' && Number.isFinite(growth30) ? growth30 : null;
+  const chartBarsForRender = useMemo(() => {
+    if (summaryLoading) return null;
+    if (performanceBars === null) return [...DEMO_PERFORMANCE_BARS];
+    if (performanceBars.length === 0) return [];
+    return performanceBars;
+  }, [summaryLoading, performanceBars]);
 
-  const chartBars = performanceBars?.length ? performanceBars : [...DEMO_PERFORMANCE_BARS];
-  const chartMax = chartMaxValue(chartBars);
+  const chartMax = chartMaxValue(
+    chartBarsForRender && chartBarsForRender.length > 0 ? chartBarsForRender : [...DEMO_PERFORMANCE_BARS],
+  );
+
+  const financeChartData = useMemo(() => {
+    const bars = chartBarsForRender && chartBarsForRender.length > 0 ? chartBarsForRender : null;
+    if (!bars) return [];
+    const barW = Math.min(32, Math.floor((performanceChartWidth - 48) / 7 - 8));
+    return bars.map((d) => ({
+      value: d.value,
+      label: d.label,
+      barWidth: barW,
+      frontColor: Brand.forest,
+      showGradient: true,
+      gradientColor: `${Brand.forest}66`,
+      topLabelComponent: () => (
+        <Text style={st.chartBarTopLabel} numberOfLines={1}>
+          {formatVndShortVi(d.value)}
+        </Text>
+      ),
+    }));
+  }, [chartBarsForRender, performanceChartWidth]);
 
   const pendingLine =
     pendingCount == null
@@ -398,51 +441,47 @@ export default function HomeScreen() {
           <Text style={st.demoHint}>Không tải được tổng quan — kéo để thử lại hoặc kiểm tra kết nối.</Text>
         ) : null}
 
-        {summaryLoading ? (
-          <View style={st.summaryLoadingWrap}>
-            <ActivityIndicator size="small" color={S.primary} />
-            <Text style={st.summaryLoadingTxt}>Đang tải số liệu…</Text>
-          </View>
-        ) : (
-          <View style={st.statGrid}>
-            <StatTile
-              variant="hero"
-              label="Doanh thu hôm nay"
-              value={revNum != null ? formatVndShortVi(revNum) : '—'}
-              trend={revTrendLabel ? revTrend : undefined}
-              trendLabel={revTrendLabel ?? undefined}
-            />
-            <StatTile
-              variant="hero"
-              label="Tổng khối lượng"
-              value={weightNum != null ? `${weightNum.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tấn` : '—'}
-              subLabel={
-                dailyAvg != null
-                  ? `Trung bình ngày: ${dailyAvg.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tấn`
-                  : 'Trung bình ngày'
-              }
-            />
-            <StatTile
-              compact
-              label="Phiếu hoàn thành"
-              value={approvedTodayLine}
-              subLabel="trong ngày"
-              moreLink={{
-                label: 'Danh sách',
-                onPress: () => router.push('/receipt-approval?tab=approved' as Href),
-              }}
-            />
-            <StatTile
-              compact
-              label="Khu hoạt động"
-              value={activeHarvestLine}
-              moreLink={{
-                label: 'Danh sách',
-                onPress: () => router.push('/harvest-areas?status=active' as Href),
-              }}
-            />
-          </View>
-        )}
+        <View style={st.statGrid}>
+          <StatTile
+            variant="hero"
+            label="Doanh thu hôm nay"
+            value={revNum != null ? formatVndShortVi(revNum) : '—'}
+            valueLoading={summaryLoading}
+            trend={revTrendLabel ? revTrend : undefined}
+            trendLabel={revTrendLabel ?? undefined}
+          />
+          <StatTile
+            variant="hero"
+            label="Tổng khối lượng"
+            value={weightNum != null ? `${weightNum.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tấn` : '—'}
+            valueLoading={summaryLoading}
+            subLabel={
+              dailyAvg != null
+                ? `Trung bình ngày: ${dailyAvg.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tấn`
+                : 'Trung bình ngày'
+            }
+          />
+          <StatTile
+            compact
+            label="Phiếu hoàn thành"
+            value={approvedTodayLine}
+            valueLoading={summaryLoading}
+            moreLink={{
+              label: 'Danh sách',
+              onPress: () => router.push('/receipt-approval?tab=approved' as Href),
+            }}
+          />
+          <StatTile
+            compact
+            label="Khu hoạt động"
+            value={activeHarvestLine}
+            valueLoading={summaryLoading}
+            moreLink={{
+              label: 'Danh sách',
+              onPress: () => router.push('/harvest-areas?status=active' as Href),
+            }}
+          />
+        </View>
 
         <View style={qa.card}>
           <QuickActions
@@ -487,45 +526,41 @@ export default function HomeScreen() {
         </Pressable>
 
         <View style={st.sectionCard}>
-          <Text style={st.sectionTitle}>Phân tích hiệu suất</Text>
-          <Text style={st.sectionBody}>
-            {growth30Num != null
-              ? `Tăng trưởng vận tải trong 30 ngày qua khoảng ${Math.abs(growth30Num).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%${growth30Num >= 0 ? ' so với giai đoạn trước' : ''}.`
-              : 'Theo dõi xu hướng vận tải trong 30 ngày qua.'}
-          </Text>
-          {financeReportFailed && !performanceBars?.length ? (
-            <Text style={st.chartFallbackHint}>Biểu đồ minh họa — đồng bộ báo cáo theo ngày khi API có dữ liệu.</Text>
-          ) : null}
+          <Text style={st.sectionTitle}>Doanh thu 7 ngày gần nhất</Text>
           <View style={st.chartWrap}>
-            <BarChart
-              data={chartBars.map((d) => ({
-                value: d.value,
-                label: d.label,
-                frontColor: S.primary,
-                showGradient: true,
-                gradientColor: `${S.primary}44`,
-              }))}
-              width={performanceChartWidth}
-              height={190}
-              barWidth={Math.min(28, Math.floor((performanceChartWidth - 48) / 7 - 10))}
-              spacing={10}
-              roundedTop
-              roundedBottom
-              isAnimated
-              animationDuration={550}
-              noOfSections={4}
-              maxValue={chartMax}
-              hideRules={false}
-              rulesType="solid"
-              rulesColor={`${S.outline}40`}
-              rulesThickness={StyleSheet.hairlineWidth}
-              yAxisThickness={0}
-              xAxisThickness={1}
-              xAxisColor={`${S.outlineVariant}cc`}
-              yAxisTextStyle={st.chartAxisText}
-              xAxisLabelTextStyle={st.chartAxisText}
-              disableScroll
-            />
+            {summaryLoading ? (
+              <View style={st.chartLoading}>
+                <ActivityIndicator size="small" color={S.primary} />
+              </View>
+            ) : performanceBars !== null && performanceBars.length === 0 ? null : (
+              <BarChart
+                data={financeChartData}
+                width={performanceChartWidth}
+                height={216}
+                barWidth={Math.min(32, Math.floor((performanceChartWidth - 48) / 7 - 8))}
+                spacing={12}
+                roundedTop
+                roundedBottom
+                isAnimated
+                animationDuration={550}
+                noOfSections={4}
+                maxValue={chartMax}
+                yAxisExtraHeight={32}
+                hideRules={false}
+                rulesType="solid"
+                rulesColor={`${S.outline}33`}
+                rulesThickness={StyleSheet.hairlineWidth}
+                dashGap={0}
+                yAxisThickness={0}
+                xAxisThickness={0}
+                xAxisColor="transparent"
+                yAxisTextStyle={st.chartAxisText}
+                xAxisLabelTextStyle={st.chartAxisText}
+                disableScroll
+                initialSpacing={6}
+                endSpacing={6}
+              />
+            )}
           </View>
         </View>
 
@@ -645,15 +680,25 @@ const st = StyleSheet.create({
     marginBottom: 16,
     fontStyle: 'italic',
   },
-  summaryLoadingWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+  tileValueLoading: {
+    minHeight: 28,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    marginTop: 2,
   },
-  summaryLoadingTxt: {
-    fontSize: 13,
-    color: S.onSurfaceVariant,
+  tileValueLoadingHero: {
+    minHeight: 32,
+    marginTop: 0,
+  },
+  tileValueLoadingCompact: {
+    minHeight: 26,
+    marginTop: 2,
+  },
+  tileSubLoading: {
+    minHeight: 22,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    marginTop: 4,
   },
   chartFallbackHint: {
     fontSize: 12,
@@ -873,10 +918,35 @@ const st = StyleSheet.create({
   chartWrap: {
     marginHorizontal: -4,
     alignItems: 'center',
+    minHeight: 240,
+    justifyContent: 'center',
+  },
+  chartLoading: {
+    paddingVertical: 48,
+  },
+  chartSubtitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Brand.ink,
+    marginBottom: 4,
+    letterSpacing: -0.2,
+  },
+  chartEmptyHint: {
+    fontSize: 13,
+    color: S.onSurfaceVariant,
+    marginBottom: 12,
+    lineHeight: 19,
+  },
+  chartBarTopLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#0d4a28',
+    letterSpacing: -0.2,
   },
   chartAxisText: {
-    fontSize: 11,
-    color: S.onSurfaceVariant,
+    fontSize: 10,
+    color: `${S.onSurfaceVariant}cc`,
+    fontWeight: '500',
   },
   fleetHead: {
     flexDirection: 'row',
