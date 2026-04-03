@@ -60,8 +60,8 @@ export const ownerStitchListStyles = StyleSheet.create({
   },
   mainHeader: {
     paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 8,
+    paddingTop: 20,
+    paddingBottom: 12,
   },
   eyebrow: {
     fontSize: 10,
@@ -89,9 +89,9 @@ export const ownerStitchListStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: S.surfaceContainerLow,
-    borderRadius: 8,
-    paddingLeft: 10,
-    minHeight: 40,
+    borderRadius: 12,
+    paddingLeft: 12,
+    minHeight: 44,
   },
   searchFieldIcon: {
     marginRight: 4,
@@ -109,7 +109,7 @@ export const ownerStitchListStyles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: S.surfaceContainerHigh,
   },
   filterBtnPressed: {

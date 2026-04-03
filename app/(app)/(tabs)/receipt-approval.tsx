@@ -1,33 +1,42 @@
 import { useFocusEffect } from '@react-navigation/native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Pressable,
   RefreshControl,
   ScrollView,
+  SectionList,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
 import { ReceiptImageLightbox } from '@/components/receipt/ReceiptImageLightbox';
 import { ownerStitchListStyles as os } from '@/components/owner/owner-stitch-list-styles';
 import { Brand } from '@/constants/brand';
+import { pickDefaultAvatar } from '@/constants/images';
 import { getErrorMessage } from '@/lib/api/errors';
 import { approveReceipt, listReceipts, rejectReceipt } from '@/lib/api/receipts';
+import { formatVndShortVi } from '@/lib/format/vnd-vi';
 import { collectReceiptImageUrls, firstReceiptImageUrl } from '@/lib/receipt/receipt-image-urls';
 import type { Receipt } from '@/lib/types/ops';
+
+/** Icon phiếu (Stitch / asset) */
+const PHIEU_ICON = require('@/assets/images/phieu-icon.png');
 
 const S = Brand.stitch;
 const PAGE_SIZE = 10;
 
 const STATUS_TABS: { value: string; label: string }[] = [
+  { value: 'all', label: 'Tất cả' },
   { value: 'pending', label: 'Chờ duyệt' },
   { value: 'approved', label: 'Đã duyệt' },
   { value: 'rejected', label: 'Từ chối' },
@@ -71,14 +80,140 @@ function harvestAreaLine(r: Receipt): string {
   return '—';
 }
 
-function formatVnd(n: number): string {
-  return `${n.toLocaleString('vi-VN')} VND`;
+/** Ngày giờ phiếu — khớp cách hiển thị màn chi tiết */
+function formatReceiptDateTime(r: Receipt): string {
+  const raw = r.receiptDate ?? (r as { createdAt?: string | null }).createdAt;
+  if (!raw || typeof raw !== 'string') return '—';
+  try {
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return raw.slice(0, 16);
+    return d.toLocaleString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return raw;
+  }
 }
 
-function parseReceiptTabParam(raw: string | string[] | undefined): 'pending' | 'approved' | 'rejected' | null {
-  const t = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw[0] : undefined;
-  if (t === 'approved' || t === 'pending' || t === 'rejected') return t;
+function driverPhotoUrl(r: Receipt): string | null {
+  const d = r.driver as { photo?: string | null } | null | undefined;
+  if (d && d.photo && String(d.photo).trim()) return String(d.photo);
   return null;
+}
+
+function driverSeed(r: Receipt): number {
+  return (
+    Number(
+      (r as { driverId?: unknown }).driverId ?? ((r as { driver?: { id?: unknown } | null }).driver?.id ?? 0),
+    ) || 0
+  );
+}
+
+function parseReceiptTabParam(
+  raw: string | string[] | undefined,
+): 'all' | 'pending' | 'approved' | 'rejected' | null {
+  const t = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw[0] : undefined;
+  if (t === 'all' || t === 'approved' || t === 'pending' || t === 'rejected') return t;
+  return null;
+}
+
+function calendarDayKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function dayKeyFromReceipt(r: Receipt): string {
+  const raw = r.receiptDate ?? (r as { createdAt?: string | null }).createdAt;
+  if (raw && typeof raw === 'string') {
+    const d = new Date(raw);
+    if (!Number.isNaN(d.getTime())) return calendarDayKey(d);
+  }
+  return '__nodate__';
+}
+
+function receiptSortTime(r: Receipt): number {
+  const raw = r.receiptDate ?? (r as { createdAt?: string | null }).createdAt;
+  if (raw && typeof raw === 'string') {
+    const t = new Date(raw).getTime();
+    return Number.isNaN(t) ? 0 : t;
+  }
+  return 0;
+}
+
+function relativeSectionTitle(dayKeyStr: string): string {
+  if (dayKeyStr === '__nodate__') return 'Không rõ ngày';
+  const today = calendarDayKey(new Date());
+  const yest = new Date();
+  yest.setDate(yest.getDate() - 1);
+  const yesterday = calendarDayKey(yest);
+  if (dayKeyStr === today) return 'Hôm nay';
+  if (dayKeyStr === yesterday) return 'Hôm qua';
+  const [Y, M, D] = dayKeyStr.split('-').map(Number);
+  const dt = new Date(Y, M - 1, D);
+  const weekdays = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+  return `${weekdays[dt.getDay()]}, ${String(D).padStart(2, '0')}/${String(M).padStart(2, '0')}/${Y}`;
+}
+
+type ReceiptSection = { title: string; data: Receipt[] };
+
+function buildReceiptSections(items: Receipt[]): ReceiptSection[] {
+  const buckets = new Map<string, Receipt[]>();
+  for (const r of items) {
+    const k = dayKeyFromReceipt(r);
+    const arr = buckets.get(k) ?? [];
+    arr.push(r);
+    buckets.set(k, arr);
+  }
+  for (const arr of buckets.values()) {
+    arr.sort((a, b) => receiptSortTime(b) - receiptSortTime(a));
+  }
+  const keys = [...buckets.keys()].sort((a, b) => {
+    if (a === '__nodate__') return 1;
+    if (b === '__nodate__') return -1;
+    return b.localeCompare(a);
+  });
+  return keys.map((k) => ({
+    title: relativeSectionTitle(k),
+    data: buckets.get(k)!,
+  }));
+}
+
+/** Viền trên phiếu — màu tươi, dễ phân biệt trạng thái */
+function statusTopBorderColor(st: string): string {
+  if (st === 'pending') return '#00bcd4';
+  if (st === 'approved') return '#00c853';
+  if (st === 'rejected') return '#ff5252';
+  return `${S.outlineVariant}`;
+}
+
+/** Viền đáy kiểu mép xé phiếu (SVG, kéo giãn theo chiều ngang) */
+function slipZigzagPath(w: number, h: number, teeth: number): string {
+  const tw = w / teeth;
+  const mid = Math.max(2, h - 6);
+  let d = `M0,0 L${w},0 L${w},${mid} `;
+  for (let i = teeth; i > 0; i--) {
+    const xR = i * tw;
+    const xM = xR - tw / 2;
+    d += `L${xM},${h} L${xR - tw},${mid} `;
+  }
+  d += `L0,${mid} L0,0 Z`;
+  return d;
+}
+
+function ReceiptSlipZigzag({ fill }: { fill: string }) {
+  const w = 320;
+  const h = 11;
+  return (
+    <Svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+      <Path d={slipZigzagPath(w, h, 18)} fill={fill} />
+    </Svg>
+  );
 }
 
 function ReceiptCard({
@@ -102,99 +237,150 @@ function ReceiptCard({
   const amount = item.amount != null && Number.isFinite(Number(item.amount)) ? Number(item.amount) : null;
   const displayId = item.billCode?.trim() ? item.billCode.trim() : formatReceiptKtCode(item.id);
   const hasImage = Boolean(firstReceiptImageUrl(item));
+  const photo = driverPhotoUrl(item);
+  const seed = driverSeed(item);
+  const topBarColor = statusTopBorderColor(st);
+  const weightStr =
+    weight != null ? `${weight.toLocaleString('vi-VN', { maximumFractionDigits: 3 })} tấn` : '—';
+  const moneyStr = amount != null && Number.isFinite(amount) ? formatVndShortVi(amount) : '—';
+  const dateTimeLine = formatReceiptDateTime(item);
 
   return (
-    <View style={cardStyles.wrap}>
-      <View style={cardStyles.cardTop}>
-        <Pressable
-          onPress={onOpenDetail}
-          style={({ pressed }) => [cardStyles.cardTitlePress, pressed && cardStyles.cardTitlePressPressed]}
-          accessibilityRole="button"
-          accessibilityLabel="Xem chi tiết phiếu">
-          <View style={cardStyles.cardTitleBlock}>
-            <Text style={cardStyles.driverName}>{driverName(item)}</Text>
-            <View style={cardStyles.metaRow}>
-              <Text style={cardStyles.idLine}>ID: {displayId}</Text>
-              <View style={[cardStyles.pill, pending ? cardStyles.pillPending : cardStyles.pillMuted]}>
-                <Text style={[cardStyles.pillText, pending ? cardStyles.pillTextPending : cardStyles.pillTextMuted]}>
-                  {statusPillLabel(st)}
+    <View style={cardStyles.slipOuter}>
+      <View
+        style={[
+          cardStyles.slipBody,
+          {
+            borderTopColor: topBarColor,
+          },
+        ]}>
+        <View style={cardStyles.cardTitleRow}>
+          <Pressable
+            onPress={onOpenDetail}
+            style={({ pressed }) => [cardStyles.cardTopPress, pressed && cardStyles.cardMainPressPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Xem chi tiết phiếu">
+            <View style={cardStyles.cardTopInner}>
+              <View style={cardStyles.avatarWrap}>
+                {photo ? (
+                  <Image source={{ uri: photo }} style={cardStyles.avatarImg} contentFit="cover" />
+                ) : (
+                  <Image source={pickDefaultAvatar(seed)} style={cardStyles.avatarImg} contentFit="cover" />
+                )}
+              </View>
+              <View style={cardStyles.cardTitleBlock}>
+                <Text style={cardStyles.driverName} numberOfLines={1}>
+                  {driverName(item)}
+                </Text>
+                <View style={cardStyles.metaRow}>
+                  <Text style={cardStyles.idLine} numberOfLines={1}>
+                    {displayId}
+                  </Text>
+                  <Text style={cardStyles.metaSep}>·</Text>
+                  <View
+                    style={[
+                      cardStyles.pill,
+                      pending
+                        ? cardStyles.pillPendingGray
+                        : st === 'approved'
+                          ? cardStyles.pillOk
+                          : st === 'rejected'
+                            ? cardStyles.pillReject
+                            : cardStyles.pillMuted,
+                    ]}>
+                    <Text
+                      style={[
+                        cardStyles.pillText,
+                        pending
+                          ? cardStyles.pillTextGray
+                          : st === 'approved'
+                            ? cardStyles.pillTextOk
+                            : st === 'rejected'
+                              ? cardStyles.pillTextReject
+                              : cardStyles.pillTextMuted,
+                      ]}>
+                      {statusPillLabel(st)}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={cardStyles.dateLine} numberOfLines={1}>
+                  {dateTimeLine}
                 </Text>
               </View>
             </View>
-          </View>
-        </Pressable>
-        {hasImage ? (
-          <Pressable
-            onPress={onPreview}
-            style={({ pressed }) => [cardStyles.zoomBtn, pressed && { opacity: 0.7 }]}
-            accessibilityLabel="Xem ảnh phiếu">
-            <MaterialIcons name="zoom-in" size={22} color={S.primary} />
           </Pressable>
-        ) : (
-          <View style={cardStyles.zoomBtnMuted}>
-            <MaterialIcons name="image-not-supported" size={20} color={`${S.outline}88`} />
-          </View>
-        )}
-      </View>
+          {hasImage ? (
+            <Pressable
+              onPress={onPreview}
+              style={({ pressed }) => [cardStyles.zoomBtn, pressed && { opacity: 0.7 }]}
+              accessibilityLabel="Xem ảnh phiếu">
+              <MaterialIcons name="zoom-in" size={20} color={S.primary} />
+            </Pressable>
+          ) : (
+            <View style={cardStyles.zoomBtnMuted}>
+              <MaterialIcons name="image-not-supported" size={18} color={`${S.outline}88`} />
+            </View>
+          )}
+        </View>
 
-      <Pressable
-        onPress={onOpenDetail}
-        style={({ pressed }) => [cardStyles.cardBodyPress, pressed && cardStyles.cardBodyPressPressed]}
-        accessibilityRole="button"
-        accessibilityLabel="Xem chi tiết phiếu">
-        <View style={cardStyles.metrics}>
-          <View style={cardStyles.metricRow}>
-            <Text style={cardStyles.metricLabel}>Weight (Tấn)</Text>
-            <Text style={cardStyles.metricValue}>{weight != null ? String(weight) : '—'}</Text>
+        <Pressable
+          onPress={onOpenDetail}
+          style={({ pressed }) => [cardStyles.cardMainPress, pressed && cardStyles.cardMainPressPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Xem chi tiết phiếu">
+          <View style={cardStyles.heroRow}>
+            <Text style={cardStyles.heroWeight}>{weightStr}</Text>
+            <Text style={cardStyles.heroMoney}>{moneyStr}</Text>
           </View>
-          <View style={cardStyles.metricRow}>
-            <Text style={cardStyles.metricLabel}>Harvest Area</Text>
-            <Text style={cardStyles.metricValue} numberOfLines={2}>
+
+          <View style={cardStyles.footerRow}>
+            <Text style={cardStyles.areaMuted} numberOfLines={1}>
               {harvestAreaLine(item)}
             </Text>
+            <MaterialIcons name="chevron-right" size={18} color={S.onSurfaceVariant} />
           </View>
-          <View style={cardStyles.metricRow}>
-            <Text style={cardStyles.metricLabel}>Total Value</Text>
-            <Text style={cardStyles.metricValue}>{amount != null ? formatVnd(amount) : '—'}</Text>
+        </Pressable>
+
+        {pending ? (
+          <View style={cardStyles.actions}>
+            <Pressable
+              onPress={onReject}
+              disabled={busy}
+              style={({ pressed }) => [
+                cardStyles.rejectBtn,
+                pressed && cardStyles.rejectBtnPressed,
+                busy && cardStyles.btnDisabled,
+              ]}>
+              <Text style={cardStyles.rejectBtnText}>Từ chối</Text>
+            </Pressable>
+            <Pressable
+              onPress={onApprove}
+              disabled={busy}
+              style={({ pressed }) => [
+                cardStyles.approveBtnWrap,
+                pressed && cardStyles.approveBtnPressed,
+                busy && cardStyles.btnDisabled,
+              ]}>
+              <LinearGradient
+                colors={[S.primary, S.primaryContainer]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={cardStyles.approveBtnGrad}>
+                {busy ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={cardStyles.approveBtnText}>Phê duyệt</Text>
+                )}
+              </LinearGradient>
+            </Pressable>
           </View>
-        </View>
-
-        <View style={cardStyles.detailHintRow}>
-          <Text style={cardStyles.detailHintText}>Xem chi tiết phiếu</Text>
-          <MaterialIcons name="chevron-right" size={20} color={S.primary} />
-        </View>
-      </Pressable>
-
-      {pending ? (
-        <View style={cardStyles.actions}>
-          <Pressable
-            onPress={onReject}
-            disabled={busy}
-            style={({ pressed }) => [
-              cardStyles.rejectBtn,
-              pressed && cardStyles.rejectBtnPressed,
-              busy && cardStyles.btnDisabled,
-            ]}>
-            <Text style={cardStyles.rejectBtnText}>Từ chối</Text>
-          </Pressable>
-          <Pressable
-            onPress={onApprove}
-            disabled={busy}
-            style={({ pressed }) => [
-              cardStyles.approveBtn,
-              pressed && cardStyles.approveBtnPressed,
-              busy && cardStyles.btnDisabled,
-            ]}>
-            {busy ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={cardStyles.approveBtnText}>Phê duyệt</Text>
-            )}
-          </Pressable>
-        </View>
-      ) : (
-        <Text style={cardStyles.doneHint}>Phiếu đã xử lý — không thể thao tác lại từ đây.</Text>
-      )}
+        ) : (
+          <Text style={cardStyles.doneHint} numberOfLines={1}>
+            Đã xử lý
+          </Text>
+        )}
+      </View>
+      <ReceiptSlipZigzag fill={Brand.surface} />
     </View>
   );
 }
@@ -212,7 +398,6 @@ export default function ReceiptApprovalScreen() {
   const [forbidden, setForbidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filtersOpen, setFiltersOpen] = useState(true);
   const [statusTab, setStatusTab] = useState('pending');
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -229,7 +414,7 @@ export default function ReceiptApprovalScreen() {
       const res = await listReceipts({
         page: nextPage,
         limit: PAGE_SIZE,
-        status: statusTab || undefined,
+        status: statusTab === 'all' ? undefined : statusTab,
       });
       if (!res.ok) {
         if (res.forbidden) {
@@ -307,6 +492,8 @@ export default function ReceiptApprovalScreen() {
     });
   }, [items, searchQuery]);
 
+  const receiptSections = useMemo(() => buildReceiptSections(filtered), [filtered]);
+
   const runApprove = useCallback(
     (r: Receipt) => {
       const id = String(r.id);
@@ -359,13 +546,8 @@ export default function ReceiptApprovalScreen() {
 
   const listHeader = useMemo(
     () => (
-      <View style={os.mainHeader}>
-        <Text style={os.eyebrow}>KeoTram Ops</Text>
-        <Text style={os.sectionTitle}>Phê duyệt Phiếu cân</Text>
-        <Text style={styles.enSub}>
-          Review and authorize weight receipts for incoming timber shipments.
-        </Text>
-        <View style={os.heroSearchRow}>
+      <View style={styles.compactHeader}>
+        <View style={styles.searchRowFull}>
           <View style={os.searchFieldWrap}>
             <MaterialIcons name="search" size={18} color={S.outline} style={os.searchFieldIcon} />
             <TextInput
@@ -376,34 +558,27 @@ export default function ReceiptApprovalScreen() {
               style={os.searchFieldInput}
             />
           </View>
-          <Pressable
-            onPress={() => setFiltersOpen((v) => !v)}
-            style={({ pressed }) => [os.filterCompact, pressed && os.filterBtnPressed]}>
-            <MaterialIcons name="filter-list" size={20} color={S.primary} />
-            <Text style={os.filterBtnText}>Lọc</Text>
-          </Pressable>
         </View>
-        {filtersOpen ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={os.chipsContent}>
-            {STATUS_TABS.map((t) => {
-              const selected = statusTab === t.value;
-              return (
-                <Pressable
-                  key={t.value}
-                  onPress={() => setStatusTab(t.value)}
-                  style={[os.chip, selected && os.chipSelected]}>
-                  <Text style={[os.chipText, selected && os.chipTextSelected]}>{t.label}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        ) : null}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipsScroll}
+          contentContainerStyle={os.chipsContent}>
+          {STATUS_TABS.map((t) => {
+            const selected = statusTab === t.value;
+            return (
+              <Pressable
+                key={t.value}
+                onPress={() => setStatusTab(t.value)}
+                style={[os.chip, selected && os.chipSelected]}>
+                <Text style={[os.chipText, selected && os.chipTextSelected]}>{t.label}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
     ),
-    [filtersOpen, searchQuery, statusTab],
+    [searchQuery, statusTab],
   );
 
   const listFooter = useMemo(
@@ -413,7 +588,11 @@ export default function ReceiptApprovalScreen() {
         <View style={styles.footerTip}>
           <MaterialIcons name="move-to-inbox" size={22} color={S.onSurfaceVariant} />
           <Text style={styles.footerTipText}>
-            Cần xem thêm hồ sơ? Kéo để tải thêm dữ liệu chờ duyệt.
+            {statusTab === 'all'
+              ? 'Kéo xuống cuối danh sách hoặc chạm Tải thêm để xem thêm phiếu.'
+              : statusTab === 'pending'
+                ? 'Kéo xuống cuối danh sách hoặc chạm Tải thêm để xem thêm phiếu chờ duyệt.'
+                : 'Kéo xuống cuối danh sách hoặc chạm Tải thêm để xem thêm phiếu trong trạng thái này.'}
           </Text>
         </View>
         {hasNext ? (
@@ -423,17 +602,17 @@ export default function ReceiptApprovalScreen() {
         ) : null}
       </View>
     ),
-    [hasNext, loadingMore, onLoadMore],
+    [hasNext, loadingMore, onLoadMore, statusTab],
   );
 
   if (forbidden && !loading) {
     return (
       <View style={os.root}>
         <View style={[os.topBar, { paddingTop: Math.max(insets.top, 8) }]}>
-          <View style={os.topBarLeft}>
-            <MaterialIcons name="receipt-long" size={26} color={Brand.forest} />
-            <Text style={os.topTitleStitch} numberOfLines={1}>
-              Phê duyệt phiếu
+          <View style={styles.topBarTitleRow}>
+            <Image source={PHIEU_ICON} style={styles.topBarIcon} contentFit="contain" />
+            <Text style={styles.topBarTitle} numberOfLines={1}>
+              Phiếu cân
             </Text>
           </View>
         </View>
@@ -459,10 +638,10 @@ export default function ReceiptApprovalScreen() {
   return (
     <View style={os.root}>
       <View style={[os.topBar, { paddingTop: Math.max(insets.top, 8) }]}>
-        <View style={os.topBarLeft}>
-          <MaterialIcons name="receipt-long" size={26} color={Brand.forest} />
-          <Text style={os.topTitleStitch} numberOfLines={1}>
-            Phê duyệt phiếu
+        <View style={styles.topBarTitleRow}>
+          <Image source={PHIEU_ICON} style={styles.topBarIcon} contentFit="contain" />
+          <Text style={styles.topBarTitle} numberOfLines={1}>
+            Phiếu cân
           </Text>
         </View>
         <View style={os.topBarRight}>
@@ -471,11 +650,6 @@ export default function ReceiptApprovalScreen() {
             onPress={() => router.push('/receipt/form')}
             style={({ pressed }) => [os.iconBtn, pressed && os.iconBtnPressed]}>
             <MaterialIcons name="add" size={26} color={S.primary} />
-          </Pressable>
-          <Pressable
-            onPress={() => setFiltersOpen((v) => !v)}
-            style={({ pressed }) => [os.iconBtn, pressed && os.iconBtnPressed]}>
-            <MaterialIcons name="tune" size={22} color={S.onSurfaceVariant} />
           </Pressable>
         </View>
       </View>
@@ -495,17 +669,23 @@ export default function ReceiptApprovalScreen() {
           <ActivityIndicator size="large" color={S.primary} />
         </View>
       ) : (
-        <FlatList
-          data={filtered}
+        <SectionList
+          sections={receiptSections}
           keyExtractor={(item) => String(item.id)}
           ListHeaderComponent={listHeader}
           ListFooterComponent={listFooter}
-          contentContainerStyle={os.listContent}
+          contentContainerStyle={styles.listContentTight}
+          stickySectionHeadersEnabled
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={S.primary} />
           }
           onEndReached={() => void onLoadMore()}
           onEndReachedThreshold={0.35}
+          renderSectionHeader={({ section: { title } }) => (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionHeaderText}>{title}</Text>
+            </View>
+          )}
           renderItem={({ item }) => (
             <ReceiptCard
               item={item}
@@ -524,9 +704,11 @@ export default function ReceiptApprovalScreen() {
               <Text style={os.empty}>
                 {searchQuery.trim()
                   ? 'Không có phiếu khớp tìm kiếm.'
-                  : statusTab === 'pending'
-                    ? 'Không có phiếu chờ duyệt.'
-                    : 'Không có phiếu trong trạng thái này.'}
+                  : statusTab === 'all'
+                    ? 'Không có phiếu.'
+                    : statusTab === 'pending'
+                      ? 'Không có phiếu chờ duyệt.'
+                      : 'Không có phiếu trong trạng thái này.'}
               </Text>
             ) : null
           }
@@ -545,12 +727,54 @@ export default function ReceiptApprovalScreen() {
 }
 
 const styles = StyleSheet.create({
-  enSub: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: `${S.onSurfaceVariant}cc`,
-    marginTop: 8,
+  topBarTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    minWidth: 0,
+  },
+  topBarIcon: {
+    width: 32,
+    height: 32,
+  },
+  topBarTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+    color: S.primary,
+    flex: 1,
+  },
+  compactHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 6,
+  },
+  searchRowFull: {
+    width: '100%',
     marginBottom: 4,
+  },
+  chipsScroll: {
+    marginTop: 8,
+  },
+  listContentTight: {
+    paddingHorizontal: 12,
+    paddingBottom: 28,
+  },
+  sectionHeader: {
+    paddingTop: 10,
+    paddingBottom: 12,
+    paddingHorizontal: 4,
+    marginBottom: 4,
+    backgroundColor: Brand.canvas,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: `${S.outlineVariant}4d`,
+  },
+  sectionHeaderText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Brand.ink,
+    letterSpacing: 0.15,
   },
   footerBlock: {
     paddingBottom: 32,
@@ -589,144 +813,188 @@ const styles = StyleSheet.create({
 });
 
 const cardStyles = StyleSheet.create({
-  wrap: {
-    backgroundColor: Brand.surface,
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: `${S.outlineVariant}99`,
-    shadowColor: Brand.ink,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 20,
-    elevation: 3,
-  },
-  cardTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+  slipOuter: {
     marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    elevation: 10,
   },
-  cardTitlePress: {
-    flex: 1,
-    minWidth: 0,
-    paddingRight: 8,
+  slipBody: {
+    padding: 12,
+    backgroundColor: Brand.surface,
+    borderBottomWidth: 0,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderLeftColor: '#e8e8e8',
+    borderRightColor: '#e8e8e8',
+    borderTopWidth: 5,
   },
-  cardTitlePressPressed: {
-    opacity: 0.92,
-  },
-  cardBodyPress: {
+  cardMainPress: {
     borderRadius: 0,
   },
-  cardBodyPressPressed: {
+  cardMainPressPressed: {
     opacity: 0.96,
   },
-  cardTitleBlock: {
-    minWidth: 0,
-  },
-  detailHintRow: {
+  cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 4,
-    marginTop: 4,
+    gap: 8,
   },
-  detailHintText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: S.primary,
+  cardTopPress: {
+    flex: 1,
+    minWidth: 0,
+  },
+  cardTopInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  avatarWrap: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: `${S.outlineVariant}aa`,
+  },
+  avatarImg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: S.surfaceContainerLow,
+  },
+  cardTitleBlock: {
+    flex: 1,
+    minWidth: 0,
   },
   driverName: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
+    marginBottom: 4,
     color: Brand.ink,
-    marginBottom: 8,
   },
   metaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+  },
+  metaSep: {
+    fontSize: 12,
+    color: S.outline,
+    fontWeight: '600',
   },
   idLine: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
+    maxWidth: '42%',
     color: S.onSurfaceVariant,
   },
-  pill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+  dateLine: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: S.onSurfaceVariant,
+    marginTop: 6,
+    letterSpacing: 0.1,
   },
-  pillPending: {
-    backgroundColor: `${S.tertiary}22`,
+  pill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 2,
+  },
+  pillPendingGray: {
+    backgroundColor: '#b2ebf2',
+  },
+  pillOk: {
+    backgroundColor: '#c8e6c9',
+  },
+  pillReject: {
+    backgroundColor: '#ffcdd2',
   },
   pillMuted: {
     backgroundColor: S.surfaceContainerHigh,
   },
   pillText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
   },
-  pillTextPending: {
-    color: S.tertiary,
+  pillTextGray: {
+    color: '#00838f',
+  },
+  pillTextOk: {
+    color: S.primary,
+  },
+  pillTextReject: {
+    color: '#b71c1c',
   },
   pillTextMuted: {
     color: S.onSurfaceVariant,
   },
   zoomBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: `${S.primary}12`,
+    width: 36,
+    height: 36,
+    borderRadius: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: `${S.primary}12`,
   },
   zoomBtnMuted: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: S.surfaceContainerLow,
+    width: 36,
+    height: 36,
+    borderRadius: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: S.surfaceContainerLow,
   },
-  metrics: {
-    gap: 12,
-    marginBottom: 18,
-  },
-  metricRow: {
+  heroRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'baseline',
     justifyContent: 'space-between',
     gap: 12,
-    flexWrap: 'wrap',
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: `${S.outlineVariant}88`,
   },
-  metricLabel: {
-    fontSize: 13,
-    color: S.onSurfaceVariant,
-    width: 118,
-    flexShrink: 0,
-  },
-  metricValue: {
+  heroWeight: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
     flex: 1,
-    minWidth: 0,
-    flexShrink: 1,
-    fontSize: 15,
-    fontWeight: '700',
     color: Brand.ink,
+  },
+  heroMoney: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+    flexShrink: 0,
     textAlign: 'right',
+    maxWidth: '52%',
+    color: S.primary,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 4,
+  },
+  areaMuted: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '500',
+    color: S.onSurfaceVariant,
   },
   actions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
+    marginTop: 10,
   },
   rejectBtn: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    paddingVertical: 10,
+    borderRadius: 0,
+    borderWidth: 1,
     borderColor: `${S.outlineVariant}`,
     backgroundColor: Brand.surface,
     alignItems: 'center',
@@ -736,23 +1004,26 @@ const cardStyles = StyleSheet.create({
     backgroundColor: S.surfaceContainerLow,
   },
   rejectBtnText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: S.onSurfaceVariant,
   },
-  approveBtn: {
+  approveBtnWrap: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: S.primary,
+    borderRadius: 0,
+    overflow: 'hidden',
+  },
+  approveBtnGrad: {
+    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 42,
   },
   approveBtnPressed: {
     opacity: 0.92,
   },
   approveBtnText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#fff',
   },
@@ -760,8 +1031,9 @@ const cardStyles = StyleSheet.create({
     opacity: 0.55,
   },
   doneHint: {
-    fontSize: 13,
-    color: S.onSurfaceVariant,
+    fontSize: 11,
+    marginTop: 8,
     fontStyle: 'italic',
+    color: S.onSurfaceVariant,
   },
 });
