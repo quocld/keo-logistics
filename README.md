@@ -1,20 +1,35 @@
 # keo-logistics
 
-Monorepo gồm app (Expo) và API (NestJS).
+Monorepo mã nguồn mở cho **KeoTram Ops** — ứng dụng vận hành và tài chính cho chuỗi vận chuyển / khai thác gỗ keo tràm: tài xế và chủ thầu làm việc trên mobile (Expo), API NestJS xử lý nghiệp vụ, phê duyệt phiếu, bản đồ và báo cáo.
 
-| Thư mục   | Mô tả        |
-| --------- | ------------ |
-| `keo-app` | Ứng dụng mobile / web (Expo) |
-| `keo-be`  | Backend NestJS |
-| `docs`    | BRD / product spec + Postman collection (KeoTram Ops API) |
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Quy trình làm việc với AI (BE trước → App sau): [`AGENTS.md`](AGENTS.md), `.cursor/rules/` (context theo file), `.cursor/agents/` (subagent: `backend-agent`, `app-agent`, `reviewer-agent`).
+## Ảnh màn hình (ứng dụng)
 
-## Tài liệu
+<p align="center">
+  <img src="keo-app/app_screenshoots/login.jpeg" width="180" alt="Đăng nhập" />
+  <img src="keo-app/app_screenshoots/home.jpeg" width="180" alt="Trang chủ" />
+  <img src="keo-app/app_screenshoots/map.jpeg" width="180" alt="Bản đồ" />
+  <img src="keo-app/app_screenshoots/driver_tracking.jpeg" width="180" alt="Theo dõi tài xế" />
+  <img src="keo-app/app_screenshoots/billings.jpeg" width="180" alt="Thanh toán / phiếu" />
+</p>
 
-- [BRD — KeoTram Ops](docs/business.md)
-- Postman: import [`docs/postman/keotram-ops-api.postman_collection.json`](docs/postman/keotram-ops-api.postman_collection.json) và cấu hình biến `baseUrl` (thường kèm `/api/v1`).
-- Schema DB (chi tiết): [`keo-be/KEO_Ops_database.md`](keo-be/KEO_Ops_database.md) — bản trong `keo-app/` có thể lệch; nên đối chiếu migration thực tế trong `keo-be/`.
+## Monorepo
+
+| Thư mục | Mô tả |
+| ------- | ----- |
+| [`keo-app/`](keo-app/) | Ứng dụng mobile / web (Expo Router) |
+| [`keo-be/`](keo-be/) | Backend REST (NestJS, TypeORM) |
+| [`docs/`](docs/) | BRD và Postman collection (hợp đồng API) |
+
+## Tính năng chính (tóm tắt)
+
+- Đăng nhập, phân quyền theo vai trò (tài xế, chủ thầu, admin).
+- Chuyến xe, phiếu cân / receipt, trạm cân và khu khai thác.
+- Theo dõi vị trí và bản đồ vận hành.
+- Báo cáo / tổng hợp tài chính theo nghiệp vụ sản phẩm.
+
+Chi tiết nghiệp vụ: [`docs/business.md`](docs/business.md).
 
 ## Chạy local
 
@@ -22,13 +37,21 @@ Quy trình làm việc với AI (BE trước → App sau): [`AGENTS.md`](AGENTS.
 # App
 cd keo-app && npm install && npm start
 
-# API (xem README / env trong keo-be)
+# API (biến môi trường: xem keo-be/.env.example)
 cd keo-be && npm install && npm run start:dev
 ```
 
-## Đồng bộ từ repo cũ (git subtree)
+## Tài liệu
 
-Nếu vẫn phát triển song song trên `keo-app` / `keo-be` riêng:
+- [BRD — KeoTram Ops](docs/business.md)
+- Postman: [`docs/postman/keotram-ops-api.postman_collection.json`](docs/postman/keotram-ops-api.postman_collection.json) — biến `baseUrl` thường kèm `/api/v1`
+- Schema DB: [`keo-be/KEO_Ops_database.md`](keo-be/KEO_Ops_database.md)
+
+## Làm việc với AI / quy trình feature
+
+Backend trước (API + Postman + BRD), app sau: [`AGENTS.md`](AGENTS.md), cùng `.cursor/rules/` và `.cursor/agents/`.
+
+## Đồng bộ từ repo con (git subtree)
 
 ```bash
 git fetch keo-app main && git subtree pull --prefix=keo-app keo-app main -m "Sync keo-app"
@@ -37,4 +60,10 @@ git fetch keo-be main && git subtree pull --prefix=keo-be keo-be main -m "Sync k
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`): lint + test cho từng package khi push/PR vào `main`.
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml): lint và test theo package khi push/PR vào `main`.
+
+## Giấy phép
+
+Dự án phát hành theo [LICENSE](LICENSE) (MIT). Bạn có thể đổi dòng copyright trong `LICENSE` cho đúng tên / tổ chức của bạn.
+
+Phần `keo-be/` xuất phát từ [nestjs-boilerplate](https://github.com/brocoders/nestjs-boilerplate) (Brocoders, MIT); bản quyền gốc của boilerplate xem [`keo-be/LICENSE`](keo-be/LICENSE).
