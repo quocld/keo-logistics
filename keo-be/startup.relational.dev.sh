@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -e
+
+HOST="${DATABASE_HOST:-postgres}"
+PORT="${DATABASE_PORT:-5432}"
+
+if [ -n "${DATABASE_URL:-}" ]; then
+  HOST=$(node -e "const u=new URL(process.env.DATABASE_URL); process.stdout.write(u.hostname)")
+  PORT=$(node -e "const u=new URL(process.env.DATABASE_URL); process.stdout.write(u.port || '5432')")
+fi
+
+/opt/wait-for-it.sh "${HOST}:${PORT}" -t 60
+npm run migration:run
+npm run seed:run:relational
+npm run start:prod

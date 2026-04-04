@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:17.9-alpine
+    restart: unless-stopped
+    ports:
+      - ${DATABASE_PORT:-5432}:5432
+    environment:
+      POSTGRES_USER: ${DATABASE_USERNAME:-root}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-secret}
+      POSTGRES_DB: ${DATABASE_NAME:-api}
+    volumes:
+      - boilerplate-db-dev:/var/lib/postgresql/data
+
+volumes:
+  boilerplate-db-dev:

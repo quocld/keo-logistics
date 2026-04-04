@@ -1,0 +1,103 @@
+import { Exclude, Expose } from 'class-transformer';
+import { FileType } from '../../files/domain/file';
+import { Role } from '../../roles/domain/role';
+import { Status } from '../../statuses/domain/status';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import databaseConfig from '../../database/config/database.config';
+import { DatabaseConfig } from '../../database/config/database-config.type';
+
+// <database-block>
+const idType = (databaseConfig() as DatabaseConfig).isDocumentDatabase
+  ? String
+  : Number;
+// </database-block>
+
+export class User {
+  @ApiProperty({
+    type: idType,
+  })
+  id: number | string;
+
+  @ApiProperty({
+    type: String,
+    example: 'john.doe@example.com',
+  })
+  @Expose({ groups: ['me', 'admin'] })
+  email: string | null;
+
+  @Exclude({ toPlainOnly: true })
+  password?: string;
+
+  @ApiProperty({
+    type: String,
+    example: 'email',
+  })
+  @Expose({ groups: ['me', 'admin'] })
+  provider: string;
+
+  @ApiProperty({
+    type: String,
+    example: '1234567890',
+  })
+  @Expose({ groups: ['me', 'admin'] })
+  socialId?: string | null;
+
+  @ApiProperty({
+    type: String,
+    example: 'John',
+  })
+  firstName: string | null;
+
+  @ApiProperty({
+    type: String,
+    example: 'Doe',
+  })
+  lastName: string | null;
+
+  @ApiProperty({
+    type: () => FileType,
+  })
+  photo?: FileType | null;
+
+  @ApiProperty({
+    description:
+      'True when the profile picture is a user-uploaded file (photo). False when using a preset avatar from the app (appAvatar).',
+    example: true,
+  })
+  isCustomAvatar: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'When isCustomAvatar is false: key/name of the preset avatar bundled in the app.',
+    example: 'truck_blue',
+  })
+  appAvatar?: string | null;
+
+  @ApiProperty({
+    type: () => Role,
+  })
+  role?: Role | null;
+
+  @ApiProperty({
+    type: () => Status,
+  })
+  status?: Status;
+
+  @ApiPropertyOptional({
+    description:
+      'Owner user id that manages this driver (drivers created by an owner).',
+    type: Number,
+    example: 2,
+  })
+  @Expose({ groups: ['admin', 'owner'] })
+  managedByOwner?: { id: number } | null;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+
+  @ApiProperty()
+  deletedAt: Date;
+}
