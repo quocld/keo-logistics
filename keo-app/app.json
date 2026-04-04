@@ -1,0 +1,83 @@
+{
+  "expo": {
+    "name": "keo",
+    "slug": "keo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./new icons/keotram.png",
+    "scheme": "keo",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "KeoTram cần vị trí khi bạn chọn điểm trên bản đồ, đặt trạm cân / khu khai thác, hoặc theo dõi chuyến xe.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "KeoTram cần vị trí nền để chủ vườn theo dõi chuyến khi bạn không mở app."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./new icons/keotram.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ứng dụng cần truy cập ảnh để đính kèm bill phiếu cân.",
+          "cameraPermission": "Ứng dụng cần camera để chụp bill phiếu cân."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "KeoTram cần vị trí khi bạn chọn điểm trên bản đồ, đặt trạm cân / khu khai thác, hoặc theo dõi chuyến xe.",
+          "locationAlwaysAndWhenInUsePermission": "KeoTram cần vị trí nền để chủ vườn theo dõi chuyến khi bạn không mở app.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./new icons/keotram.png",
+          "color": "#E6F4FE",
+          "defaultChannel": "default",
+          "sounds": [],
+          "enableBackgroundRemoteNotifications": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "aae28edc-cd3f-457b-a84f-e7a312f7c254"
+      }
+    }
+  }
+}

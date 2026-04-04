@@ -1,0 +1,347 @@
+import { StyleSheet } from 'react-native';
+
+import { Brand } from '@/constants/brand';
+
+const S = Brand.stitch;
+
+/** Shared Stitch list chrome (harvest-areas parity) for owner tabs */
+export const ownerStitchListStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: Brand.canvas,
+  },
+  listWithFab: {
+    flex: 1,
+  },
+  flatListFlex: {
+    flex: 1,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingBottom: 12,
+    backgroundColor: Brand.canvas,
+  },
+  topBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    minWidth: 0,
+  },
+  topTitleStitch: {
+    fontSize: 18,
+    fontWeight: '500',
+    letterSpacing: -0.2,
+    color: Brand.forest,
+    flex: 1,
+  },
+  topBarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconBtnPressed: {
+    backgroundColor: S.surfaceContainerLow,
+  },
+  hairline: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: S.surfaceContainerLow,
+    width: '100%',
+  },
+  mainHeader: {
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 12,
+  },
+  eyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: S.onSurfaceVariant,
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    fontSize: 28,
+    fontWeight: '600',
+    letterSpacing: -0.5,
+    color: Brand.ink,
+  },
+  heroSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 20,
+    marginBottom: 4,
+  },
+  searchFieldWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: S.surfaceContainerLow,
+    borderRadius: 12,
+    paddingLeft: 12,
+    minHeight: 44,
+  },
+  searchFieldIcon: {
+    marginRight: 4,
+  },
+  searchFieldInput: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingRight: 12,
+    fontSize: 14,
+    color: Brand.ink,
+  },
+  filterCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: S.surfaceContainerHigh,
+  },
+  filterBtnPressed: {
+    opacity: 0.92,
+  },
+  filterBtnText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: S.primary,
+  },
+  chipsContent: {
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: Brand.chipMuted,
+    marginRight: 8,
+  },
+  chipSelected: {
+    backgroundColor: S.primary,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Brand.inkMuted,
+  },
+  chipTextSelected: {
+    color: '#FFFFFF',
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 48,
+  },
+  stitchCard: {
+    backgroundColor: Brand.surface,
+    borderRadius: 12,
+    marginBottom: 24,
+    shadowColor: Brand.ink,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.04,
+    shadowRadius: 32,
+    elevation: 3,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  stitchAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+  },
+  stitchCardInner: {
+    padding: 24,
+    paddingLeft: 20,
+  },
+  stitchCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  stitchTitleBlock: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 8,
+  },
+  stitchPillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 6,
+  },
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  codeMuted: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: S.onSurfaceVariant,
+  },
+  stitchCardTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Brand.ink,
+  },
+  stitchMetaLine: {
+    fontSize: 14,
+    color: S.onSurfaceVariant,
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  stitchMetaBold: {
+    fontWeight: '700',
+    color: Brand.ink,
+  },
+  stitchSubLine: {
+    fontSize: 13,
+    color: Brand.inkMuted,
+    lineHeight: 19,
+    marginTop: 8,
+  },
+  editorialCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 24,
+    backgroundColor: Brand.surface,
+    shadowColor: Brand.ink,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.04,
+    shadowRadius: 32,
+    elevation: 2,
+  },
+  editorialVisual: {
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editorialBody: {
+    padding: 24,
+  },
+  editorialEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: S.primary,
+    marginBottom: 8,
+  },
+  editorialTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Brand.ink,
+    marginBottom: 10,
+    lineHeight: 26,
+  },
+  editorialDesc: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: S.onSurfaceVariant,
+    marginBottom: 16,
+  },
+  editorialStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  editorialStatNum: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: Brand.ink,
+  },
+  editorialStatCap: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    color: S.outline,
+    marginTop: 4,
+  },
+  editorialStatDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: `${S.outlineVariant}4d`,
+  },
+  blockedCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Brand.surface,
+    shadowColor: Brand.ink,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 24,
+    elevation: 3,
+  },
+  blockedBody: {
+    padding: 24,
+  },
+  blockedTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Brand.ink,
+    marginBottom: 10,
+  },
+  blockedText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: S.onSurfaceVariant,
+    marginBottom: 16,
+  },
+  centerBox: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#B00020',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  retry: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: S.primary,
+    borderRadius: 12,
+  },
+  retryText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  empty: {
+    textAlign: 'center',
+    color: Brand.inkMuted,
+    marginTop: 32,
+    paddingHorizontal: 16,
+  },
+  footerLoader: {
+    marginVertical: 16,
+  },
+});
