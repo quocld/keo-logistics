@@ -6,7 +6,7 @@
 | Ngày         | 29/03/2026                                   |
 | Tác giả      | Grok (dựa trên toàn bộ yêu cầu đã trao đổi) |
 
-**Lưu ý:** Đây là mô tả phạm vi sản phẩm / tầm nhìn MVP. Đối chiếu với mã nguồn backend hiện tại xem [mục 12](#12-đối-chiếu-triển-khai-backend-repo-keo-be).
+**Lưu ý:** Đây là mô tả phạm vi sản phẩm / tầm nhìn MVP. Đối chiếu với mã nguồn backend (`keo-be/`) xem [mục 12](#12-đối-chiếu-triển-khai-backend-repo-keo-be). Collection Postman: [`postman/keotram-ops-api.postman_collection.json`](postman/keotram-ops-api.postman_collection.json) (cùng thư mục `docs/`).
 
 ---
 

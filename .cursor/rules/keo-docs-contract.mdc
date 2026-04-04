@@ -1,0 +1,12 @@
+---
+description: Keo docs — Postman + BRD phải khớp API thực tế
+globs: docs/**
+alwaysApply: false
+---
+
+# Chỉnh `docs/` (Postman / BRD)
+
+- **Postman** (`docs/postman/*.json`): phải khớp hành vi thực tế của `keo-be/` (path, method, body mẫu, mô tả).
+- **BRD** (`docs/business.md`): cập nhật khi đổi luồng nghiệp vụ, role, hoặc bảng đối chiếu triển khai backend.
+- Nếu chỉ sửa docs mà API trong code chưa đổi → xác nhận với user (tránh lệch contract).
+- **Tham chiếu:** `AGENTS.md` ở root monorepo.

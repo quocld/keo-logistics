@@ -6,6 +6,15 @@ Monorepo gồm app (Expo) và API (NestJS).
 | --------- | ------------ |
 | `keo-app` | Ứng dụng mobile / web (Expo) |
 | `keo-be`  | Backend NestJS |
+| `docs`    | BRD / product spec + Postman collection (KeoTram Ops API) |
+
+Quy trình làm việc với AI (BE trước → App sau): [`AGENTS.md`](AGENTS.md), `.cursor/rules/` (context theo file), `.cursor/agents/` (subagent: `backend-agent`, `app-agent`, `reviewer-agent`).
+
+## Tài liệu
+
+- [BRD — KeoTram Ops](docs/business.md)
+- Postman: import [`docs/postman/keotram-ops-api.postman_collection.json`](docs/postman/keotram-ops-api.postman_collection.json) và cấu hình biến `baseUrl` (thường kèm `/api/v1`).
+- Schema DB (chi tiết): [`keo-be/KEO_Ops_database.md`](keo-be/KEO_Ops_database.md) — bản trong `keo-app/` có thể lệch; nên đối chiếu migration thực tế trong `keo-be/`.
 
 ## Chạy local
 

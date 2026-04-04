@@ -1,0 +1,13 @@
+---
+description: Keo Expo app — keo-app workflow (đọc docs contract trước)
+globs: keo-app/**
+alwaysApply: false
+---
+
+# App agent (`keo-app/`)
+
+- **Scope:** chỉ `keo-app/`. Không đổi `keo-be/` trừ khi user cho phép sửa API.
+- **Trước khi code:** đọc `docs/business.md` và request liên quan trong `docs/postman/keotram-ops-api.postman_collection.json`; nếu thiếu chi tiết, đối chiếu DTO/controller trong `keo-be/`.
+- **Sau code:** `cd keo-app && npm run lint`.
+- **Tests:** không thêm test tự động trừ khi user yêu cầu rõ.
+- **Tham chiếu:** `AGENTS.md` ở root monorepo.

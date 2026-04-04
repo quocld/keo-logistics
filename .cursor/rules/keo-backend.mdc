@@ -1,0 +1,13 @@
+---
+description: Keo backend — NestJS keo-be workflow (API first, docs contract)
+globs: keo-be/**
+alwaysApply: false
+---
+
+# Backend agent (`keo-be/`)
+
+- **Scope:** chỉ `keo-be/`. Không đổi `keo-app/` trừ task full-stack.
+- **Order:** plan ngắn → implement (migration nếu cần) → `cd keo-be && npm run lint`.
+- **Tests:** không thêm/sửa unit hoặc e2e trừ khi user yêu cầu rõ.
+- **Contract:** mọi thay đổi API phải cập nhật `docs/postman/keotram-ops-api.postman_collection.json`. Nếu đổi nghiệp vụ/quyền/đối chiếu BRD → cập nhật `docs/business.md`.
+- **Tham chiếu:** `AGENTS.md` ở root monorepo.
