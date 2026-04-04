@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  keo-app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: keo-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: keo-app/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+
+  keo-be:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: keo-be
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: keo-be/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test

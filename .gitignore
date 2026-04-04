@@ -1,0 +1,13 @@
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Env / secrets at repo root (each package may have its own .env.example)
+.env
+.env.local
+.env.*.local
