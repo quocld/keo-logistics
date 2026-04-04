@@ -11,7 +11,6 @@ Monorepo mã nguồn mở cho **KeoTram Ops** — ứng dụng vận hành và t
   <img src="keo-app/app_screenshoots/home.jpeg" width="180" alt="Trang chủ" />
   <img src="keo-app/app_screenshoots/map.jpeg" width="180" alt="Bản đồ" />
   <img src="keo-app/app_screenshoots/driver_tracking.jpeg" width="180" alt="Theo dõi tài xế" />
-  <img src="keo-app/app_screenshoots/billings.jpeg" width="180" alt="Thanh toán / phiếu" />
 </p>
 
 ## Monorepo
