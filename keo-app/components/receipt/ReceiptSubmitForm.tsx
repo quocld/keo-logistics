@@ -95,9 +95,11 @@ function driverDisplayName(d: OwnerDriverUser): string {
 
 type ReceiptSubmitFormProps = {
   variant: ReceiptSubmitVariant;
+  /** Khi mở từ màn khu — gán sẵn khu khai thác */
+  initialHarvestAreaId?: string;
 };
 
-export function ReceiptSubmitForm({ variant }: ReceiptSubmitFormProps) {
+export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubmitFormProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -160,6 +162,14 @@ export function ReceiptSubmitForm({ variant }: ReceiptSubmitFormProps) {
   useEffect(() => {
     void loadLists();
   }, [loadLists]);
+
+  useEffect(() => {
+    if (!initialHarvestAreaId?.trim()) return;
+    const key = String(initialHarvestAreaId).trim();
+    if (areas.some((a) => String(a.id) === key)) {
+      setAreaId(key);
+    }
+  }, [initialHarvestAreaId, areas]);
 
   const areaLabel = useCallback(() => {
     const a = areas.find((x) => String(x.id) === areaId);

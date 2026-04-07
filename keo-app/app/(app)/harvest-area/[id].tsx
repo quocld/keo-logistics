@@ -1,10 +1,10 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -19,6 +19,7 @@ import { Brand } from '@/constants/brand';
 import { useAuth } from '@/contexts/auth-context';
 import { getErrorMessage } from '@/lib/api/errors';
 import { deleteHarvestArea, getHarvestArea } from '@/lib/api/harvest-areas';
+import { listReceipts } from '@/lib/api/receipts';
 import {
   appendHarvestAreaForOwnerDriver,
   getOwnerDriverHarvestAreas,
@@ -26,9 +27,12 @@ import {
   removeHarvestAreaFromOwnerDriver,
 } from '@/lib/api/owner-drivers';
 import { aggregateDriversFromTrips, listTrips } from '@/lib/api/trips';
-import type { HarvestArea, OwnerDriverUser, Trip } from '@/lib/types/ops';
+import { formatIsoDateVi } from '@/lib/date/iso-date';
+import type { HarvestArea, OwnerDriverUser, Receipt, Trip } from '@/lib/types/ops';
 
 const S = Brand.stitch;
+
+const RECEIPTS_PAGE_SIZE = 10;
 
 const STATUS_LABELS: Record<string, string> = {
   inactive: 'Ngưng',
@@ -78,59 +82,31 @@ function pillColorsForStatus(st: string): { bg: string; fg: string } {
   }
 }
 
-function tripPlate(t: Trip): string {
-  const v =
-    (t as { vehiclePlate?: unknown }).vehiclePlate ??
-    (t as { licensePlate?: unknown }).licensePlate ??
-    (t as { plate?: unknown }).plate;
-  return v != null && String(v).trim() ? String(v) : '—';
+function receiptStatusLabelVi(raw: unknown): string {
+  const s = String(raw ?? '')
+    .toLowerCase()
+    .trim();
+  if (!s) return '—';
+  if (s.includes('pending')) return 'Chờ duyệt';
+  if (s.includes('approved')) return 'Đã duyệt';
+  if (s.includes('reject')) return 'Từ chối';
+  return String(raw).replace(/_/g, ' ');
 }
 
-function tripWeightLine(t: Trip): string {
-  const tons =
-    (t as { cargoWeightTons?: unknown }).cargoWeightTons ??
-    (t as { weightTons?: unknown }).weightTons ??
-    (t as { netWeightTons?: unknown }).netWeightTons;
-  if (tons != null && Number.isFinite(Number(tons))) {
-    return `${Number(tons)} tấn`;
+function receiptWeightLine(r: Receipt): string {
+  const w = r.weight;
+  if (w != null && Number.isFinite(Number(w))) {
+    return `${Number(w).toLocaleString('vi-VN')} tấn`;
   }
   return '—';
 }
 
-function tripTimeShort(t: Trip): string {
-  const raw = t.updatedAt ?? t.createdAt;
-  if (!raw || typeof raw !== 'string') return '—';
-  try {
-    const d = new Date(raw);
-    if (Number.isNaN(d.getTime())) return raw.slice(0, 16);
-    return d.toLocaleString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return '—';
-  }
-}
-
-function tripWeighingLabel(t: Trip): string {
-  const w = (t as { weighingStation?: { name?: string } | null }).weighingStation;
-  if (w && typeof w === 'object' && w.name) return String(w.name);
-  const id = (t as { weighingStationId?: unknown }).weighingStationId;
-  if (id != null && id !== '') return `Trạm #${id}`;
-  return '—';
-}
-
-function driverNameFromTrip(t: Trip): string {
-  const ref = t.driver;
-  if (ref && typeof ref === 'object') {
-    const parts = [ref.firstName, ref.lastName].filter(Boolean);
-    if (parts.length) return parts.join(' ');
-    if (ref.email) return ref.email;
-  }
-  if (t.driverId != null && t.driverId !== '') return `Tài xế #${t.driverId}`;
-  return '—';
+function receiptDateLine(r: Receipt): string {
+  const raw = r.receiptDate;
+  if (raw == null || raw === '') return '—';
+  const s = String(raw);
+  const vi = formatIsoDateVi(s);
+  return vi || s.slice(0, 10);
 }
 
 function tripStatusDriverUi(st: string): { label: string; bg: string; fg: string } {
@@ -176,7 +152,10 @@ export default function HarvestAreaDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [trips, setTrips] = useState<Trip[]>([]);
-  const [tripsLoading, setTripsLoading] = useState(false);
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [receiptsLoading, setReceiptsLoading] = useState(false);
+  const [receiptPage, setReceiptPage] = useState(1);
+  const [receiptHasNext, setReceiptHasNext] = useState(false);
   const [assignedOwnerDrivers, setAssignedOwnerDrivers] = useState<OwnerDriverUser[]>([]);
   const [allManagedDrivers, setAllManagedDrivers] = useState<OwnerDriverUser[]>([]);
   const [assignedDriversLoading, setAssignedDriversLoading] = useState(false);
@@ -200,7 +179,6 @@ export default function HarvestAreaDetailScreen() {
 
   const loadTrips = useCallback(async () => {
     if (!id) return;
-    setTripsLoading(true);
     try {
       const res = await listTrips({ page: 1, limit: 25, harvestAreaId: id });
       const forArea = res.data.filter(
@@ -209,8 +187,6 @@ export default function HarvestAreaDetailScreen() {
       setTrips(forArea.length ? forArea : res.data);
     } catch {
       setTrips([]);
-    } finally {
-      setTripsLoading(false);
     }
   }, [id]);
 
@@ -221,6 +197,38 @@ export default function HarvestAreaDetailScreen() {
   useEffect(() => {
     if (item) void loadTrips();
   }, [item, loadTrips]);
+
+  const loadReceipts = useCallback(
+    async (page: number) => {
+      if (!id) return;
+      setReceiptsLoading(true);
+      try {
+        const res = await listReceipts({
+          page,
+          limit: RECEIPTS_PAGE_SIZE,
+          harvestAreaId: id,
+        });
+        if (!res.ok) {
+          setReceipts([]);
+          setReceiptHasNext(false);
+          return;
+        }
+        setReceipts(res.body.data);
+        setReceiptHasNext(res.body.hasNextPage);
+        setReceiptPage(page);
+      } catch {
+        setReceipts([]);
+        setReceiptHasNext(false);
+      } finally {
+        setReceiptsLoading(false);
+      }
+    },
+    [id],
+  );
+
+  useEffect(() => {
+    if (item) void loadReceipts(1);
+  }, [item, loadReceipts]);
 
   const loadAssignedOwnerDrivers = useCallback(async () => {
     if (!id || user?.role !== 'owner') return;
@@ -308,15 +316,8 @@ export default function HarvestAreaDetailScreen() {
       : item?.targetTons != null
         ? `${Number(item.targetTons).toLocaleString('vi-VN')} tấn (mục tiêu)`
         : '—';
-  const profitText = useMemo(() => {
-    if (!item) return '—';
-    const v = pickNumberField(item, ['estimatedProfitVnd', 'expectedProfitVnd', 'profitEstimateVnd']);
-    if (v == null) return '—';
-    if (v >= 1_000_000) {
-      return `${(v / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}M VND`;
-    }
-    return `${v.toLocaleString('vi-VN')} VND`;
-  }, [item]);
+  const yieldSubLabel =
+    currentYield != null ? 'Hiện tại' : item?.targetTons != null ? 'Ước tính (mục tiêu)' : '';
 
   if (!id) {
     return (
@@ -345,10 +346,15 @@ export default function HarvestAreaDetailScreen() {
     );
   }
 
-  const lat =
-    item.latitude != null && item.longitude != null
-      ? `${Number(item.latitude).toFixed(4)}° N, ${Number(item.longitude).toFixed(4)}° E`
-      : null;
+  const hasMapCoords = item.latitude != null && item.longitude != null;
+
+  const openHarvestOnMap = () => {
+    if (!hasMapCoords || !item) return;
+    const la = Number(item.latitude);
+    const lo = Number(item.longitude);
+    if (!Number.isFinite(la) || !Number.isFinite(lo)) return;
+    void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${la},${lo}`);
+  };
 
   const onAddDriver = () => {
     if (isOwner) {
@@ -461,107 +467,161 @@ export default function HarvestAreaDetailScreen() {
             Chi tiết khu khai thác
           </Text>
         </View>
-        <View style={headerStyles.headerRight}>
-          <Pressable style={headerStyles.headerIconBtn} hitSlop={8}>
-            <MaterialIcons name="notifications-none" size={22} color={Brand.ink} />
-          </Pressable>
-          <View style={headerStyles.headerDivider} />
-          <Pressable
-            style={headerStyles.helpBtn}
-            hitSlop={8}
-            onPress={() =>
-              Alert.alert('Hỗ trợ', 'GET /harvest-areas/:id, GET /trips?harvestAreaId=… — KeoTram Ops Postman.')
-            }>
-            <MaterialIcons name="help-outline" size={20} color={Brand.ink} />
-            <Text style={headerStyles.helpBtnText}>Hỗ trợ</Text>
-          </Pressable>
-        </View>
       </View>
       <View style={headerStyles.headerHairline} />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 28 }]}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <Text style={styles.areaCodeLine}>Mã khu vực: {formatAreaRegionCode(item.id)}</Text>
-          <Text style={styles.heroTitle}>{item.name}</Text>
-          <View style={styles.heroStatusRow}>
+          <View style={styles.heroTitleRow}>
+            <Text style={styles.heroTitle} numberOfLines={1}>
+              {item.name}
+            </Text>
+            <Text style={styles.heroCode} numberOfLines={1}>
+              {' '}
+              · {formatAreaRegionCode(item.id)}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.statsGrid}>
+          <View style={styles.statsCell}>
+            <Text style={styles.statsLabel}>Trạng thái</Text>
             <View style={[styles.statusPill, { backgroundColor: pillColors.bg }]}>
-              <Text style={[styles.statusPillText, { color: pillColors.fg }]} numberOfLines={1}>
+              <Text style={[styles.statusPillText, { color: pillColors.fg }]} numberOfLines={2}>
                 {statusHeadlineVi(st).toUpperCase()}
               </Text>
             </View>
           </View>
-          <View style={styles.addrRow}>
-            <MaterialIcons name="location-on" size={20} color={S.primary} style={styles.addrIcon} />
-            <Text style={styles.addrText}>
-              {lat ?? (item.googlePlaceId ? `Place ID: ${item.googlePlaceId}` : 'Chưa có tọa độ')}
+          <View style={styles.statsCell}>
+            <Text style={styles.statsLabel}>Tổng diện tích</Text>
+            <Text style={styles.statsValue}>{areaHa}</Text>
+          </View>
+          <View style={styles.statsCellFull}>
+            <Text style={styles.statsLabel}>
+              Sản lượng{yieldSubLabel ? ` (${yieldSubLabel})` : ''}
             </Text>
-          </View>
-          <View style={styles.actionRow}>
-            <Pressable
-              onPress={() => router.push({ pathname: '/harvest-area/form', params: { id: String(id) } })}
-              style={({ pressed }) => [styles.btnOutline, pressed && styles.btnOutlinePressed]}>
-              <MaterialIcons name="edit" size={18} color={S.primary} />
-              <Text style={styles.btnOutlineText}>Chỉnh sửa</Text>
-            </Pressable>
-            <Pressable
-              onPress={onDelete}
-              disabled={deleting}
-              style={({ pressed }) => [
-                styles.btnOutlineDanger,
-                pressed && styles.btnOutlineDangerPressed,
-                deleting && styles.disabled,
-              ]}>
-              <MaterialIcons name="delete-outline" size={18} color="#c62828" />
-              <Text style={styles.btnOutlineDangerText}>{deleting ? 'Đang xóa…' : 'Xóa khu'}</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.metricsScroll}>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricEyebrow}>Tổng diện tích</Text>
-            <Text style={styles.metricValue}>{areaHa}</Text>
-          </View>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricEyebrow}>Sản lượng hiện tại</Text>
-            <Text style={styles.metricValue} numberOfLines={2}>
+            <Text style={styles.statsValue} numberOfLines={2}>
               {yieldText}
             </Text>
             {currentYield == null && item.targetTons == null ? (
-              <Text style={styles.metricHint}>Cập nhật khi đồng bộ sản lượng thực tế</Text>
+              <Text style={styles.statsHint}>Cập nhật khi đồng bộ sản lượng</Text>
             ) : null}
           </View>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricEyebrow}>Lợi nhuận dự kiến</Text>
-            <Text style={styles.metricValue} numberOfLines={2}>
-              {profitText}
-            </Text>
-            {profitText === '—' ? (
-              <Text style={styles.metricHint}>Ước tính khi backend cung cấp trường lợi nhuận</Text>
+        </View>
+
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHead}>
+            <Text style={styles.sectionTitle}>Các phiếu cân của khu</Text>
+            {isOwner ? (
+              <Pressable
+                onPress={() => router.push({ pathname: '/receipt/form', params: { harvestAreaId: String(id) } })}
+                style={({ pressed }) => [styles.createReceiptBtn, pressed && styles.createReceiptBtnPressed]}>
+                <Text style={styles.createReceiptBtnText}>Tạo phiếu</Text>
+              </Pressable>
             ) : null}
           </View>
-        </ScrollView>
+          {receiptsLoading ? (
+            <ActivityIndicator color={S.primary} style={{ marginVertical: 12 }} />
+          ) : receipts.length === 0 ? (
+            <Text style={styles.emptyInline}>Chưa có phiếu cân nào cho khu này.</Text>
+          ) : (
+            <>
+              <ScrollView horizontal showsHorizontalScrollIndicator>
+                <View style={styles.receiptTable}>
+                  <View style={styles.receiptTableHeader}>
+                    <Text style={[styles.receiptTh, styles.receiptColDate]}>Ngày</Text>
+                    <Text style={[styles.receiptTh, styles.receiptColWeight]}>KL (tấn)</Text>
+                    <Text style={[styles.receiptTh, styles.receiptColStatus]}>Trạng thái</Text>
+                    <Text style={[styles.receiptTh, styles.receiptColBill]}>Mã bill</Text>
+                  </View>
+                  {receipts.map((r) => (
+                    <Pressable
+                      key={String(r.id)}
+                      onPress={() => router.push(`/receipt/${String(r.id)}`)}
+                      style={({ pressed }) => [styles.receiptTableRow, pressed && styles.receiptTableRowPressed]}>
+                      <Text style={[styles.receiptTd, styles.receiptColDate]} numberOfLines={1}>
+                        {receiptDateLine(r)}
+                      </Text>
+                      <Text style={[styles.receiptTd, styles.receiptColWeight]} numberOfLines={1}>
+                        {receiptWeightLine(r)}
+                      </Text>
+                      <Text style={[styles.receiptTd, styles.receiptColStatus]} numberOfLines={1}>
+                        {receiptStatusLabelVi(r.status)}
+                      </Text>
+                      <Text style={[styles.receiptTd, styles.receiptColBill]} numberOfLines={1}>
+                        {r.billCode != null && String(r.billCode).trim() !== '' ? String(r.billCode) : '—'}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </ScrollView>
+              <View style={styles.receiptPager}>
+                <Pressable
+                  disabled={receiptPage <= 1 || receiptsLoading}
+                  onPress={() => void loadReceipts(receiptPage - 1)}
+                  style={({ pressed }) => [
+                    styles.receiptPagerBtn,
+                    (receiptPage <= 1 || receiptsLoading) && styles.receiptPagerBtnDisabled,
+                    pressed && receiptPage > 1 && !receiptsLoading && styles.receiptPagerBtnPressed,
+                  ]}>
+                  <MaterialIcons name="chevron-left" size={22} color={receiptPage <= 1 ? S.outlineVariant : S.primary} />
+                  <Text
+                    style={[
+                      styles.receiptPagerBtnText,
+                      receiptPage <= 1 && styles.receiptPagerBtnTextDisabled,
+                    ]}>
+                    Trước
+                  </Text>
+                </Pressable>
+                <Text style={styles.receiptPagerInfo}>
+                  Trang {receiptPage}
+                  {receiptHasNext || receiptPage > 1 ? ` · ${receipts.length} phiếu` : ''}
+                </Text>
+                <Pressable
+                  disabled={!receiptHasNext || receiptsLoading}
+                  onPress={() => void loadReceipts(receiptPage + 1)}
+                  style={({ pressed }) => [
+                    styles.receiptPagerBtn,
+                    (!receiptHasNext || receiptsLoading) && styles.receiptPagerBtnDisabled,
+                    pressed && receiptHasNext && !receiptsLoading && styles.receiptPagerBtnPressed,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.receiptPagerBtnText,
+                      !receiptHasNext && styles.receiptPagerBtnTextDisabled,
+                    ]}>
+                    Sau
+                  </Text>
+                  <MaterialIcons
+                    name="chevron-right"
+                    size={22}
+                    color={!receiptHasNext ? S.outlineVariant : S.primary}
+                  />
+                </Pressable>
+              </View>
+            </>
+          )}
+        </View>
 
         <View style={styles.mapCard}>
           <Text style={styles.mapEyebrow}>Vị trí khu</Text>
-          <View style={styles.mapVisual}>
-            <LinearGradient
-              colors={['#e8f5e9', S.surfaceContainerLow, '#c8e6c9']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <MaterialIcons name="map" size={44} color={S.primary} style={{ opacity: 0.75 }} />
-            <Text style={styles.mapCoord}>
-              {lat ?? 'Thêm vĩ độ / kinh độ trong form chỉnh sửa khu'}
+          <Pressable
+            onPress={hasMapCoords ? openHarvestOnMap : undefined}
+            disabled={!hasMapCoords}
+            style={({ pressed }) => [
+              styles.mapRow,
+              !hasMapCoords && styles.mapRowDisabled,
+              pressed && hasMapCoords && styles.mapRowPressed,
+            ]}>
+            <MaterialIcons name="map" size={22} color={hasMapCoords ? S.primary : S.outlineVariant} />
+            <Text style={styles.mapRowText}>
+              {hasMapCoords ? 'Mở vị trí trên bản đồ' : 'Chưa có vị trí — bổ sung trong form chỉnh sửa khu'}
             </Text>
-          </View>
+            {hasMapCoords ? <MaterialIcons name="open-in-new" size={18} color={S.primary} /> : null}
+          </Pressable>
         </View>
 
         <View style={styles.sectionCard}>
@@ -718,61 +778,6 @@ export default function HarvestAreaDetailScreen() {
         </Modal>
 
         <View style={styles.sectionCard}>
-          <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>Lịch sử chuyến gần đây</Text>
-            <Pressable
-              hitSlop={8}
-              onPress={() =>
-                Alert.alert('Xem tất cả', 'Danh sách trip đầy đủ có thể mở rộng từ API /trips với phân trang.')
-              }
-              style={styles.seeAllRow}>
-              <Text style={styles.linkText}>Xem tất cả</Text>
-              <MaterialIcons name="chevron-right" size={20} color={S.primary} />
-            </Pressable>
-          </View>
-          {tripsLoading ? (
-            <ActivityIndicator color={S.primary} style={{ marginVertical: 16 }} />
-          ) : null}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.tableWrap}>
-              <View style={styles.tableHeader}>
-                <Text style={[styles.th, styles.thPlate]}>Biển số</Text>
-                <Text style={[styles.th, styles.thDriver]}>Tài xế</Text>
-                <Text style={[styles.th, styles.thWt]}>Trọng lượng</Text>
-                <Text style={[styles.th, styles.thTime]}>Thời gian</Text>
-                <Text style={[styles.th, styles.thStation]}>Trạm cân</Text>
-              </View>
-              {trips.length === 0 && !tripsLoading ? (
-                <View style={styles.tableEmpty}>
-                  <MaterialIcons name="local-shipping" size={32} color={`${S.outline}66`} />
-                  <Text style={styles.tableEmptyText}>Chưa có chuyến cho khu này.</Text>
-                </View>
-              ) : (
-                trips.slice(0, 6).map((t) => (
-                  <View key={String(t.id)} style={styles.tableRow}>
-                    <Text style={[styles.td, styles.thPlate]} numberOfLines={1}>
-                      {tripPlate(t)}
-                    </Text>
-                    <Text style={[styles.td, styles.thDriver]} numberOfLines={1}>
-                      {driverNameFromTrip(t)}
-                    </Text>
-                    <Text style={[styles.td, styles.thWt]} numberOfLines={1}>
-                      {tripWeightLine(t)}
-                    </Text>
-                    <Text style={[styles.td, styles.thTime]} numberOfLines={1}>
-                      {tripTimeShort(t)}
-                    </Text>
-                    <Text style={[styles.td, styles.thStation]} numberOfLines={1}>
-                      {tripWeighingLabel(t)}
-                    </Text>
-                  </View>
-                ))
-              )}
-            </View>
-          </ScrollView>
-        </View>
-
-        <View style={styles.sectionCard}>
           <Text style={styles.sectionEyebrowSmall}>Liên hệ và bãi</Text>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Liên hệ bãi</Text>
@@ -808,6 +813,27 @@ export default function HarvestAreaDetailScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      <View style={[styles.screenFooter, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+        <Pressable
+          onPress={() => router.push({ pathname: '/harvest-area/form', params: { id: String(id) } })}
+          style={({ pressed }) => [styles.footerBtn, styles.footerBtnPrimary, pressed && styles.footerBtnPressed]}>
+          <MaterialIcons name="edit" size={20} color={S.primary} />
+          <Text style={styles.footerBtnPrimaryText}>Chỉnh sửa khu</Text>
+        </Pressable>
+        <Pressable
+          onPress={onDelete}
+          disabled={deleting}
+          style={({ pressed }) => [
+            styles.footerBtn,
+            styles.footerBtnDanger,
+            pressed && !deleting && styles.footerBtnDangerPressed,
+            deleting && styles.disabled,
+          ]}>
+          <MaterialIcons name="delete-outline" size={20} color="#c62828" />
+          <Text style={styles.footerBtnDangerText}>{deleting ? 'Đang xóa…' : 'Xóa khu'}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -820,7 +846,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 12,
   },
   centered: {
     flex: 1,
@@ -845,29 +871,74 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   hero: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  areaCodeLine: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: S.onSurfaceVariant,
-    marginBottom: 8,
+  heroTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 10,
+    gap: 4,
   },
   heroTitle: {
-    fontSize: 24,
+    flex: 1,
+    minWidth: 0,
+    fontSize: 22,
     fontWeight: '700',
     letterSpacing: -0.4,
     color: Brand.ink,
-    marginBottom: 10,
   },
-  heroStatusRow: {
+  heroCode: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: S.onSurfaceVariant,
+    flexShrink: 0,
+  },
+  statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
+    gap: 10,
+    marginBottom: 16,
+  },
+  statsCell: {
+    width: '48%',
+    flexGrow: 1,
+    minWidth: '46%',
+    backgroundColor: Brand.surface,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: `${S.outlineVariant}88`,
+  },
+  statsCellFull: {
+    width: '100%',
+    backgroundColor: Brand.surface,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: `${S.outlineVariant}88`,
+  },
+  statsLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    color: S.onSurfaceVariant,
+    marginBottom: 8,
+  },
+  statsValue: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: Brand.ink,
+    letterSpacing: -0.2,
+  },
+  statsHint: {
+    marginTop: 6,
+    fontSize: 11,
+    lineHeight: 15,
+    color: `${S.outline}b3`,
   },
   statusPill: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
     alignSelf: 'flex-start',
@@ -877,103 +948,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  addrRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    marginBottom: 18,
-  },
-  addrIcon: { marginTop: 1 },
-  addrText: {
-    flex: 1,
-    fontSize: 15,
-    lineHeight: 22,
-    color: S.onSurfaceVariant,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  btnOutline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: S.primary,
-    backgroundColor: Brand.surface,
-  },
-  btnOutlinePressed: {
-    backgroundColor: `${S.primary}12`,
-  },
-  btnOutlineText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: S.primary,
-  },
-  btnOutlineDanger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#ffcdd2',
-    backgroundColor: '#fff5f5',
-  },
-  btnOutlineDangerPressed: {
-    backgroundColor: '#ffebee',
-  },
-  btnOutlineDangerText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#c62828',
-  },
   disabled: { opacity: 0.55 },
-  metricsScroll: {
-    gap: 12,
-    paddingBottom: 4,
-    marginBottom: 20,
-  },
-  metricCard: {
-    width: 200,
-    backgroundColor: Brand.surface,
-    borderRadius: 14,
-    padding: 16,
-    marginRight: 4,
-    shadowColor: Brand.ink,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 20,
-    elevation: 3,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: `${S.outlineVariant}88`,
-  },
-  metricEyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    color: S.onSurfaceVariant,
-    marginBottom: 8,
-  },
-  metricValue: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: Brand.ink,
-    letterSpacing: -0.2,
-  },
-  metricHint: {
-    marginTop: 6,
-    fontSize: 11,
-    lineHeight: 15,
-    color: `${S.outline}b3`,
-  },
-  mapCard: { marginBottom: 18 },
+  mapCard: { marginBottom: 16 },
   mapEyebrow: {
     fontSize: 12,
     fontWeight: '700',
@@ -982,21 +958,161 @@ const styles = StyleSheet.create({
     color: S.onSurfaceVariant,
     marginBottom: 10,
   },
-  mapVisual: {
-    height: 140,
-    borderRadius: 14,
-    overflow: 'hidden',
+  mapRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: S.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: `${S.outlineVariant}66`,
+  },
+  mapRowDisabled: {
+    opacity: 0.85,
+  },
+  mapRowPressed: {
+    backgroundColor: `${S.primary}14`,
+  },
+  mapRowText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: Brand.ink,
+  },
+  createReceiptBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: S.primary,
+  },
+  createReceiptBtnPressed: {
+    opacity: 0.92,
+  },
+  createReceiptBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  receiptTable: {
+    minWidth: '100%',
+  },
+  receiptTableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: S.outlineVariant,
+    paddingBottom: 8,
+    marginBottom: 4,
+  },
+  receiptTh: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: S.onSurfaceVariant,
+  },
+  receiptColDate: { width: 100, paddingRight: 8 },
+  receiptColWeight: { width: 88, paddingRight: 8 },
+  receiptColStatus: { width: 100, paddingRight: 8 },
+  receiptColBill: { width: 120, minWidth: 100 },
+  receiptTableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: `${S.outlineVariant}99`,
+  },
+  receiptTableRowPressed: {
+    backgroundColor: `${S.primary}0f`,
+  },
+  receiptTd: {
+    fontSize: 13,
+    color: Brand.ink,
+  },
+  receiptPager: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: `${S.outlineVariant}55`,
+  },
+  receiptPagerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+  },
+  receiptPagerBtnPressed: {
+    backgroundColor: `${S.primary}12`,
+  },
+  receiptPagerBtnDisabled: {
+    opacity: 0.45,
+  },
+  receiptPagerBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: S.primary,
+  },
+  receiptPagerBtnTextDisabled: {
+    color: S.outlineVariant,
+  },
+  receiptPagerInfo: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: S.onSurfaceVariant,
+  },
+  screenFooter: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: `${S.outlineVariant}aa`,
+    backgroundColor: Brand.surface,
+  },
+  footerBtn: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: S.surfaceContainerLow,
-  },
-  mapCoord: {
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: '500',
-    color: S.onSurfaceVariant,
+    gap: 8,
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    textAlign: 'center',
+    borderRadius: 12,
+    minHeight: 44,
+  },
+  footerBtnPrimary: {
+    borderWidth: 1.5,
+    borderColor: S.primary,
+    backgroundColor: Brand.surface,
+  },
+  footerBtnDanger: {
+    borderWidth: 1.5,
+    borderColor: '#ffcdd2',
+    backgroundColor: '#fff5f5',
+  },
+  footerBtnPressed: {
+    backgroundColor: `${S.primary}12`,
+  },
+  footerBtnDangerPressed: {
+    backgroundColor: '#ffebee',
+  },
+  footerBtnPrimaryText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: S.primary,
+  },
+  footerBtnDangerText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#c62828',
   },
   sectionCard: {
     backgroundColor: Brand.surface,
@@ -1191,58 +1307,6 @@ const styles = StyleSheet.create({
   modalCloseBtnText: {
     fontSize: 16,
     fontWeight: '600',
-    color: S.onSurfaceVariant,
-  },
-  seeAllRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  linkText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: S.primary,
-  },
-  tableWrap: {
-    minWidth: 520,
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: S.outlineVariant,
-    paddingBottom: 8,
-    marginBottom: 4,
-  },
-  th: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-    color: S.onSurfaceVariant,
-  },
-  thPlate: { width: 88, paddingRight: 6 },
-  thDriver: { width: 110, paddingRight: 6 },
-  thWt: { width: 78, paddingRight: 6 },
-  thTime: { width: 96, paddingRight: 6 },
-  thStation: { flex: 1, minWidth: 100 },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: `${S.outlineVariant}99`,
-  },
-  td: {
-    fontSize: 13,
-    color: Brand.ink,
-  },
-  tableEmpty: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    gap: 8,
-  },
-  tableEmptyText: {
-    fontSize: 14,
     color: S.onSurfaceVariant,
   },
   sectionEyebrowSmall: {

@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { Alert } from 'react-native';
 
@@ -8,6 +8,9 @@ import { useAuth } from '@/contexts/auth-context';
 export default function ReceiptFormScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { harvestAreaId } = useLocalSearchParams<{ harvestAreaId?: string }>();
+  const initialHarvestAreaId =
+    typeof harvestAreaId === 'string' && harvestAreaId.trim() !== '' ? harvestAreaId.trim() : undefined;
 
   useEffect(() => {
     if (user && user.role !== 'owner') {
@@ -16,5 +19,5 @@ export default function ReceiptFormScreen() {
     }
   }, [user, router]);
 
-  return <ReceiptSubmitForm variant="owner" />;
+  return <ReceiptSubmitForm variant="owner" initialHarvestAreaId={initialHarvestAreaId} />;
 }
