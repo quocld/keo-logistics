@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -27,7 +28,8 @@ import {
   removeHarvestAreaFromOwnerDriver,
 } from '@/lib/api/owner-drivers';
 import { aggregateDriversFromTrips, listTrips } from '@/lib/api/trips';
-import { formatIsoDateVi } from '@/lib/date/iso-date';
+import { formatReceiptDateAndTimeVi } from '@/lib/date/vi-receipt-time';
+import { formatVndShortVi } from '@/lib/format/vnd-vi';
 import type { HarvestArea, OwnerDriverUser, Receipt, Trip } from '@/lib/types/ops';
 
 const S = Brand.stitch;
@@ -93,20 +95,38 @@ function receiptStatusLabelVi(raw: unknown): string {
   return String(raw).replace(/_/g, ' ');
 }
 
+function receiptStatusUi(raw: unknown): { label: string; bg: string; fg: string } {
+  const s = String(raw ?? '')
+    .toLowerCase()
+    .trim();
+  if (s.includes('approved')) {
+    return { label: 'Đã duyệt', bg: `${S.primary}22`, fg: S.primary };
+  }
+  if (s.includes('pending')) {
+    return { label: 'Chờ duyệt', bg: `${Brand.ink}0f`, fg: Brand.inkMuted };
+  }
+  if (s.includes('reject')) {
+    return { label: 'Từ chối', bg: '#ffebee', fg: '#b71c1c' };
+  }
+  return {
+    label: receiptStatusLabelVi(raw),
+    bg: S.surfaceContainerHigh,
+    fg: S.onSurfaceVariant,
+  };
+}
+
+function formatReceiptAmountVnd(r: Receipt): string {
+  const a = r.amount;
+  if (a == null || !Number.isFinite(Number(a))) return '—';
+  return `${Number(a).toLocaleString('vi-VN')} đ`;
+}
+
 function receiptWeightLine(r: Receipt): string {
   const w = r.weight;
   if (w != null && Number.isFinite(Number(w))) {
     return `${Number(w).toLocaleString('vi-VN')} tấn`;
   }
   return '—';
-}
-
-function receiptDateLine(r: Receipt): string {
-  const raw = r.receiptDate;
-  if (raw == null || raw === '') return '—';
-  const s = String(raw);
-  const vi = formatIsoDateVi(s);
-  return vi || s.slice(0, 10);
 }
 
 function tripStatusDriverUi(st: string): { label: string; bg: string; fg: string } {
@@ -156,6 +176,11 @@ export default function HarvestAreaDetailScreen() {
   const [receiptsLoading, setReceiptsLoading] = useState(false);
   const [receiptPage, setReceiptPage] = useState(1);
   const [receiptHasNext, setReceiptHasNext] = useState(false);
+  const [receiptApprovedAgg, setReceiptApprovedAgg] = useState<{
+    count: number;
+    totalVnd: number;
+    loading: boolean;
+  }>({ count: 0, totalVnd: 0, loading: true });
   const [assignedOwnerDrivers, setAssignedOwnerDrivers] = useState<OwnerDriverUser[]>([]);
   const [allManagedDrivers, setAllManagedDrivers] = useState<OwnerDriverUser[]>([]);
   const [assignedDriversLoading, setAssignedDriversLoading] = useState(false);
@@ -229,6 +254,46 @@ export default function HarvestAreaDetailScreen() {
   useEffect(() => {
     if (item) void loadReceipts(1);
   }, [item, loadReceipts]);
+
+  const loadReceiptAggregate = useCallback(async () => {
+    if (!id) return;
+    setReceiptApprovedAgg((prev) => ({ ...prev, loading: true }));
+    let totalVnd = 0;
+    let count = 0;
+    let page = 1;
+    const limit = 100;
+    try {
+      for (;;) {
+        const res = await listReceipts({
+          page,
+          limit,
+          harvestAreaId: id,
+          status: 'approved',
+        });
+        if (!res.ok) {
+          setReceiptApprovedAgg({ count: 0, totalVnd: 0, loading: false });
+          return;
+        }
+        for (const r of res.body.data) {
+          count += 1;
+          const a = r.amount;
+          if (a != null && Number.isFinite(Number(a))) totalVnd += Number(a);
+        }
+        if (!res.body.hasNextPage) break;
+        page += 1;
+        if (page > 40) break;
+      }
+      setReceiptApprovedAgg({ count, totalVnd, loading: false });
+    } catch {
+      setReceiptApprovedAgg({ count: 0, totalVnd: 0, loading: false });
+    }
+  }, [id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadReceiptAggregate();
+    }, [loadReceiptAggregate]),
+  );
 
   const loadAssignedOwnerDrivers = useCallback(async () => {
     if (!id || user?.role !== 'owner') return;
@@ -510,6 +575,20 @@ export default function HarvestAreaDetailScreen() {
               <Text style={styles.statsHint}>Cập nhật khi đồng bộ sản lượng</Text>
             ) : null}
           </View>
+          <View style={styles.statsSubRow}>
+            <View style={styles.statsCell}>
+              <Text style={styles.statsLabel}>Tổng doanh thu (đã duyệt)</Text>
+              <Text style={styles.statsValue}>
+                {receiptApprovedAgg.loading ? '…' : formatVndShortVi(receiptApprovedAgg.totalVnd)}
+              </Text>
+            </View>
+            <View style={styles.statsCell}>
+              <Text style={styles.statsLabel}>Phiếu đã duyệt</Text>
+              <Text style={styles.statsValue}>
+                {receiptApprovedAgg.loading ? '…' : String(receiptApprovedAgg.count)}
+              </Text>
+            </View>
+          </View>
         </View>
 
         <View style={styles.sectionCard}>
@@ -532,30 +611,37 @@ export default function HarvestAreaDetailScreen() {
               <ScrollView horizontal showsHorizontalScrollIndicator>
                 <View style={styles.receiptTable}>
                   <View style={styles.receiptTableHeader}>
-                    <Text style={[styles.receiptTh, styles.receiptColDate]}>Ngày</Text>
+                    <Text style={[styles.receiptTh, styles.receiptColDate]}>Ngày & giờ</Text>
                     <Text style={[styles.receiptTh, styles.receiptColWeight]}>KL (tấn)</Text>
                     <Text style={[styles.receiptTh, styles.receiptColStatus]}>Trạng thái</Text>
-                    <Text style={[styles.receiptTh, styles.receiptColBill]}>Mã bill</Text>
+                    <Text style={[styles.receiptTh, styles.receiptColAmount]}>Số tiền</Text>
                   </View>
-                  {receipts.map((r) => (
-                    <Pressable
-                      key={String(r.id)}
-                      onPress={() => router.push(`/receipt/${String(r.id)}`)}
-                      style={({ pressed }) => [styles.receiptTableRow, pressed && styles.receiptTableRowPressed]}>
-                      <Text style={[styles.receiptTd, styles.receiptColDate]} numberOfLines={1}>
-                        {receiptDateLine(r)}
-                      </Text>
-                      <Text style={[styles.receiptTd, styles.receiptColWeight]} numberOfLines={1}>
-                        {receiptWeightLine(r)}
-                      </Text>
-                      <Text style={[styles.receiptTd, styles.receiptColStatus]} numberOfLines={1}>
-                        {receiptStatusLabelVi(r.status)}
-                      </Text>
-                      <Text style={[styles.receiptTd, styles.receiptColBill]} numberOfLines={1}>
-                        {r.billCode != null && String(r.billCode).trim() !== '' ? String(r.billCode) : '—'}
-                      </Text>
-                    </Pressable>
-                  ))}
+                  {receipts.map((r) => {
+                    const { dateLine, timeLine } = formatReceiptDateAndTimeVi(r.receiptDate);
+                    const stUi = receiptStatusUi(r.status);
+                    return (
+                      <Pressable
+                        key={String(r.id)}
+                        onPress={() => router.push(`/receipt/${String(r.id)}`)}
+                        style={({ pressed }) => [styles.receiptTableRow, pressed && styles.receiptTableRowPressed]}>
+                        <View style={styles.receiptColDateWrap}>
+                          <Text style={styles.receiptTdDate}>{dateLine}</Text>
+                          {timeLine ? <Text style={styles.receiptTdTime}>{timeLine}</Text> : null}
+                        </View>
+                        <Text style={[styles.receiptTd, styles.receiptColWeight]} numberOfLines={1}>
+                          {receiptWeightLine(r)}
+                        </Text>
+                        <View style={[styles.receiptStatusPill, { backgroundColor: stUi.bg }]}>
+                          <Text style={[styles.receiptStatusPillText, { color: stUi.fg }]} numberOfLines={1}>
+                            {stUi.label}
+                          </Text>
+                        </View>
+                        <Text style={[styles.receiptTd, styles.receiptColAmount]} numberOfLines={1}>
+                          {formatReceiptAmountVnd(r)}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
               </ScrollView>
               <View style={styles.receiptPager}>
@@ -812,28 +898,32 @@ export default function HarvestAreaDetailScreen() {
             <Text style={styles.noticeBody}>{String(item.siteNotes)}</Text>
           </View>
         ) : null}
-      </ScrollView>
 
-      <View style={[styles.screenFooter, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-        <Pressable
-          onPress={() => router.push({ pathname: '/harvest-area/form', params: { id: String(id) } })}
-          style={({ pressed }) => [styles.footerBtn, styles.footerBtnPrimary, pressed && styles.footerBtnPressed]}>
-          <MaterialIcons name="edit" size={20} color={S.primary} />
-          <Text style={styles.footerBtnPrimaryText}>Chỉnh sửa khu</Text>
-        </Pressable>
-        <Pressable
-          onPress={onDelete}
-          disabled={deleting}
-          style={({ pressed }) => [
-            styles.footerBtn,
-            styles.footerBtnDanger,
-            pressed && !deleting && styles.footerBtnDangerPressed,
-            deleting && styles.disabled,
+        <View
+          style={[
+            styles.screenFooter,
+            { paddingBottom: Math.max(insets.bottom, 16) },
           ]}>
-          <MaterialIcons name="delete-outline" size={20} color="#c62828" />
-          <Text style={styles.footerBtnDangerText}>{deleting ? 'Đang xóa…' : 'Xóa khu'}</Text>
-        </Pressable>
-      </View>
+          <Pressable
+            onPress={() => router.push({ pathname: '/harvest-area/form', params: { id: String(id) } })}
+            style={({ pressed }) => [styles.footerBtn, styles.footerBtnPrimary, pressed && styles.footerBtnPressed]}>
+            <MaterialIcons name="edit" size={20} color={S.primary} />
+            <Text style={styles.footerBtnPrimaryText}>Chỉnh sửa khu</Text>
+          </Pressable>
+          <Pressable
+            onPress={onDelete}
+            disabled={deleting}
+            style={({ pressed }) => [
+              styles.footerBtn,
+              styles.footerBtnDanger,
+              pressed && !deleting && styles.footerBtnDangerPressed,
+              deleting && styles.disabled,
+            ]}>
+            <MaterialIcons name="delete-outline" size={20} color="#c62828" />
+            <Text style={styles.footerBtnDangerText}>{deleting ? 'Đang xóa…' : 'Xóa khu'}</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -847,6 +937,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 12,
+    paddingBottom: 8,
   },
   centered: {
     flex: 1,
@@ -916,6 +1007,12 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: `${S.outlineVariant}88`,
+  },
+  statsSubRow: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
   },
   statsLabel: {
     fontSize: 11,
@@ -1013,13 +1110,42 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: S.onSurfaceVariant,
   },
-  receiptColDate: { width: 100, paddingRight: 8 },
-  receiptColWeight: { width: 88, paddingRight: 8 },
-  receiptColStatus: { width: 100, paddingRight: 8 },
-  receiptColBill: { width: 120, minWidth: 100 },
+  receiptColDate: { width: 118, paddingRight: 8 },
+  receiptColWeight: { width: 80, paddingRight: 8 },
+  receiptColStatus: { width: 108, paddingRight: 8 },
+  receiptColAmount: { width: 96, paddingRight: 4, textAlign: 'right' },
+  receiptColDateWrap: {
+    width: 118,
+    paddingRight: 8,
+    justifyContent: 'center',
+  },
+  receiptTdDate: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Brand.ink,
+  },
+  receiptTdTime: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '500',
+    color: S.onSurfaceVariant,
+  },
+  receiptStatusPill: {
+    width: 108,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+  },
+  receiptStatusPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
   receiptTableRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: `${S.outlineVariant}99`,
@@ -1071,11 +1197,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 10,
+    marginTop: 24,
+    paddingTop: 20,
+    paddingHorizontal: 0,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: `${S.outlineVariant}aa`,
-    backgroundColor: Brand.surface,
+    backgroundColor: 'transparent',
   },
   footerBtn: {
     flex: 1,

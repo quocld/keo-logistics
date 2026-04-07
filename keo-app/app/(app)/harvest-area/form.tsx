@@ -25,7 +25,6 @@ import { Brand } from '@/constants/brand';
 import { useAuth } from '@/contexts/auth-context';
 import { getErrorMessage } from '@/lib/api/errors';
 import { createHarvestArea, getHarvestArea, updateHarvestArea } from '@/lib/api/harvest-areas';
-import { parseIsoDateToLocal } from '@/lib/date/iso-date';
 import type { HarvestAreaCreatePayload, HarvestAreaStatus } from '@/lib/types/ops';
 
 const S = Brand.stitch;
@@ -50,7 +49,16 @@ function coerceHarvestStatus(raw: unknown): HarvestAreaStatus {
   return hit?.value ?? 'preparing';
 }
 
-const END_PREFIX = 'Kết thúc dự kiến:';
+/** Dòng cũ trong ghi chú — bỏ khi mở form để không lưu lại. */
+const LEGACY_NOTES_END_PREFIX = 'Kết thúc dự kiến:';
+
+function stripLegacyPlannedEndFromNotes(raw: string | null | undefined): string {
+  if (!raw?.trim()) return '';
+  const lines = raw.split('\n');
+  const endIdx = lines.findIndex((l) => l.trimStart().startsWith(LEGACY_NOTES_END_PREFIX));
+  if (endIdx === -1) return raw.trim();
+  return [...lines.slice(0, endIdx), ...lines.slice(endIdx + 1)].join('\n').trim();
+}
 
 function parseOptionalNumber(s: string): number | undefined {
   const t = s.trim().replace(',', '.');
@@ -62,16 +70,6 @@ function parseOptionalNumber(s: string): number | undefined {
 function optionalString(s: string): string | undefined {
   const t = s.trim();
   return t ? t : undefined;
-}
-
-function splitNotes(raw: string | null | undefined): { main: string; plannedEnd: string } {
-  if (!raw?.trim()) return { main: '', plannedEnd: '' };
-  const lines = raw.split('\n');
-  const endIdx = lines.findIndex((l) => l.trimStart().startsWith(END_PREFIX));
-  if (endIdx === -1) return { main: raw.trim(), plannedEnd: '' };
-  const plannedEnd = lines[endIdx].replace(new RegExp(`^\\s*${END_PREFIX}\\s*`), '').trim();
-  const main = [...lines.slice(0, endIdx), ...lines.slice(endIdx + 1)].join('\n').trim();
-  return { main, plannedEnd };
 }
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
@@ -123,13 +121,9 @@ export default function HarvestAreaFormScreen() {
   const [targetTons, setTargetTons] = useState('');
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
-  const [placeSearch, setPlaceSearch] = useState('');
-  const [googlePlaceId, setGooglePlaceId] = useState('');
   const [siteContactName, setSiteContactName] = useState('');
   const [siteContactPhone, setSiteContactPhone] = useState('');
-  const [siteContactEmail, setSiteContactEmail] = useState('');
   const [sitePurchaseDate, setSitePurchaseDate] = useState('');
-  const [plannedEndDate, setPlannedEndDate] = useState('');
   const [siteNotes, setSiteNotes] = useState('');
   const [ownerIdStr, setOwnerIdStr] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -159,15 +153,10 @@ export default function HarvestAreaFormScreen() {
       setTargetTons(h.targetTons != null ? String(h.targetTons) : '');
       setLatitude(h.latitude != null ? String(h.latitude) : '');
       setLongitude(h.longitude != null ? String(h.longitude) : '');
-      setGooglePlaceId(h.googlePlaceId != null ? String(h.googlePlaceId) : '');
-      setPlaceSearch('');
       setSiteContactName(h.siteContactName ?? '');
       setSiteContactPhone(h.siteContactPhone ?? '');
-      setSiteContactEmail(h.siteContactEmail != null ? String(h.siteContactEmail) : '');
       setSitePurchaseDate(h.sitePurchaseDate != null ? String(h.sitePurchaseDate) : '');
-      const { main, plannedEnd } = splitNotes(h.siteNotes ?? undefined);
-      setSiteNotes(main);
-      setPlannedEndDate(plannedEnd);
+      setSiteNotes(stripLegacyPlannedEndFromNotes(h.siteNotes ?? undefined));
       setOwnerIdStr(h.ownerId != null ? String(h.ownerId) : '');
     } catch (e) {
       Alert.alert('Lỗi', getErrorMessage(e, 'Không tải được khu'));
@@ -194,26 +183,15 @@ export default function HarvestAreaFormScreen() {
     if (lat !== undefined) body.latitude = lat;
     const lng = parseOptionalNumber(longitude);
     if (lng !== undefined) body.longitude = lng;
-    const g = optionalString(googlePlaceId);
-    if (g !== undefined) body.googlePlaceId = g;
     const cn = optionalString(siteContactName);
     if (cn !== undefined) body.siteContactName = cn;
     const cp = optionalString(siteContactPhone);
     if (cp !== undefined) body.siteContactPhone = cp;
-    const ce = optionalString(siteContactEmail);
-    if (ce !== undefined) body.siteContactEmail = ce;
     const pd = optionalString(sitePurchaseDate);
     if (pd !== undefined) body.sitePurchaseDate = pd;
 
-    const main = siteNotes.trim();
-    const end = plannedEndDate.trim();
-    const merged =
-      end && main
-        ? `${main}\n${END_PREFIX} ${end}`
-        : end
-          ? `${END_PREFIX} ${end}`
-          : main;
-    if (merged) body.siteNotes = merged;
+    const notes = siteNotes.trim();
+    if (notes) body.siteNotes = notes;
 
     if (!isEdit && user?.role === 'admin') {
       const oid = Number.parseInt(ownerIdStr.trim(), 10);
@@ -228,12 +206,9 @@ export default function HarvestAreaFormScreen() {
     targetTons,
     latitude,
     longitude,
-    googlePlaceId,
     siteContactName,
     siteContactPhone,
-    siteContactEmail,
     sitePurchaseDate,
-    plannedEndDate,
     siteNotes,
     ownerIdStr,
     isEdit,
@@ -290,19 +265,6 @@ export default function HarvestAreaFormScreen() {
             {isEdit ? 'Cập nhật khu khai thác' : 'Thêm Khu Khai Thác Mới'}
           </Text>
         </View>
-        <View style={styles.headerRight}>
-          <Pressable style={styles.headerIconBtn} hitSlop={8}>
-            <MaterialIcons name="notifications-none" size={22} color={Brand.ink} />
-          </Pressable>
-          <View style={styles.headerDivider} />
-          <Pressable
-            style={styles.helpBtn}
-            hitSlop={8}
-            onPress={() => Alert.alert('Hỗ trợ', 'Liên hệ quản trị KeoTram hoặc xem tài liệu API.')}>
-            <MaterialIcons name="help-outline" size={20} color={Brand.ink} />
-            <Text style={styles.helpBtnText}>Hỗ trợ</Text>
-          </Pressable>
-        </View>
       </View>
       <View style={styles.headerHairline} />
 
@@ -323,40 +285,22 @@ export default function HarvestAreaFormScreen() {
             style={styles.inputSoft}
           />
 
-          <View style={styles.twoCol}>
-            <View style={styles.colHalf}>
-              <FormFieldLabel>Diện tích (ha)</FormFieldLabel>
-              <FieldIconInput
-                icon="straighten"
-                value={areaHectares}
-                onChangeText={setAreaHectares}
-                placeholder="0.0"
-                keyboardType="decimal-pad"
-              />
-            </View>
-            <View style={styles.colHalf}>
-              <FormFieldLabel>Sản lượng dự kiến (tấn)</FormFieldLabel>
-              <FieldIconInput
-                icon="fitness-center"
-                value={targetTons}
-                onChangeText={setTargetTons}
-                placeholder="0"
-                keyboardType="decimal-pad"
-              />
-            </View>
-          </View>
-
-          <FormFieldLabel>Quản lý khu trực tiếp</FormFieldLabel>
-          <View style={styles.fieldIconRow}>
-            <MaterialIcons name="person" size={20} color={`${S.outline}99`} style={styles.fieldIcon} />
-            <TextInput
-              value={siteContactName}
-              onChangeText={setSiteContactName}
-              placeholder="Họ tên người phụ trách"
-              placeholderTextColor={`${S.outline}80`}
-              style={styles.fieldIconInput}
-            />
-          </View>
+          <FormFieldLabel>Diện tích (ha)</FormFieldLabel>
+          <FieldIconInput
+            icon="straighten"
+            value={areaHectares}
+            onChangeText={setAreaHectares}
+            placeholder="0.0"
+            keyboardType="decimal-pad"
+          />
+          <FormFieldLabel>Sản lượng dự kiến (tấn)</FormFieldLabel>
+          <FieldIconInput
+            icon="fitness-center"
+            value={targetTons}
+            onChangeText={setTargetTons}
+            placeholder="0"
+            keyboardType="decimal-pad"
+          />
 
           <FormFieldLabel style={{ marginTop: 18 }}>Trạng thái</FormFieldLabel>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
@@ -375,66 +319,7 @@ export default function HarvestAreaFormScreen() {
         </View>
 
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionEyebrow}>Kế hoạch thời gian</Text>
-          <Text style={styles.fieldApiHint}>
-            Trường API: <Text style={styles.fieldApiMono}>sitePurchaseDate</Text> · Ngày kết thúc dự kiến được gộp vào{' '}
-            <Text style={styles.fieldApiMono}>siteNotes</Text> (dòng {END_PREFIX} …)
-          </Text>
-          <View style={styles.twoCol}>
-            <View style={styles.colHalf}>
-              <FormDatePickerField
-                label="Ngày bắt đầu dự kiến"
-                value={sitePurchaseDate}
-                onChangeValue={setSitePurchaseDate}
-                placeholder="Chọn ngày"
-              />
-            </View>
-            <View style={styles.colHalf}>
-              <FormDatePickerField
-                label="Ngày kết thúc dự kiến"
-                value={plannedEndDate}
-                onChangeValue={setPlannedEndDate}
-                placeholder="Chọn ngày"
-                minimumDate={parseIsoDateToLocal(sitePurchaseDate) ?? undefined}
-              />
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.mapCard}>
-          <View style={styles.mapCardHeader}>
-            <Text style={styles.sectionEyebrowMap}>Vị trí bản đồ</Text>
-            <View style={styles.gpsPill}>
-              <Text style={styles.gpsPillText}>BẢN ĐỒ</Text>
-            </View>
-          </View>
-          <View style={styles.mapVisual}>
-            <LinearGradient
-              colors={['#c8e6c9', S.surfaceContainerLow, '#e8f5e9']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.mapPinWrap}>
-              <MaterialIcons name="place" size={36} color={S.primary} />
-            </View>
-            <View style={styles.mapSearchOverlay}>
-              <MaterialIcons name="search" size={18} color={S.primary} />
-              <TextInput
-                value={placeSearch}
-                onChangeText={setPlaceSearch}
-                placeholder="Tìm kiếm tọa độ/địa danh…"
-                placeholderTextColor={`${S.outline}99`}
-                style={styles.mapSearchInput}
-              />
-            </View>
-          </View>
-          <Text style={styles.fieldApiHint}>
-            Chọn điểm trên bản đồ để gửi <Text style={styles.fieldApiMono}>latitude</Text> /{' '}
-            <Text style={styles.fieldApiMono}>longitude</Text> (phù hợp khu rừng). Ô tìm kiếm chỉ hỗ trợ UI.{' '}
-            <Text style={styles.fieldApiMono}>googlePlaceId</Text> tuỳ chọn — sẽ xóa khi xác nhận vị trí từ bản đồ.
-          </Text>
-          <Text style={styles.coordEyebrow}>Tọa độ GPS</Text>
+          <Text style={styles.sectionEyebrow}>Vị trí</Text>
           {Platform.OS === 'web' ? (
             <View style={styles.coordRow}>
               <TextInput
@@ -455,31 +340,39 @@ export default function HarvestAreaFormScreen() {
               />
             </View>
           ) : (
-            <>
-              <View style={harvestLocalStyles.coordReadout}>
-                <Text style={harvestLocalStyles.coordReadoutText}>{coordSummary}</Text>
+            <View style={harvestLocalStyles.locationCard}>
+              <View style={harvestLocalStyles.locationRow}>
+                <MaterialIcons name="place" size={22} color={S.primary} />
+                <Text style={harvestLocalStyles.locationSummary} numberOfLines={2}>
+                  {coordSummary}
+                </Text>
+                <Pressable
+                  onPress={() => setPickerOpen(true)}
+                  style={({ pressed }) => [
+                    harvestLocalStyles.locationMapChip,
+                    pressed && harvestLocalStyles.locationMapChipPressed,
+                  ]}>
+                  <MaterialIcons name="map" size={18} color="#fff" />
+                  <Text style={harvestLocalStyles.locationMapChipText}>Bản đồ</Text>
+                </Pressable>
               </View>
-              <Pressable
-                onPress={() => setPickerOpen(true)}
-                style={({ pressed }) => [harvestLocalStyles.pickMapBtn, pressed && { opacity: 0.9 }]}>
-                <MaterialIcons name="map" size={20} color="#fff" />
-                <Text style={harvestLocalStyles.pickMapBtnText}>Chọn trên bản đồ</Text>
-              </Pressable>
-            </>
+            </View>
           )}
-          <FormFieldLabel style={{ marginTop: 12 }}>Google Place ID (tuỳ chọn)</FormFieldLabel>
-          <TextInput
-            value={googlePlaceId}
-            onChangeText={setGooglePlaceId}
-            placeholder="Chỉ khi có từ Google Places; bản đồ sẽ xóa trường này"
-            placeholderTextColor={`${S.outline}80`}
-            style={styles.inputSoftMuted}
-            autoCapitalize="none"
-          />
         </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionEyebrow}>Liên hệ & ghi chú</Text>
+          <FormFieldLabel>Chủ rừng</FormFieldLabel>
+          <View style={styles.fieldIconRow}>
+            <MaterialIcons name="person" size={20} color={`${S.outline}99`} style={styles.fieldIcon} />
+            <TextInput
+              value={siteContactName}
+              onChangeText={setSiteContactName}
+              placeholder="Họ tên chủ rừng / người phụ trách"
+              placeholderTextColor={`${S.outline}80`}
+              style={styles.fieldIconInput}
+            />
+          </View>
           <FormFieldLabel>Số điện thoại</FormFieldLabel>
           <TextInput
             value={siteContactPhone}
@@ -489,15 +382,11 @@ export default function HarvestAreaFormScreen() {
             style={styles.inputSoft}
             placeholderTextColor={`${S.outline}80`}
           />
-          <FormFieldLabel>Email</FormFieldLabel>
-          <TextInput
-            value={siteContactEmail}
-            onChangeText={setSiteContactEmail}
-            placeholder="email@example.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={styles.inputSoft}
-            placeholderTextColor={`${S.outline}80`}
+          <FormDatePickerField
+            label="Ngày mua bãi"
+            value={sitePurchaseDate}
+            onChangeValue={setSitePurchaseDate}
+            placeholder="Chọn ngày"
           />
           <FormFieldLabel>Ghi chú</FormFieldLabel>
           <TextInput
@@ -555,7 +444,6 @@ export default function HarvestAreaFormScreen() {
       onConfirm={(c) => {
         setLatitude(String(c.latitude));
         setLongitude(String(c.longitude));
-        setGooglePlaceId('');
       }}
     />
     </>
@@ -563,31 +451,42 @@ export default function HarvestAreaFormScreen() {
 }
 
 const harvestLocalStyles = StyleSheet.create({
-  coordReadout: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+  locationCard: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: `${S.outlineVariant}aa`,
     backgroundColor: S.surfaceContainerLow,
-    borderWidth: 1,
-    borderColor: S.outlineVariant,
+    overflow: 'hidden',
   },
-  coordReadoutText: {
-    fontSize: 14,
-    color: S.onSurfaceVariant,
-  },
-  pickMapBtn: {
-    marginTop: 10,
+  locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    gap: 10,
     paddingVertical: 12,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+  },
+  locationSummary: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+    color: Brand.ink,
+  },
+  locationMapChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     backgroundColor: S.primary,
   },
-  pickMapBtnText: {
+  locationMapChipPressed: {
+    opacity: 0.9,
+  },
+  locationMapChipText: {
     color: '#fff',
     fontWeight: '700',
-    fontSize: 15,
+    fontSize: 13,
   },
 });
