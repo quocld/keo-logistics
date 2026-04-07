@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -19,11 +20,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Brand } from '@/constants/brand';
+import { formatIsoDateVi } from '@/lib/date/iso-date';
 import { getErrorMessage } from '@/lib/api/errors';
 import { listHarvestAreas, updateHarvestArea } from '@/lib/api/harvest-areas';
 import type { HarvestArea, HarvestAreaStatus } from '@/lib/types/ops';
 
 const S = Brand.stitch;
+
+/** Icon khu khai thác — cùng bộ asset với màn home */
+const KHU_HEADER_ICON = require('../../../new icons/khu.png');
 
 const PAGE_SIZE = 15;
 
@@ -66,9 +71,12 @@ function formatNumberVi(n: number): string {
   return n.toLocaleString('vi-VN');
 }
 
-function formatKktCode(id: string | number): string {
-  const n = String(id).replace(/\D/g, '').slice(-3).padStart(3, '0');
-  return `#KKT-${n}`;
+/** API: `sitePurchaseDate` — cùng nguồn với form “Ngày bắt đầu dự kiến”. */
+function harvestStartDisplay(raw: unknown): string {
+  if (raw == null || raw === '') return '—';
+  const s = String(raw).trim();
+  const vi = formatIsoDateVi(s);
+  return vi || s;
 }
 
 /** API có thể trả status string hoặc { name: string } */
@@ -102,9 +110,10 @@ type CardUi = {
   pillLabel: string;
   pillBg: string;
   pillText: string;
-  accent: string;
+  /** Viền card + thanh tiến độ */
   barColor: string;
   pctColor: string;
+  borderColor: string;
   mutedCard?: boolean;
 };
 
@@ -115,36 +124,36 @@ function cardUiForStatus(status: string): CardUi {
         pillLabel: 'Đang chạy',
         pillBg: S.secondaryContainer,
         pillText: S.onSecondaryContainer,
-        accent: '#006d42',
         barColor: '#006d42',
         pctColor: '#006d42',
+        borderColor: '#006d42',
       };
     case 'preparing':
       return {
         pillLabel: 'Chờ',
         pillBg: S.surfaceContainerHigh,
         pillText: S.onSurfaceVariant,
-        accent: `${S.outlineVariant}4d`,
-        barColor: `${S.outlineVariant}4d`,
+        barColor: `${S.outlineVariant}99`,
         pctColor: S.outline,
+        borderColor: `${S.outlineVariant}cc`,
       };
     case 'paused':
       return {
         pillLabel: 'Tạm dừng',
         pillBg: S.tertiaryFixed,
         pillText: S.onTertiaryFixed,
-        accent: S.tertiary,
         barColor: S.tertiary,
         pctColor: S.tertiary,
+        borderColor: S.tertiary,
       };
     case 'completed':
       return {
         pillLabel: 'Hoàn thành',
         pillBg: S.outlineVariant,
         pillText: S.onSurfaceVariant,
-        accent: S.outlineVariant,
         barColor: S.outline,
         pctColor: S.onSurfaceVariant,
+        borderColor: `${S.outlineVariant}b3`,
         mutedCard: true,
       };
     case 'awaiting_renewal':
@@ -152,18 +161,18 @@ function cardUiForStatus(status: string): CardUi {
         pillLabel: 'Chờ gia hạn',
         pillBg: S.tertiaryFixed,
         pillText: S.onTertiaryFixed,
-        accent: S.tertiary,
         barColor: S.tertiary,
         pctColor: S.tertiary,
+        borderColor: S.tertiary,
       };
     default:
       return {
         pillLabel: statusLabel(status).toUpperCase(),
         pillBg: S.surfaceContainerHigh,
         pillText: S.onSurfaceVariant,
-        accent: S.surfaceDim,
         barColor: S.onSurfaceVariant,
         pctColor: S.onSurfaceVariant,
+        borderColor: `${S.outlineVariant}cc`,
       };
   }
 }
@@ -228,16 +237,6 @@ function HarvestProgressCard({
     </TouchableOpacity>
   );
 
-  const detailOutlineBtn = (
-    <TouchableOpacity onPress={onDetail} activeOpacity={0.85} style={styles.cardDetailWide}>
-      <View style={styles.cardDetailWideLeft}>
-        <MaterialIcons name="info-outline" size={18} color={S.outline} />
-        <Text style={styles.cardDetailWideText}>Xem chi tiết</Text>
-      </View>
-      <MaterialIcons name="chevron-right" size={20} color={S.primary} />
-    </TouchableOpacity>
-  );
-
   let actions: ReactNode = null;
   if (st === 'active') {
     actions = (
@@ -259,31 +258,42 @@ function HarvestProgressCard({
         {outlineBtn('Hoàn thành', 'check-circle', () => onPatch('completed'))}
       </View>
     );
-  } else if (st === 'completed') {
-    actions = detailOutlineBtn;
-  } else {
-    actions = detailOutlineBtn;
   }
 
   return (
-    <View style={[styles.stitchCard, ui.mutedCard && styles.stitchCardMuted]}>
-      <View style={[styles.stitchAccent, { backgroundColor: ui.accent }]} pointerEvents="none" />
+    <Pressable
+      onPress={onDetail}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.name}, ${ui.pillLabel}. Nhấn để xem chi tiết.`}
+      style={({ pressed }) => [
+        styles.stitchCard,
+        { borderColor: ui.borderColor },
+        ui.mutedCard && styles.stitchCardMuted,
+        pressed && styles.stitchCardPressed,
+      ]}>
       <View style={styles.stitchCardInner}>
         <View style={styles.stitchCardHeader}>
+          <View style={styles.cardIconWrap}>
+            <Image source={KHU_HEADER_ICON} style={styles.cardIconImg} resizeMode="contain" accessibilityIgnoresInvertColors />
+          </View>
           <View style={styles.stitchTitleBlock}>
             <View style={styles.stitchPillRow}>
               <View style={[styles.statusPill, { backgroundColor: ui.pillBg }]}>
                 <Text style={[styles.statusPillText, { color: ui.pillText }]}>{ui.pillLabel}</Text>
               </View>
-              <Text style={styles.kktCode}>{formatKktCode(item.id)}</Text>
             </View>
-            <Text style={[styles.stitchCardTitle, ui.mutedCard && styles.stitchCardTitleMuted]}>
+            <Text style={[styles.stitchCardTitle, ui.mutedCard && styles.stitchCardTitleMuted]} numberOfLines={2}>
               {item.name}
             </Text>
+            <View style={styles.harvestStartRow}>
+              <MaterialIcons name="event" size={15} color={S.onSurfaceVariant} style={styles.harvestStartIcon} />
+              <Text style={styles.harvestStartText} numberOfLines={2}>
+                <Text style={styles.harvestStartLabel}>Bắt đầu khai thác: </Text>
+                <Text style={styles.harvestStartValue}>{harvestStartDisplay(item.sitePurchaseDate)}</Text>
+              </Text>
+            </View>
           </View>
-          <View pointerEvents="none">
-            <MaterialIcons name="more-vert" size={22} color={S.outlineVariant} />
-          </View>
+          <MaterialIcons name="chevron-right" size={22} color={`${S.outlineVariant}cc`} style={styles.cardHeaderChevron} />
         </View>
 
         {st === 'paused' && item.siteNotes ? (
@@ -297,11 +307,21 @@ function HarvestProgressCard({
 
         <View style={styles.stitchProgressBlock}>
           <View style={styles.stitchProgressTop}>
-            <Text style={styles.stitchVolLine}>
-              <Text style={styles.stitchVolMuted}>Sản lượng: </Text>
-              <Text style={styles.stitchVolBold}>{volLine}</Text>
-            </Text>
-            <Text style={[styles.stitchPct, { color: ui.pctColor }]}>{pct}%</Text>
+            <View style={styles.stitchVolRow}>
+              <MaterialIcons name="scale" size={18} color={S.onSurfaceVariant} style={styles.stitchVolIcon} />
+              <Text style={styles.stitchVolLine}>
+                <Text style={styles.stitchVolMuted}>Sản lượng </Text>
+                <Text style={styles.stitchVolBold}>{volLine}</Text>
+              </Text>
+            </View>
+            <View style={styles.pctBadge}>
+              <MaterialIcons
+                name={st === 'completed' ? 'task-alt' : 'trending-up'}
+                size={14}
+                color={ui.pctColor}
+              />
+              <Text style={[styles.stitchPct, { color: ui.pctColor }]}>{pct}%</Text>
+            </View>
           </View>
           <View style={styles.progressTrack}>
             <View
@@ -318,11 +338,8 @@ function HarvestProgressCard({
         </View>
 
         {actions}
-        {st === 'active' || st === 'preparing' || st === 'paused' ? (
-          <View style={styles.cardDetailBelowActions}>{detailOutlineBtn}</View>
-        ) : null}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -334,7 +351,12 @@ function EditorialFooter({ runningCount, totalTargetTons }: { runningCount: numb
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.editorialVisual}>
-        <MaterialIcons name="park" size={48} color={Brand.forest} style={{ opacity: 0.35 }} />
+        <Image
+          source={KHU_HEADER_ICON}
+          style={styles.editorialHeroIcon}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+        />
       </LinearGradient>
       <View style={styles.editorialBody}>
         <Text style={styles.editorialEyebrow}>Thông tin vận hành</Text>
@@ -382,7 +404,6 @@ export default function HarvestAreasScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [patchingId, setPatchingId] = useState<string | number | null>(null);
 
@@ -493,75 +514,59 @@ export default function HarvestAreasScreen() {
   const listHeader = useMemo(
     () => (
       <View style={styles.mainHeader}>
-        <Text style={styles.eyebrow}>Dữ liệu thời gian thực</Text>
-        <Text style={styles.sectionTitle}>Khu vực khai thác</Text>
         <View style={styles.heroSearchRow}>
           <View style={styles.searchFieldWrap}>
             <MaterialIcons name="search" size={18} color={S.outline} style={styles.searchFieldIcon} />
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Tìm kiếm mã khu..."
+              placeholder="Tìm tên hoặc mã khu…"
               placeholderTextColor={`${S.outline}99`}
               style={styles.searchFieldInput}
             />
           </View>
-          <Pressable
-            onPress={() => setFiltersOpen((v) => !v)}
-            style={({ pressed }) => [styles.filterCompact, pressed && styles.filterBtnPressed]}>
-            <MaterialIcons name="tune" size={20} color={S.primary} />
-            <Text style={styles.filterBtnText}>Lọc</Text>
-          </Pressable>
         </View>
-        {filtersOpen ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipsContent}>
-            {STATUS_FILTERS.map((f) => {
-              const selected = status === f.value;
-              return (
-                <Pressable
-                  key={f.value || 'all'}
-                  onPress={() => setStatus(f.value)}
-                  style={[styles.chip, selected && styles.chipSelected]}>
-                  <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{f.label}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        ) : null}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsContent}>
+          {STATUS_FILTERS.map((f) => {
+            const selected = status === f.value;
+            return (
+              <Pressable
+                key={f.value || 'all'}
+                onPress={() => setStatus(f.value)}
+                style={[styles.chip, selected && styles.chipSelected]}>
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{f.label}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
     ),
-    [filtersOpen, searchQuery, status],
+    [searchQuery, status],
   );
 
   return (
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 8) }]}>
         <View style={styles.topBarLeft}>
-          <MaterialIcons name="park" size={26} color={Brand.forest} />
+          <Image
+            source={KHU_HEADER_ICON}
+            style={styles.topBarHarvestIcon}
+            resizeMode="contain"
+            accessibilityIgnoresInvertColors
+            accessibilityLabel="Khu khai thác"
+          />
           <Text style={styles.topTitleStitch}>Quản lý Khai thác</Text>
         </View>
         <View style={styles.topBarRight}>
           <Pressable
             onPress={() => router.push('/weighing-stations-map')}
             accessibilityRole="button"
-            accessibilityLabel="Mở bản đồ trạm cân"
+            accessibilityLabel="Mở bản đồ trạm cân và khu khai thác"
             style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
             <MaterialIcons name="map" size={22} color={S.onSurfaceVariant} />
-          </Pressable>
-          <Pressable
-            onPress={() => {
-              /* focus search: user types in field below */
-            }}
-            style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
-            <MaterialIcons name="search" size={22} color={S.onSurfaceVariant} />
-          </Pressable>
-          <Pressable
-            onPress={() => setFiltersOpen((v) => !v)}
-            style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
-            <MaterialIcons name="filter-list" size={22} color={S.onSurfaceVariant} />
           </Pressable>
         </View>
       </View>
@@ -669,6 +674,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  topBarHarvestIcon: {
+    width: 36,
+    height: 36,
+  },
   topTitleStitch: {
     fontSize: 18,
     fontWeight: '500',
@@ -697,29 +706,14 @@ const styles = StyleSheet.create({
   },
   mainHeader: {
     paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 8,
-  },
-  eyebrow: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: S.onSurfaceVariant,
-    marginBottom: 4,
-  },
-  sectionTitle: {
-    fontSize: 28,
-    fontWeight: '600',
-    letterSpacing: -0.5,
-    color: Brand.ink,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
   heroSearchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginTop: 20,
-    marginBottom: 4,
+    marginBottom: 12,
   },
   searchFieldWrap: {
     flex: 1,
@@ -739,23 +733,6 @@ const styles = StyleSheet.create({
     paddingRight: 12,
     fontSize: 14,
     color: Brand.ink,
-  },
-  filterCompact: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: S.surfaceContainerHigh,
-  },
-  filterBtnPressed: {
-    opacity: 0.92,
-  },
-  filterBtnText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: S.primary,
   },
   chipsContent: {
     paddingVertical: 4,
@@ -787,49 +764,78 @@ const styles = StyleSheet.create({
   },
   stitchCard: {
     backgroundColor: Brand.surface,
-    borderRadius: 12,
-    marginBottom: 24,
+    borderRadius: 14,
+    marginBottom: 20,
+    borderWidth: 2,
     shadowColor: Brand.ink,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.04,
-    shadowRadius: 32,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
     elevation: 3,
     overflow: 'hidden',
-    position: 'relative',
   },
   stitchCardMuted: {
-    opacity: 0.88,
-    borderWidth: 1,
-    borderColor: `${S.outlineVariant}26`,
+    opacity: 0.92,
   },
-  stitchAccent: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
+  stitchCardPressed: {
+    opacity: 0.96,
   },
   stitchCardInner: {
-    padding: 24,
-    paddingLeft: 20,
+    padding: 16,
   },
   stitchCardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    gap: 12,
+    marginBottom: 14,
+  },
+  cardHeaderChevron: {
+    marginTop: 2,
+    flexShrink: 0,
+  },
+  cardIconWrap: {
+    width: 52,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardIconImg: {
+    width: 48,
+    height: 48,
+  },
+  harvestStartRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginTop: 8,
+    paddingRight: 4,
+  },
+  harvestStartIcon: {
+    marginTop: 2,
+  },
+  harvestStartText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  harvestStartLabel: {
+    color: S.onSurfaceVariant,
+    fontWeight: '500',
+  },
+  harvestStartValue: {
+    color: Brand.ink,
+    fontWeight: '600',
   },
   stitchTitleBlock: {
     flex: 1,
     minWidth: 0,
-    paddingRight: 8,
   },
   stitchPillRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   statusPill: {
     paddingHorizontal: 10,
@@ -841,11 +847,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-  },
-  kktCode: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: S.onSurfaceVariant,
   },
   stitchCardTitle: {
     fontSize: 20,
@@ -871,17 +872,31 @@ const styles = StyleSheet.create({
   },
   stitchProgressBlock: {
     gap: 8,
-    marginBottom: 16,
   },
   stitchProgressTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    alignItems: 'center',
+  },
+  stitchVolRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+    marginRight: 8,
+  },
+  stitchVolIcon: {
+    marginRight: 6,
   },
   stitchVolLine: {
     fontSize: 14,
     flex: 1,
-    marginRight: 8,
+  },
+  pctBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    flexShrink: 0,
   },
   stitchVolMuted: {
     color: S.onSurfaceVariant,
@@ -908,7 +923,10 @@ const styles = StyleSheet.create({
   cardActionsRow: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 14,
     paddingTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: `${S.outlineVariant}55`,
   },
   cardActionBtn: {
     flex: 1,
@@ -944,33 +962,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
-  cardDetailWide: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: Brand.surface,
-    borderWidth: 1,
-    borderColor: `${S.outlineVariant}40`,
-  },
-  cardDetailWideLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-    minWidth: 0,
-  },
-  cardDetailWideText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: S.outline,
-  },
-  cardDetailBelowActions: {
-    marginTop: 10,
-  },
   editorialCard: {
     borderRadius: 12,
     overflow: 'hidden',
@@ -986,6 +977,11 @@ const styles = StyleSheet.create({
     height: 160,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  editorialHeroIcon: {
+    width: 96,
+    height: 96,
+    opacity: 0.45,
   },
   editorialBody: {
     padding: 24,
