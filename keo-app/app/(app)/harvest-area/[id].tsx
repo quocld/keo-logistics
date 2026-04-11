@@ -19,11 +19,15 @@ import { stitchHarvestFormStyles as headerStyles } from '@/components/owner/stit
 import { Brand } from '@/constants/brand';
 import { useAuth } from '@/contexts/auth-context';
 import { getErrorMessage } from '@/lib/api/errors';
-import { deleteHarvestArea, getHarvestArea } from '@/lib/api/harvest-areas';
-import { listReceipts } from '@/lib/api/receipts';
+import {
+  deleteHarvestArea,
+  getHarvestArea,
+  getHarvestAreaDrivers,
+  getHarvestAreaReceiptSummary,
+  listHarvestAreaReceipts,
+} from '@/lib/api/harvest-areas';
 import {
   appendHarvestAreaForOwnerDriver,
-  getOwnerDriverHarvestAreas,
   listAllOwnerDrivers,
   removeHarvestAreaFromOwnerDriver,
 } from '@/lib/api/owner-drivers';
@@ -62,8 +66,7 @@ function statusHeadlineVi(st: string): string {
 }
 
 function formatAreaRegionCode(id: string | number): string {
-  const n = String(id).replace(/\D/g, '').slice(-3).padStart(3, '0');
-  return `KKT-${n}`;
+  return `KKT-${String(id).slice(-8).toUpperCase()}`;
 }
 
 function pillColorsForStatus(st: string): { bg: string; fg: string } {
@@ -146,14 +149,6 @@ function tripStatusDriverUi(st: string): { label: string; bg: string; fg: string
   return { label: st || '—', bg: S.surfaceContainerHigh, fg: S.onSurfaceVariant };
 }
 
-function pickNumberField(item: HarvestArea, keys: string[]): number | null {
-  for (const k of keys) {
-    const v = item[k];
-    if (v != null && Number.isFinite(Number(v))) return Number(v);
-  }
-  return null;
-}
-
 function ownerDriverDisplayName(d: OwnerDriverUser): string {
   const parts = [d.firstName, d.lastName].filter(Boolean);
   if (parts.length) return parts.join(' ');
@@ -228,10 +223,9 @@ export default function HarvestAreaDetailScreen() {
       if (!id) return;
       setReceiptsLoading(true);
       try {
-        const res = await listReceipts({
+        const res = await listHarvestAreaReceipts(id, {
           page,
           limit: RECEIPTS_PAGE_SIZE,
-          harvestAreaId: id,
         });
         if (!res.ok) {
           setReceipts([]);
@@ -258,32 +252,13 @@ export default function HarvestAreaDetailScreen() {
   const loadReceiptAggregate = useCallback(async () => {
     if (!id) return;
     setReceiptApprovedAgg((prev) => ({ ...prev, loading: true }));
-    let totalVnd = 0;
-    let count = 0;
-    let page = 1;
-    const limit = 100;
     try {
-      for (;;) {
-        const res = await listReceipts({
-          page,
-          limit,
-          harvestAreaId: id,
-          status: 'approved',
-        });
-        if (!res.ok) {
-          setReceiptApprovedAgg({ count: 0, totalVnd: 0, loading: false });
-          return;
-        }
-        for (const r of res.body.data) {
-          count += 1;
-          const a = r.amount;
-          if (a != null && Number.isFinite(Number(a))) totalVnd += Number(a);
-        }
-        if (!res.body.hasNextPage) break;
-        page += 1;
-        if (page > 40) break;
-      }
-      setReceiptApprovedAgg({ count, totalVnd, loading: false });
+      const summary = await getHarvestAreaReceiptSummary(id);
+      setReceiptApprovedAgg({
+        count: summary.approvedCount,
+        totalVnd: summary.approvedTotalAmount,
+        loading: false,
+      });
     } catch {
       setReceiptApprovedAgg({ count: 0, totalVnd: 0, loading: false });
     }
@@ -299,23 +274,12 @@ export default function HarvestAreaDetailScreen() {
     if (!id || user?.role !== 'owner') return;
     setAssignedDriversLoading(true);
     try {
-      const drivers = await listAllOwnerDrivers();
-      setAllManagedDrivers(drivers);
-      const areaKey = String(id);
-      const withAreas = await Promise.all(
-        drivers.map(async (d) => {
-          try {
-            const areas = await getOwnerDriverHarvestAreas(d.id);
-            return { driver: d, areas };
-          } catch {
-            return { driver: d, areas: [] as HarvestArea[] };
-          }
-        }),
-      );
-      const assigned = withAreas
-        .filter(({ areas }) => areas.some((a) => String(a.id) === areaKey))
-        .map(({ driver }) => driver);
+      const [assigned, allManaged] = await Promise.all([
+        getHarvestAreaDrivers(id),
+        listAllOwnerDrivers(),
+      ]);
       setAssignedOwnerDrivers(assigned);
+      setAllManagedDrivers(allManaged);
     } catch {
       setAssignedOwnerDrivers([]);
       setAllManagedDrivers([]);
@@ -372,9 +336,7 @@ export default function HarvestAreaDetailScreen() {
   const areaHa =
     item?.areaHectares != null ? `${Number(item.areaHectares).toLocaleString('vi-VN')} ha` : '—';
   const currentYield =
-    item != null
-      ? pickNumberField(item, ['currentYieldTons', 'actualTons', 'harvestedTons'])
-      : null;
+    item?.currentTons != null ? Number(item.currentTons) : null;
   const yieldText =
     currentYield != null
       ? `${currentYield.toLocaleString('vi-VN')} tấn`
@@ -878,7 +840,7 @@ export default function HarvestAreaDetailScreen() {
             <Text style={styles.infoValue}>{item.siteContactEmail ? String(item.siteContactEmail) : '—'}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Ngày mua bãi</Text>
+            <Text style={styles.infoLabel}>Ngày mua/bắt đầu bãi</Text>
             <Text style={styles.infoValue}>{item.sitePurchaseDate ? String(item.sitePurchaseDate) : '—'}</Text>
           </View>
           {user?.role === 'admin' && item.ownerId != null ? (

@@ -47,24 +47,11 @@ function statusLabel(s: string): string {
   return f?.label ?? s;
 }
 
-function harvestProgressPercent(id: string | number, status: string): number {
-  const sid = String(id);
-  const hash = sid.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  switch (status) {
-    case 'active':
-      return 55 + (hash % 35);
-    case 'completed':
-      return 100;
-    case 'paused':
-    case 'awaiting_renewal':
-      return 20 + (hash % 25);
-    case 'preparing':
-      return 10 + (hash % 20);
-    case 'inactive':
-      return 0;
-    default:
-      return 30 + (hash % 50);
-  }
+function harvestProgressPercent(item: HarvestArea): number {
+  const current = item.currentTons != null ? Number(item.currentTons) : 0;
+  const target = item.targetTons != null ? Number(item.targetTons) : 0;
+  if (target <= 0) return 0;
+  return Math.min(100, Math.round((current / target) * 100));
 }
 
 function formatNumberVi(n: number): string {
@@ -190,9 +177,9 @@ function HarvestProgressCard({
 }) {
   const st = normalizeHarvestStatus(item.status);
   const ui = cardUiForStatus(st);
-  const pct = harvestProgressPercent(item.id, st);
+  const current = item.currentTons != null ? Number(item.currentTons) : 0;
   const target = item.targetTons != null ? Number(item.targetTons) : 0;
-  const current = target > 0 ? Math.round((pct / 100) * target) : 0;
+  const pct = harvestProgressPercent(item);
   const volLine =
     target > 0
       ? `${formatNumberVi(current)} / ${formatNumberVi(target)} tấn`
@@ -405,9 +392,20 @@ export default function HarvestAreasScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [patchingId, setPatchingId] = useState<string | number | null>(null);
 
-  const filters = useMemo(() => (status ? { status } : undefined), [status]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const filters = useMemo(() => {
+    const f: Record<string, unknown> = {};
+    if (status) f.status = status;
+    if (debouncedSearch) f.name = debouncedSearch;
+    return Object.keys(f).length ? f : undefined;
+  }, [status, debouncedSearch]);
 
   const loadPage = useCallback(
     async (nextPage: number, append: boolean) => {
@@ -470,12 +468,6 @@ export default function HarvestAreasScreen() {
       setLoadingMore(false);
     }
   }, [hasNext, loadPage, loadingMore, loading, page]);
-
-  const displayedItems = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((i) => i.name.toLowerCase().includes(q));
-  }, [items, searchQuery]);
 
   const runningCount = useMemo(
     () => items.filter((i) => normalizeHarvestStatus(i.status) === 'active').length,
@@ -588,7 +580,7 @@ export default function HarvestAreasScreen() {
       ) : (
         <View style={styles.listWithFab} pointerEvents="box-none">
           <FlatList
-            data={displayedItems}
+            data={items}
             keyExtractor={(item) => String(item.id)}
             ListHeaderComponent={listHeader}
             renderItem={({ item }) => (
@@ -614,7 +606,7 @@ export default function HarvestAreasScreen() {
             ListEmptyComponent={
               !loading && !error ? (
                 <Text style={styles.empty}>
-                  {searchQuery.trim()
+                  {debouncedSearch
                     ? 'Không có khu khớp tìm kiếm.'
                     : 'Chưa có khu nào. Nhấn + để thêm khu.'}
                 </Text>

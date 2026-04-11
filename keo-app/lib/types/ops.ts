@@ -18,9 +18,13 @@ export type HarvestArea = {
   status: HarvestAreaStatus | string;
   areaHectares?: number | null;
   targetTons?: number | null;
+  /** Sản lượng thực tế tích luỹ (tấn) — backend field `current_tons`. */
+  currentTons?: number | string | null;
   latitude?: number | null;
   longitude?: number | null;
   googlePlaceId?: string | null;
+  formattedAddress?: string | null;
+  plusCode?: string | null;
   siteContactName?: string | null;
   siteContactPhone?: string | null;
   siteContactEmail?: string | null;
