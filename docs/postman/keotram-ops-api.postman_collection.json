@@ -16,8 +16,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrlRoot}}/",
-              "host": ["{{baseUrlRoot}}"],
-              "path": [""]
+              "host": [
+                "{{baseUrlRoot}}"
+              ],
+              "path": [
+                ""
+              ]
             }
           },
           "response": []
@@ -44,15 +48,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/email/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "email", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "email",
+                "login"
+              ]
             }
           },
           "response": []
@@ -74,15 +89,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{ownerEmail}}\",\n  \"password\": \"{{ownerPassword}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/email/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "email", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "email",
+                "login"
+              ]
             }
           },
           "response": []
@@ -103,15 +129,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{driverEmail}}\",\n  \"password\": \"{{driverPassword}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/email/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "email", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "email",
+                "login"
+              ]
             }
           },
           "response": []
@@ -125,15 +162,26 @@
           "name": "POST /auth/email/register",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"driver1@example.com\",\n  \"password\": \"12345678\",\n  \"firstName\": \"Driver\",\n  \"lastName\": \"One\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/email/register",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "email", "register"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "email",
+                "register"
+              ]
             }
           },
           "response": []
@@ -142,15 +190,26 @@
           "name": "POST /auth/email/login",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{driverEmail}}\",\n  \"password\": \"{{driverPassword}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/email/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "email", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "email",
+                "login"
+              ]
             }
           },
           "response": []
@@ -159,15 +218,26 @@
           "name": "POST /auth/email/confirm",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"hash\": \"paste-confirm-hash\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/email/confirm",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "email", "confirm"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "email",
+                "confirm"
+              ]
             }
           },
           "response": []
@@ -176,15 +246,27 @@
           "name": "POST /auth/email/confirm/new",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"hash\": \"paste-confirm-hash\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/email/confirm/new",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "email", "confirm", "new"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "email",
+                "confirm",
+                "new"
+              ]
             }
           },
           "response": []
@@ -193,15 +275,26 @@
           "name": "POST /auth/forgot/password",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{driverEmail}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/forgot/password",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "forgot", "password"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "forgot",
+                "password"
+              ]
             }
           },
           "response": []
@@ -210,15 +303,26 @@
           "name": "POST /auth/reset/password",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"hash\": \"paste-reset-hash\",\n  \"password\": \"newStrongPassword123\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/reset/password",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "reset", "password"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "reset",
+                "password"
+              ]
             }
           },
           "response": []
@@ -227,11 +331,21 @@
           "name": "GET /auth/me",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/auth/me",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "me"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
             }
           },
           "response": []
@@ -240,11 +354,21 @@
           "name": "POST /auth/refresh",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{refreshToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{refreshToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/auth/refresh",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "refresh"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
             }
           },
           "response": []
@@ -253,11 +377,21 @@
           "name": "POST /auth/logout",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/auth/logout",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "logout"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
             }
           },
           "response": []
@@ -267,8 +401,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -276,8 +416,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/me",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "me"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
             },
             "description": "User tự cập nhật profile. Avatar: `isCustomAvatar` + `appAvatar` (preset) hoặc `photo: { \"id\": \"<uuid>\" }` (sau **POST /files/upload**, biến `uploadedFileId`). Gán `accessToken` từ login hoặc dùng `driverAccessToken` / `ownerAccessToken`."
           },
@@ -287,11 +432,21 @@
           "name": "DELETE /auth/me",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/auth/me",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "me"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
             }
           },
           "response": []
@@ -300,15 +455,26 @@
           "name": "POST /auth/facebook/login",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"accessToken\": \"facebook-access-token\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/facebook/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "facebook", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "facebook",
+                "login"
+              ]
             }
           },
           "response": []
@@ -317,15 +483,26 @@
           "name": "POST /auth/google/login",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"idToken\": \"google-id-token\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/google/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "google", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "google",
+                "login"
+              ]
             }
           },
           "response": []
@@ -334,15 +511,26 @@
           "name": "POST /auth/apple/login",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"identityToken\": \"apple-identity-token\",\n  \"firstName\": \"Apple\",\n  \"lastName\": \"User\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/apple/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "apple", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "apple",
+                "login"
+              ]
             }
           },
           "response": []
@@ -358,8 +546,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -367,8 +561,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/users",
-              "host": ["{{baseUrl}}"],
-              "path": ["users"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
             }
           },
           "response": []
@@ -378,8 +576,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -387,8 +591,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/users",
-              "host": ["{{baseUrl}}"],
-              "path": ["users"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
             },
             "description": "Chạy **Setup** (login owner) trước để có `ownerUserId`. Đổi `email` nếu user đã tồn tại. Response có `managedByOwner`.\n\n**Lưu ý:** `managedByOwnerId` chỉ hợp lệ khi `role` là driver (3)."
           },
@@ -398,14 +606,29 @@
           "name": "GET /users",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/users?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["users"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
               ]
             }
           },
@@ -415,11 +638,21 @@
           "name": "GET /users/:id",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["users", "{{userId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
             }
           },
           "response": []
@@ -429,8 +662,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -438,8 +677,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["users", "{{userId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
             },
             "description": "Cập nhật tên / email / role / … Avatar: dùng request **PATCH … (avatar – app preset)** hoặc **(avatar – file upload)**."
           },
@@ -450,8 +694,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -459,8 +709,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["users", "{{userId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
             },
             "description": "`appAvatar` = key preset do app định nghĩa (client map sang asset). Server xóa `photo` (file) khi chuyển sang preset."
           },
@@ -471,8 +726,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -480,8 +741,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["users", "{{userId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
             },
             "description": "Upload ảnh trước (**Files** → POST /files/upload), gán `uploadedFileId` = `file.id`. `photo.id` là UUID."
           },
@@ -491,11 +757,21 @@
           "name": "DELETE /users/:id",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["users", "{{userId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
             }
           },
           "response": []
@@ -523,8 +799,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -532,8 +814,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/owner/drivers",
-              "host": ["{{baseUrl}}"],
-              "path": ["owner", "drivers"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner",
+                "drivers"
+              ]
             },
             "description": "Đổi `email` unique nếu 409/422 trùng. Role luôn là driver; `managedByOwner` = owner đang gọi API."
           },
@@ -543,14 +830,30 @@
           "name": "GET /owner/drivers (list)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/owner/drivers?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["owner", "drivers"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner",
+                "drivers"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
               ]
             }
           },
@@ -560,11 +863,22 @@
           "name": "GET /owner/drivers/:id",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/owner/drivers/{{managedDriverUserId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["owner", "drivers", "{{managedDriverUserId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner",
+                "drivers",
+                "{{managedDriverUserId}}"
+              ]
             }
           },
           "response": []
@@ -574,8 +888,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -583,8 +903,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/owner/drivers/{{managedDriverUserId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["owner", "drivers", "{{managedDriverUserId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner",
+                "drivers",
+                "{{managedDriverUserId}}"
+              ]
             },
             "description": "Không gửi `role` hay `managedByOwnerId` ở đây (chỉ admin qua PATCH /users). Tùy chọn: `isCustomAvatar`, `appAvatar`, `photo: { \"id\": \"<uuid>\" }` (avatar)."
           },
@@ -594,11 +920,22 @@
           "name": "DELETE /owner/drivers/:id (soft delete)",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/owner/drivers/{{managedDriverUserId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["owner", "drivers", "{{managedDriverUserId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner",
+                "drivers",
+                "{{managedDriverUserId}}"
+              ]
             }
           },
           "response": []
@@ -607,11 +944,23 @@
           "name": "GET /owner/drivers/:driverId/harvest-areas",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/owner/drivers/{{managedDriverUserId}}/harvest-areas",
-              "host": ["{{baseUrl}}"],
-              "path": ["owner", "drivers", "{{managedDriverUserId}}", "harvest-areas"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner",
+                "drivers",
+                "{{managedDriverUserId}}",
+                "harvest-areas"
+              ]
             },
             "description": "Danh sách bãi đã gán cho managed driver (chỉ bãi chưa soft-delete)."
           },
@@ -622,8 +971,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -631,8 +986,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/owner/drivers/{{managedDriverUserId}}/harvest-areas",
-              "host": ["{{baseUrl}}"],
-              "path": ["owner", "drivers", "{{managedDriverUserId}}", "harvest-areas"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner",
+                "drivers",
+                "{{managedDriverUserId}}",
+                "harvest-areas"
+              ]
             },
             "description": "Thay thế toàn bộ gán. Cần `harvestAreaId` (tạo bãi trước). `harvestAreaIds: []` để xóa hết."
           },
@@ -661,8 +1023,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -670,8 +1038,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/harvest-areas",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas"
+              ]
             }
           },
           "response": []
@@ -693,8 +1065,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -702,8 +1080,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/harvest-areas",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas"
+              ]
             }
           },
           "response": []
@@ -712,14 +1094,29 @@
           "name": "GET /harvest-areas (list – admin, all)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/harvest-areas?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
                 {
                   "key": "filters",
                   "value": "{\"status\":\"active\"}",
@@ -731,6 +1128,12 @@
                   "value": "{\"ownerId\":2}",
                   "description": "Lọc theo owner (admin only)",
                   "disabled": true
+                },
+                {
+                  "key": "filters",
+                  "value": "{\"name\":\"Khu\"}",
+                  "disabled": true,
+                  "description": "JSON: tìm kiếm tên khu (ILIKE). Ví dụ: {\"name\":\"Khu A\"}"
                 }
               ]
             }
@@ -741,19 +1144,40 @@
           "name": "GET /harvest-areas (list – owner, chỉ của mình)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/harvest-areas?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
                 {
                   "key": "filters",
                   "value": "{\"status\":\"active\"}",
                   "description": "Lọc theo status",
                   "disabled": true
+                },
+                {
+                  "key": "filters",
+                  "value": "{\"name\":\"Khu\"}",
+                  "disabled": true,
+                  "description": "JSON: tìm kiếm tên khu (ILIKE). Ví dụ: {\"name\":\"Khu A\"}"
                 }
               ]
             }
@@ -764,14 +1188,31 @@
           "name": "GET /harvest-areas/:id/trips",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}/trips?page=1&limit=20",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas", "{{harvestAreaId}}", "trips"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas",
+                "{{harvestAreaId}}",
+                "trips"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "20" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
               ]
             },
             "description": "Lịch sử chuyến theo khu."
@@ -782,11 +1223,22 @@
           "name": "GET /harvest-areas/:id/drivers",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}/drivers",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas", "{{harvestAreaId}}", "drivers"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas",
+                "{{harvestAreaId}}",
+                "drivers"
+              ]
             },
             "description": "Tài xế đã gán bãi (driver_harvest_areas)."
           },
@@ -796,14 +1248,31 @@
           "name": "GET /harvest-areas/:id/cost-entries",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}/cost-entries?page=1&limit=20",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas", "{{harvestAreaId}}", "cost-entries"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas",
+                "{{harvestAreaId}}",
+                "cost-entries"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "20" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
               ]
             },
             "description": "Chi phí vận hành khu (làm đường, bốc hàng, công nhân…)."
@@ -815,8 +1284,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -824,9 +1299,93 @@
             },
             "url": {
               "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}/cost-entries",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas", "{{harvestAreaId}}", "cost-entries"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas",
+                "{{harvestAreaId}}",
+                "cost-entries"
+              ]
             }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /harvest-areas/:id/receipts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}/receipts?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas",
+                "{{harvestAreaId}}",
+                "receipts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true,
+                  "description": "pending | approved | rejected"
+                },
+                {
+                  "key": "receiptDateFrom",
+                  "value": "",
+                  "disabled": true,
+                  "description": "ISO date string"
+                },
+                {
+                  "key": "receiptDateTo",
+                  "value": "",
+                  "disabled": true,
+                  "description": "ISO date string"
+                }
+              ]
+            },
+            "description": "Danh sách phiếu cân theo khu khai thác. Owner/driver được phép (khác với GET /receipts?harvestAreaId= chỉ dành cho admin)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /harvest-areas/:id/receipt-summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}/receipt-summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas",
+                "{{harvestAreaId}}",
+                "receipt-summary"
+              ]
+            },
+            "description": "Tổng hợp phiếu cân theo khu: approvedCount, approvedTotalWeight, approvedTotalAmount, pendingCount, totalCount. 1 DB query aggregate thay cho pagination waterfall."
           },
           "response": []
         },
@@ -834,11 +1393,21 @@
           "name": "GET /harvest-areas/:id (detail – admin)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas", "{{harvestAreaId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas",
+                "{{harvestAreaId}}"
+              ]
             }
           },
           "response": []
@@ -847,11 +1416,21 @@
           "name": "GET /harvest-areas/:id (detail – owner)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas", "{{harvestAreaId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas",
+                "{{harvestAreaId}}"
+              ]
             }
           },
           "response": []
@@ -861,8 +1440,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -870,8 +1455,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas", "{{harvestAreaId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas",
+                "{{harvestAreaId}}"
+              ]
             }
           },
           "response": []
@@ -881,8 +1471,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -890,8 +1486,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas", "{{harvestAreaId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas",
+                "{{harvestAreaId}}"
+              ]
             }
           },
           "response": []
@@ -900,11 +1501,21 @@
           "name": "DELETE /harvest-areas/:id (soft delete – owner)",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas", "{{harvestAreaId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas",
+                "{{harvestAreaId}}"
+              ]
             }
           },
           "response": []
@@ -913,11 +1524,21 @@
           "name": "DELETE /harvest-areas/:id (soft delete – admin)",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas", "{{harvestAreaId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas",
+                "{{harvestAreaId}}"
+              ]
             }
           },
           "response": []
@@ -926,14 +1547,35 @@
           "name": "GET /harvest-areas (list – driver, đã gán)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/harvest-areas?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "filters",
+                  "value": "{\"name\":\"Khu\"}",
+                  "disabled": true,
+                  "description": "JSON: tìm kiếm tên khu (ILIKE). Ví dụ: {\"name\":\"Khu A\"}"
+                }
               ]
             },
             "description": "Chỉ bãi có trong `driver_harvest_areas` + `owner_id` = owner quản lý driver."
@@ -944,11 +1586,21 @@
           "name": "GET /harvest-areas/:id (detail – driver)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/harvest-areas/{{harvestAreaId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["harvest-areas", "{{harvestAreaId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "harvest-areas",
+                "{{harvestAreaId}}"
+              ]
             },
             "description": "404 nếu bãi không được gán cho driver."
           },
@@ -977,8 +1629,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -986,8 +1644,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/weighing-stations",
-              "host": ["{{baseUrl}}"],
-              "path": ["weighing-stations"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weighing-stations"
+              ]
             }
           },
           "response": []
@@ -1009,8 +1671,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1018,8 +1686,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/weighing-stations",
-              "host": ["{{baseUrl}}"],
-              "path": ["weighing-stations"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weighing-stations"
+              ]
             },
             "description": "Dùng `code` unique (Postman `{{$timestamp}}`) để tránh trùng với trạm admin."
           },
@@ -1029,14 +1701,29 @@
           "name": "GET /weighing-stations (list)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/weighing-stations?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["weighing-stations"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weighing-stations"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
                 {
                   "key": "filters",
                   "value": "{\"status\":\"active\"}",
@@ -1070,14 +1757,29 @@
           "name": "GET /weighing-stations (list – owner)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/weighing-stations?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["weighing-stations"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weighing-stations"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
               ]
             },
             "description": "Owner chỉ thấy trạm có `owner_id` trùng tài khoản."
@@ -1088,11 +1790,21 @@
           "name": "GET /weighing-stations/:id (detail)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/weighing-stations/{{weighingStationId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["weighing-stations", "{{weighingStationId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weighing-stations",
+                "{{weighingStationId}}"
+              ]
             }
           },
           "response": []
@@ -1101,14 +1813,31 @@
           "name": "GET /weighing-stations/:id/unit-price-history",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/weighing-stations/{{ownerWeighingStationId}}/unit-price-history?page=1&limit=20",
-              "host": ["{{baseUrl}}"],
-              "path": ["weighing-stations", "{{ownerWeighingStationId}}", "unit-price-history"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weighing-stations",
+                "{{ownerWeighingStationId}}",
+                "unit-price-history"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "20" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
               ]
             },
             "description": "Lịch sử giá trạm (mới nhất trước). Mỗi lần PATCH `unitPrice` khác giá hiện tại thêm một dòng."
@@ -1119,14 +1848,31 @@
           "name": "GET /weighing-stations/:id/receipts",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/weighing-stations/{{ownerWeighingStationId}}/receipts?page=1&limit=20",
-              "host": ["{{baseUrl}}"],
-              "path": ["weighing-stations", "{{ownerWeighingStationId}}", "receipts"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weighing-stations",
+                "{{ownerWeighingStationId}}",
+                "receipts"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "20" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
               ]
             },
             "description": "Phiếu gắn trạm (`weighing_station_id` hoặc trip). Query tùy chọn: status, receiptDateFrom, receiptDateTo."
@@ -1138,8 +1884,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1147,8 +1899,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/weighing-stations/{{weighingStationId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["weighing-stations", "{{weighingStationId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weighing-stations",
+                "{{weighingStationId}}"
+              ]
             }
           },
           "response": []
@@ -1157,11 +1914,21 @@
           "name": "DELETE /weighing-stations/:id (soft delete)",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/weighing-stations/{{weighingStationId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["weighing-stations", "{{weighingStationId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weighing-stations",
+                "{{weighingStationId}}"
+              ]
             }
           },
           "response": []
@@ -1170,14 +1937,29 @@
           "name": "GET /weighing-stations (list – driver)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/weighing-stations?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["weighing-stations"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weighing-stations"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
               ]
             },
             "description": "Dùng trạm do owner tạo: biến `ownerWeighingStationId` hoặc `weighingStationId` trỏ tới trạm có owner khớp. Trạm admin (`owner_id` null) không có trong list."
@@ -1188,11 +1970,21 @@
           "name": "GET /weighing-stations/:id (detail – driver)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/weighing-stations/{{ownerWeighingStationId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["weighing-stations", "{{ownerWeighingStationId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weighing-stations",
+                "{{ownerWeighingStationId}}"
+              ]
             },
             "description": "Mặc định dùng `ownerWeighingStationId` sau POST trạm owner. 404 nếu trạm không thuộc owner quản lý driver."
           },
@@ -1221,8 +2013,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1230,8 +2028,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/vehicles",
-              "host": ["{{baseUrl}}"],
-              "path": ["vehicles"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehicles"
+              ]
             }
           },
           "response": []
@@ -1241,8 +2043,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1250,8 +2058,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/vehicles",
-              "host": ["{{baseUrl}}"],
-              "path": ["vehicles"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehicles"
+              ]
             }
           },
           "response": []
@@ -1260,14 +2072,29 @@
           "name": "GET /vehicles (list)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/vehicles?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["vehicles"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehicles"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
               ]
             }
           },
@@ -1277,11 +2104,21 @@
           "name": "GET /vehicles/:id",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/vehicles/{{vehicleId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["vehicles", "{{vehicleId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehicles",
+                "{{vehicleId}}"
+              ]
             }
           },
           "response": []
@@ -1291,8 +2128,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1300,8 +2143,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/owner/drivers/{{managedDriverUserId}}/vehicle",
-              "host": ["{{baseUrl}}"],
-              "path": ["owner", "drivers", "{{managedDriverUserId}}", "vehicle"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner",
+                "drivers",
+                "{{managedDriverUserId}}",
+                "vehicle"
+              ]
             },
             "description": "Driver phải là managed driver của owner; xe phải có `owner_id` = owner đang gọi."
           },
@@ -1311,11 +2161,23 @@
           "name": "GET /owner/drivers/:driverId/vehicle",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/owner/drivers/{{managedDriverUserId}}/vehicle",
-              "host": ["{{baseUrl}}"],
-              "path": ["owner", "drivers", "{{managedDriverUserId}}", "vehicle"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner",
+                "drivers",
+                "{{managedDriverUserId}}",
+                "vehicle"
+              ]
             }
           },
           "response": []
@@ -1337,8 +2199,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1346,8 +2214,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/vehicles/{{vehicleId}}/expenses",
-              "host": ["{{baseUrl}}"],
-              "path": ["vehicles", "{{vehicleId}}", "expenses"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehicles",
+                "{{vehicleId}}",
+                "expenses"
+              ]
             }
           },
           "response": []
@@ -1356,14 +2230,31 @@
           "name": "GET /vehicles/:vehicleId/expenses",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/vehicles/{{vehicleId}}/expenses?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["vehicles", "{{vehicleId}}", "expenses"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehicles",
+                "{{vehicleId}}",
+                "expenses"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
               ]
             }
           },
@@ -1373,14 +2264,29 @@
           "name": "GET /vehicles (list – driver)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/vehicles?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["vehicles"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehicles"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
               ]
             },
             "description": "Chỉ xe đang gán cho tài xế đăng nhập (0 hoặc 1 phần tử)."
@@ -1410,8 +2316,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1419,8 +2331,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/trips",
-              "host": ["{{baseUrl}}"],
-              "path": ["trips"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trips"
+              ]
             },
             "description": "Dùng **ownerWeighingStationId** (sau POST trạm owner). Cần **PUT …/owner/drivers/.../harvest-areas** gán `harvestAreaId` cho driver đang login."
           },
@@ -1443,8 +2359,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1452,8 +2374,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/trips",
-              "host": ["{{baseUrl}}"],
-              "path": ["trips"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trips"
+              ]
             },
             "description": "Lỗi `driverAlreadyHasInProgressTrip` nếu đã có trip in_progress."
           },
@@ -1464,8 +2390,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1473,8 +2405,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/trips/{{tripId}}/start",
-              "host": ["{{baseUrl}}"],
-              "path": ["trips", "{{tripId}}", "start"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trips",
+                "{{tripId}}",
+                "start"
+              ]
             },
             "description": "Trip phải đang `planned`."
           },
@@ -1485,8 +2423,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1494,8 +2438,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/trips/{{tripId}}/complete",
-              "host": ["{{baseUrl}}"],
-              "path": ["trips", "{{tripId}}", "complete"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trips",
+                "{{tripId}}",
+                "complete"
+              ]
             },
             "description": "Đổi Bearer sang `driverAccessToken` hoặc `adminAccessToken` tuỳ role. Trip phải `in_progress`."
           },
@@ -1506,8 +2456,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1515,8 +2471,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/trips/{{tripId}}/cancel",
-              "host": ["{{baseUrl}}"],
-              "path": ["trips", "{{tripId}}", "cancel"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trips",
+                "{{tripId}}",
+                "cancel"
+              ]
             },
             "description": "Cho phép khi trip `planned` hoặc `in_progress`."
           },
@@ -1526,14 +2488,29 @@
           "name": "GET /trips (driver)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/trips?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["trips"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trips"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
                 {
                   "key": "status",
                   "value": "in_progress",
@@ -1549,14 +2526,29 @@
           "name": "GET /trips (owner – theo khu)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/trips?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["trips"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trips"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
                 {
                   "key": "status",
                   "value": "planned",
@@ -1571,14 +2563,29 @@
           "name": "GET /trips (admin – lọc driver/khu)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/trips?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["trips"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trips"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
                 {
                   "key": "harvestAreaId",
                   "value": "{{harvestAreaId}}",
@@ -1617,8 +2624,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1626,8 +2639,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/drivers/me/location",
-              "host": ["{{baseUrl}}"],
-              "path": ["drivers", "me", "location"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "drivers",
+                "me",
+                "location"
+              ]
             }
           },
           "response": []
@@ -1637,8 +2656,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1646,8 +2671,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/trips/{{tripId}}/locations",
-              "host": ["{{baseUrl}}"],
-              "path": ["trips", "{{tripId}}", "locations"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trips",
+                "{{tripId}}",
+                "locations"
+              ]
             },
             "description": "Tạo trip `startNow: true` (hoặc start) trước để trip ở trạng thái `in_progress`."
           },
@@ -1658,15 +2689,30 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/trips/{{tripId}}/locations?page=1&limit=50",
-              "host": ["{{baseUrl}}"],
-              "path": ["trips", "{{tripId}}", "locations"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trips",
+                "{{tripId}}",
+                "locations"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "50" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
               ]
             },
             "description": "Polyline/replay theo trip. Query: `timestampFrom`, `timestampTo` (ISO) tùy chọn."
@@ -1678,15 +2724,30 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/drivers/me/locations?page=1&limit=50",
-              "host": ["{{baseUrl}}"],
-              "path": ["drivers", "me", "locations"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "drivers",
+                "me",
+                "locations"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "50" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
               ]
             }
           },
@@ -1697,15 +2758,32 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/owner/drivers/locations/{{managedDriverUserId}}/history?page=1&limit=50",
-              "host": ["{{baseUrl}}"],
-              "path": ["owner", "drivers", "locations", "{{managedDriverUserId}}", "history"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner",
+                "drivers",
+                "locations",
+                "{{managedDriverUserId}}",
+                "history"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "50" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
               ]
             },
             "description": "Tài xế phải thuộc owner (hoặc admin). Dùng `managedDriverUserId` sau **POST /owner/drivers**."
@@ -1717,15 +2795,31 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/owner/drivers/locations/latest?page=1&limit=200",
-              "host": ["{{baseUrl}}"],
-              "path": ["owner", "drivers", "locations", "latest"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner",
+                "drivers",
+                "locations",
+                "latest"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "200" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "200"
+                }
               ]
             }
           },
@@ -1754,8 +2848,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1763,8 +2863,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/receipts",
-              "host": ["{{baseUrl}}"],
-              "path": ["receipts"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ]
             },
             "description": "`tripId` có thể bỏ hoặc gửi UUID trip. Ít nhất một trong: `imageUrls`, `imageFileIds`, hoặc (deprecated) `receiptImageUrl`."
           },
@@ -1787,8 +2891,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1796,8 +2906,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/receipts",
-              "host": ["{{baseUrl}}"],
-              "path": ["receipts"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ]
             },
             "description": "Với **s3-presigned**: Files → POST JSON bước 1 → PUT S3 bước 2. Với local/s3: POST multipart. Biến `uploadedFileId` = `file.id` sau upload xong."
           },
@@ -1820,8 +2934,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1829,8 +2949,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/receipts",
-              "host": ["{{baseUrl}}"],
-              "path": ["receipts"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ]
             },
             "description": "Tạo trip **startNow: true** (hoặc start) trước. `weighingStationId` có thể bỏ — server gán theo trip."
           },
@@ -1853,8 +2977,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1862,8 +2992,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/receipts",
-              "host": ["{{baseUrl}}"],
-              "path": ["receipts"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ]
             },
             "description": "Owner tạo phiếu hộ tài xế: `driverUserId` = `managedDriverUserId` (sau **POST .../owner/drivers**). Đã **PUT .../harvest-areas** cho driver. Dùng trạm **owner** (`ownerWeighingStationId`). **Không** gửi `driverUserId` khi gọi bằng token driver."
           },
@@ -1873,14 +3007,29 @@
           "name": "GET /receipts (driver – chỉ của mình)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/receipts?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["receipts"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
                 {
                   "key": "status",
                   "value": "pending",
@@ -1906,14 +3055,29 @@
           "name": "GET /receipts (owner – theo khu)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/receipts?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["receipts"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
                 {
                   "key": "status",
                   "value": "approved",
@@ -1928,14 +3092,29 @@
           "name": "GET /receipts (admin – tất cả + lọc khu)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/receipts?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["receipts"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
                 {
                   "key": "harvestAreaId",
                   "value": "{{harvestAreaId}}",
@@ -1967,12 +3146,20 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/receipts/{{receiptId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["receipts", "{{receiptId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "{{receiptId}}"
+              ]
             },
             "description": "UUID trong path. Driver / owner (khu) / admin — cùng rule với list. Gán `receiptId` từ POST submit hoặc GET list. 404 nếu không thuộc quyền hoặc không có phiếu."
           },
@@ -1983,8 +3170,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1992,8 +3185,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/receipts/{{receiptId}}/approve",
-              "host": ["{{baseUrl}}"],
-              "path": ["receipts", "{{receiptId}}", "approve"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "{{receiptId}}",
+                "approve"
+              ]
             },
             "description": "Khi phiếu đã có `weighingStationId` hoặc suy ra từ trip. Response có `financeRecord` (revenue = `amount` trên phiếu)."
           },
@@ -2004,8 +3203,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -2013,8 +3218,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/receipts/{{receiptId}}/approve",
-              "host": ["{{baseUrl}}"],
-              "path": ["receipts", "{{receiptId}}", "approve"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "{{receiptId}}",
+                "approve"
+              ]
             },
             "description": "Dùng khi phiếu **chưa** có trạm và không lấy được từ trip."
           },
@@ -2025,8 +3236,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -2034,8 +3251,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/receipts/{{receiptId}}/reject",
-              "host": ["{{baseUrl}}"],
-              "path": ["receipts", "{{receiptId}}", "reject"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "{{receiptId}}",
+                "reject"
+              ]
             }
           },
           "response": []
@@ -2051,14 +3274,26 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/analytics/dashboard/summary?range=today",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "dashboard", "summary"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "analytics",
+                "dashboard",
+                "summary"
+              ],
               "query": [
-                { "key": "range", "value": "today" }
+                {
+                  "key": "range",
+                  "value": "today"
+                }
               ]
             }
           },
@@ -2069,14 +3304,26 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/analytics/dashboard/summary?range=today",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "dashboard", "summary"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "analytics",
+                "dashboard",
+                "summary"
+              ],
               "query": [
-                { "key": "range", "value": "today" }
+                {
+                  "key": "range",
+                  "value": "today"
+                }
               ]
             }
           },
@@ -2087,14 +3334,26 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/analytics/dashboard/summary?range=today",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "dashboard", "summary"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "analytics",
+                "dashboard",
+                "summary"
+              ],
               "query": [
-                { "key": "range", "value": "today" }
+                {
+                  "key": "range",
+                  "value": "today"
+                }
               ]
             }
           },
@@ -2105,16 +3364,34 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/analytics/reports/receipts?range=today&groupBy=day&status=all",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "reports", "receipts"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "analytics",
+                "reports",
+                "receipts"
+              ],
               "query": [
-                { "key": "range", "value": "today" },
-                { "key": "groupBy", "value": "day" },
-                { "key": "status", "value": "all" }
+                {
+                  "key": "range",
+                  "value": "today"
+                },
+                {
+                  "key": "groupBy",
+                  "value": "day"
+                },
+                {
+                  "key": "status",
+                  "value": "all"
+                }
               ]
             }
           },
@@ -2125,15 +3402,30 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/analytics/reports/finance?range=today&groupBy=day",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "reports", "finance"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "analytics",
+                "reports",
+                "finance"
+              ],
               "query": [
-                { "key": "range", "value": "today" },
-                { "key": "groupBy", "value": "day" }
+                {
+                  "key": "range",
+                  "value": "today"
+                },
+                {
+                  "key": "groupBy",
+                  "value": "day"
+                }
               ]
             }
           },
@@ -2144,15 +3436,30 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/analytics/reports/trips?range=today&groupBy=status",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "reports", "trips"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "analytics",
+                "reports",
+                "trips"
+              ],
               "query": [
-                { "key": "range", "value": "today" },
-                { "key": "groupBy", "value": "status" }
+                {
+                  "key": "range",
+                  "value": "today"
+                },
+                {
+                  "key": "groupBy",
+                  "value": "status"
+                }
               ]
             }
           },
@@ -2163,14 +3470,27 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/analytics/drivers/me/detail?range=today",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "drivers", "me", "detail"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "analytics",
+                "drivers",
+                "me",
+                "detail"
+              ],
               "query": [
-                { "key": "range", "value": "today" }
+                {
+                  "key": "range",
+                  "value": "today"
+                }
               ]
             }
           },
@@ -2181,14 +3501,27 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/analytics/drivers/{{managedDriverUserId}}/detail?range=today",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "drivers", "{{managedDriverUserId}}", "detail"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "analytics",
+                "drivers",
+                "{{managedDriverUserId}}",
+                "detail"
+              ],
               "query": [
-                { "key": "range", "value": "today" }
+                {
+                  "key": "range",
+                  "value": "today"
+                }
               ]
             }
           },
@@ -2199,14 +3532,27 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/analytics/weighing-stations/{{ownerWeighingStationId}}/detail?range=today",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "weighing-stations", "{{ownerWeighingStationId}}", "detail"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "analytics",
+                "weighing-stations",
+                "{{ownerWeighingStationId}}",
+                "detail"
+              ],
               "query": [
-                { "key": "range", "value": "today" }
+                {
+                  "key": "range",
+                  "value": "today"
+                }
               ]
             }
           },
@@ -2217,14 +3563,27 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/analytics/harvest-areas/{{harvestAreaId}}/detail?range=today",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "harvest-areas", "{{harvestAreaId}}", "detail"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "analytics",
+                "harvest-areas",
+                "{{harvestAreaId}}",
+                "detail"
+              ],
               "query": [
-                { "key": "range", "value": "today" }
+                {
+                  "key": "range",
+                  "value": "today"
+                }
               ]
             }
           },
@@ -2241,16 +3600,33 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/notifications?page=1&limit=20",
-              "host": ["{{baseUrl}}"],
-              "path": ["notifications"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "20" },
-                { "key": "isRead", "value": "", "disabled": true }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "isRead",
+                  "value": "",
+                  "disabled": true
+                }
               ]
             },
             "description": "Query `isRead` = true|false (bật nếu cần lọc)."
@@ -2262,12 +3638,21 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/notifications/{{notificationId}}/read",
-              "host": ["{{baseUrl}}"],
-              "path": ["notifications", "{{notificationId}}", "read"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "{{notificationId}}",
+                "read"
+              ]
             }
           },
           "response": []
@@ -2277,12 +3662,20 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/notifications/read-all",
-              "host": ["{{baseUrl}}"],
-              "path": ["notifications", "read-all"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "read-all"
+              ]
             }
           },
           "response": []
@@ -2292,8 +3685,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -2301,8 +3700,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/notifications/expo/register",
-              "host": ["{{baseUrl}}"],
-              "path": ["notifications", "expo", "register"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "expo",
+                "register"
+              ]
             },
             "description": "HTTP 200. Response: entity thiết bị push (user, expoPushToken, platform, isEnabled, …). Xóa hoặc để rỗng `easProjectId`/`easEnvironment` nếu không dùng."
           },
@@ -2313,8 +3718,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ownerAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -2322,8 +3733,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/notifications/expo/register",
-              "host": ["{{baseUrl}}"],
-              "path": ["notifications", "expo", "register"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "expo",
+                "register"
+              ]
             },
             "description": "Giống bản driver; dùng `ownerAccessToken` sau khi login owner."
           },
@@ -2354,8 +3771,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{driverAccessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -2363,8 +3786,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/files/upload",
-              "host": ["{{baseUrl}}"],
-              "path": ["files", "upload"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "files",
+                "upload"
+              ]
             },
             "description": "Chỉ khi backend `FILE_DRIVER=s3-presigned`. Response: `{ file: { id, path }, uploadSignedUrl }`. `fileUploadSize` = byte (≤ maxFileSize); nên khớp `File.size` ở client. Sau đó **PUT presigned URL** với binary."
           },
@@ -2403,7 +3831,12 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{driverAccessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverAccessToken}}"
+              }
+            ],
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -2416,8 +3849,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/files/upload",
-              "host": ["{{baseUrl}}"],
-              "path": ["files", "upload"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "files",
+                "upload"
+              ]
             },
             "description": "Khi `FILE_DRIVER=local` hoặc `s3`. Response `{ file: { id, path } }`."
           },
@@ -2430,8 +3868,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrlRoot}}/files/{{filePath}}",
-              "host": ["{{baseUrlRoot}}"],
-              "path": ["files", "{{filePath}}"]
+              "host": [
+                "{{baseUrlRoot}}"
+              ],
+              "path": [
+                "files",
+                "{{filePath}}"
+              ]
             }
           },
           "response": []
@@ -2440,35 +3883,125 @@
     }
   ],
   "variable": [
-    { "key": "baseUrlRoot", "value": "http://localhost:3000" },
-    { "key": "baseUrl", "value": "http://localhost:3000/api/v1" },
-    { "key": "adminEmail", "value": "admin@example.com" },
-    { "key": "adminPassword", "value": "secret" },
-    { "key": "ownerEmail", "value": "john.doe@example.com" },
-    { "key": "ownerPassword", "value": "secret" },
-    { "key": "driverEmail", "value": "driver@example.com" },
-    { "key": "driverPassword", "value": "secret" },
-    { "key": "accessToken", "value": "" },
-    { "key": "refreshToken", "value": "" },
-    { "key": "userId", "value": "" },
-    { "key": "filePath", "value": "" },
-    { "key": "adminAccessToken", "value": "" },
-    { "key": "ownerAccessToken", "value": "" },
-    { "key": "ownerUserId", "value": "2" },
-    { "key": "managedDriverUserId", "value": "" },
-    { "key": "driverAccessToken", "value": "" },
-    { "key": "harvestAreaId", "value": "" },
-    { "key": "weighingStationId", "value": "" },
-    { "key": "ownerWeighingStationId", "value": "" },
-    { "key": "receiptId", "value": "" },
-    { "key": "tripId", "value": "" },
-    { "key": "uploadSignedUrl", "value": "" },
-    { "key": "fileUploadName", "value": "receipt.jpg" },
-    { "key": "fileUploadSize", "value": "1024" },
-    { "key": "uploadedFileId", "value": "" },
-    { "key": "vehicleId", "value": "" },
-    { "key": "vehicleExpenseId", "value": "" },
-    { "key": "expoPushToken", "value": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]" },
-    { "key": "notificationId", "value": "" }
+    {
+      "key": "baseUrlRoot",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@example.com"
+    },
+    {
+      "key": "adminPassword",
+      "value": "secret"
+    },
+    {
+      "key": "ownerEmail",
+      "value": "john.doe@example.com"
+    },
+    {
+      "key": "ownerPassword",
+      "value": "secret"
+    },
+    {
+      "key": "driverEmail",
+      "value": "driver@example.com"
+    },
+    {
+      "key": "driverPassword",
+      "value": "secret"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "filePath",
+      "value": ""
+    },
+    {
+      "key": "adminAccessToken",
+      "value": ""
+    },
+    {
+      "key": "ownerAccessToken",
+      "value": ""
+    },
+    {
+      "key": "ownerUserId",
+      "value": "2"
+    },
+    {
+      "key": "managedDriverUserId",
+      "value": ""
+    },
+    {
+      "key": "driverAccessToken",
+      "value": ""
+    },
+    {
+      "key": "harvestAreaId",
+      "value": ""
+    },
+    {
+      "key": "weighingStationId",
+      "value": ""
+    },
+    {
+      "key": "ownerWeighingStationId",
+      "value": ""
+    },
+    {
+      "key": "receiptId",
+      "value": ""
+    },
+    {
+      "key": "tripId",
+      "value": ""
+    },
+    {
+      "key": "uploadSignedUrl",
+      "value": ""
+    },
+    {
+      "key": "fileUploadName",
+      "value": "receipt.jpg"
+    },
+    {
+      "key": "fileUploadSize",
+      "value": "1024"
+    },
+    {
+      "key": "uploadedFileId",
+      "value": ""
+    },
+    {
+      "key": "vehicleId",
+      "value": ""
+    },
+    {
+      "key": "vehicleExpenseId",
+      "value": ""
+    },
+    {
+      "key": "expoPushToken",
+      "value": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]"
+    },
+    {
+      "key": "notificationId",
+      "value": ""
+    }
   ]
 }
