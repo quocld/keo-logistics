@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -77,11 +77,24 @@ type MapPinModel = {
   name: string;
 };
 
-function MapPinMarker({ color, icon }: { color: string; icon: 'scale' | 'park' }) {
+function MapPinMarker({
+  color,
+  icon,
+  focused,
+}: {
+  color: string;
+  icon: 'scale' | 'park';
+  focused?: boolean;
+}) {
   return (
-    <View style={[pinMarkerStyles.ring, { borderColor: color }]}>
-      <View style={pinMarkerStyles.inner}>
-        <MaterialIcons name={icon} size={22} color={color} />
+    <View
+      style={[
+        pinMarkerStyles.ring,
+        { borderColor: color },
+        focused && pinMarkerStyles.ringFocused,
+      ]}>
+      <View style={[pinMarkerStyles.inner, focused && pinMarkerStyles.innerFocused]}>
+        <MaterialIcons name={icon} size={focused ? 26 : 22} color={color} />
       </View>
     </View>
   );
@@ -99,6 +112,12 @@ const pinMarkerStyles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 4,
   },
+  ringFocused: {
+    borderWidth: 4,
+    shadowOpacity: 0.38,
+    shadowRadius: 6,
+    elevation: 8,
+  },
   inner: {
     width: 36,
     height: 36,
@@ -107,6 +126,11 @@ const pinMarkerStyles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#fff',
   },
+  innerFocused: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+  },
 });
 
 const OpsMapBody = memo(function OpsMapBody({
@@ -114,34 +138,56 @@ const OpsMapBody = memo(function OpsMapBody({
   pins,
   tracksViewChanges,
   mapType,
+  focusRegion,
+  focusId,
   onPinPress,
 }: {
   initialRegion: Region;
   pins: MapPinModel[];
   tracksViewChanges: boolean;
   mapType: OpsMapLayer;
+  focusRegion: Region | null;
+  focusId: string | null;
   onPinPress: (pin: MapPinModel) => void;
 }) {
+  const mapRef = useRef<React.ComponentRef<typeof MapView>>(null);
+
+  useEffect(() => {
+    if (!focusRegion) return;
+    const t = setTimeout(() => {
+      mapRef.current?.animateToRegion(focusRegion, 600);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [focusRegion]);
+
   return (
     <MapView
+      ref={mapRef}
       provider={PROVIDER_GOOGLE}
       style={StyleSheet.absoluteFill}
-      initialRegion={initialRegion}
+      initialRegion={focusRegion ?? initialRegion}
       showsUserLocation={true}
       showsMyLocationButton={true}
       rotateEnabled={true}
       pitchEnabled={true}
       mapType={mapType}>
-      {pins.map((p) => (
-        <Marker
-          key={`${p.kind}-${String(p.id)}`}
-          coordinate={{ latitude: p.latitude, longitude: p.longitude }}
-          anchor={{ x: 0.5, y: 1 }}
-          tracksViewChanges={tracksViewChanges}
-          onPress={() => onPinPress(p)}>
-          <MapPinMarker color={p.color} icon={p.kind === 'station' ? 'scale' : 'park'} />
-        </Marker>
-      ))}
+      {pins.map((p) => {
+        const isFocused = focusId != null && String(p.id) === focusId && p.kind === 'harvest';
+        return (
+          <Marker
+            key={`${p.kind}-${String(p.id)}`}
+            coordinate={{ latitude: p.latitude, longitude: p.longitude }}
+            anchor={{ x: 0.5, y: 1 }}
+            tracksViewChanges={tracksViewChanges || isFocused}
+            onPress={() => onPinPress(p)}>
+            <MapPinMarker
+              color={p.color}
+              icon={p.kind === 'station' ? 'scale' : 'park'}
+              focused={isFocused}
+            />
+          </Marker>
+        );
+      })}
     </MapView>
   );
 });
@@ -205,6 +251,16 @@ type WebRow =
 export default function WeighingStationsMapScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ focusLat?: string; focusLng?: string; focusId?: string }>();
+  const focusLat = params.focusLat ? Number(params.focusLat) : null;
+  const focusLng = params.focusLng ? Number(params.focusLng) : null;
+  const focusId = params.focusId ?? null;
+  const focusRegion = useMemo<Region | null>(() => {
+    if (focusLat == null || focusLng == null) return null;
+    if (!Number.isFinite(focusLat) || !Number.isFinite(focusLng)) return null;
+    return { latitude: focusLat, longitude: focusLng, latitudeDelta: 0.005, longitudeDelta: 0.005 };
+  }, [focusLat, focusLng]);
+
   const [stations, setStations] = useState<WeighingStation[]>([]);
   const [harvestAreas, setHarvestAreas] = useState<HarvestArea[]>([]);
   const [loading, setLoading] = useState(true);
@@ -489,6 +545,8 @@ export default function WeighingStationsMapScreen() {
           pins={pins}
           tracksViewChanges={tracksViewChanges}
           mapType={mapLayer}
+          focusRegion={focusRegion}
+          focusId={focusId}
           onPinPress={onPinPress}
         />
       ) : (

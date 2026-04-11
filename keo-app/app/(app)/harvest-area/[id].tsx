@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -380,7 +379,10 @@ export default function HarvestAreaDetailScreen() {
     const la = Number(item.latitude);
     const lo = Number(item.longitude);
     if (!Number.isFinite(la) || !Number.isFinite(lo)) return;
-    void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${la},${lo}`);
+    router.push({
+      pathname: '/weighing-stations-map',
+      params: { focusLat: String(la), focusLng: String(lo), focusId: String(id) },
+    });
   };
 
   const onAddDriver = () => {
@@ -668,7 +670,7 @@ export default function HarvestAreaDetailScreen() {
             <Text style={styles.mapRowText}>
               {hasMapCoords ? 'Mở vị trí trên bản đồ' : 'Chưa có vị trí — bổ sung trong form chỉnh sửa khu'}
             </Text>
-            {hasMapCoords ? <MaterialIcons name="open-in-new" size={18} color={S.primary} /> : null}
+            {hasMapCoords ? <MaterialIcons name="chevron-right" size={18} color={S.primary} /> : null}
           </Pressable>
         </View>
 
