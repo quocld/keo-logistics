@@ -1136,7 +1136,8 @@
                   "description": "JSON: tìm kiếm tên khu (ILIKE). Ví dụ: {\"name\":\"Khu A\"}"
                 }
               ]
-            }
+            },
+            "description": "Response bao gồm `currentTons` (sản lượng tích luỹ từ các phiếu đã duyệt). Field được cộng tự động khi approve receipt."
           },
           "response": []
         },
@@ -1180,7 +1181,8 @@
                   "description": "JSON: tìm kiếm tên khu (ILIKE). Ví dụ: {\"name\":\"Khu A\"}"
                 }
               ]
-            }
+            },
+            "description": "Response bao gồm `currentTons` (sản lượng tích luỹ từ các phiếu đã duyệt). Field được cộng tự động khi approve receipt."
           },
           "response": []
         },
@@ -1385,7 +1387,7 @@
                 "receipt-summary"
               ]
             },
-            "description": "Tổng hợp phiếu cân theo khu: approvedCount, approvedTotalWeight, approvedTotalAmount, pendingCount, totalCount. 1 DB query aggregate thay cho pagination waterfall."
+            "description": "Tổng hợp phiếu cân theo khu: approvedCount, approvedTotalWeight (tấn), approvedTotalAmount (VNĐ), pendingCount, totalCount.\n\nLưu ý: `approvedTotalWeight` từ endpoint này là tổng weight của phiếu approved (tính trực tiếp từ bảng receipts). `currentTons` trên HarvestArea được cộng dồn tại thời điểm approve trong cùng transaction."
           },
           "response": []
         },
@@ -1578,7 +1580,7 @@
                 }
               ]
             },
-            "description": "Chỉ bãi có trong `driver_harvest_areas` + `owner_id` = owner quản lý driver."
+            "description": "Chỉ bãi có trong `driver_harvest_areas` + `owner_id` = owner quản lý driver.\n\nResponse bao gồm `currentTons` (sản lượng tích luỹ từ các phiếu đã duyệt). Field được cộng tự động khi approve receipt."
           },
           "response": []
         },
@@ -3194,7 +3196,7 @@
                 "approve"
               ]
             },
-            "description": "Khi phiếu đã có `weighingStationId` hoặc suy ra từ trip. Response có `financeRecord` (revenue = `amount` trên phiếu)."
+            "description": "Khi phiếu đã có `weighingStationId` hoặc suy ra từ trip. Response có `financeRecord` (revenue = `amount` trên phiếu).\n\nSide effect: cộng `receipt.weight` vào `harvest_area.current_tons` trong cùng DB transaction."
           },
           "response": []
         },
@@ -3227,7 +3229,7 @@
                 "approve"
               ]
             },
-            "description": "Dùng khi phiếu **chưa** có trạm và không lấy được từ trip."
+            "description": "Dùng khi phiếu **chưa** có trạm và không lấy được từ trip.\n\nSide effect: cộng `receipt.weight` vào `harvest_area.current_tons` trong cùng DB transaction."
           },
           "response": []
         },
