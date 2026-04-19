@@ -28,6 +28,7 @@ import type { NotificationInboxItem } from '@/lib/types/ops';
 
 const S = Brand.stitch;
 const PAGE_SIZE = 20;
+const RECEIPT_TYPES = new Set(['receipt_created', 'receipt_approved', 'receipt_rejected']);
 
 type FilterTab = 'all' | 'unread';
 
@@ -181,11 +182,10 @@ export default function NotificationsScreen() {
 
   const onPressRow = useCallback(
     async (item: NotificationInboxItem) => {
-      setDetail(item);
+      // Đánh dấu đã đọc
       if (!item.isRead) {
         try {
           const updated = await markNotificationRead(item.id);
-          setDetail(updated);
           setItems((prev) =>
             prev.map((row) => (row.id === item.id ? { ...row, ...updated, isRead: true } : row)),
           );
@@ -193,8 +193,15 @@ export default function NotificationsScreen() {
           setError(getErrorMessage(e, 'Không đánh dấu đã đọc'));
         }
       }
+      // Navigate nếu là thông báo phiếu cân có referenceId
+      if (item.type && RECEIPT_TYPES.has(item.type) && item.referenceId) {
+        router.push(`/(app)/receipt/${item.referenceId}`);
+        return;
+      }
+      // Các loại khác → mở modal chi tiết
+      setDetail(item);
     },
-    [],
+    [router],
   );
 
   const onReadAll = useCallback(async () => {

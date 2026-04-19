@@ -31,6 +31,8 @@ function mapNotificationRow(raw: unknown): NotificationInboxItem {
           : null;
     const readAt =
       r.readAt != null ? String(r.readAt) : r.read_at != null ? String(r.read_at) : null;
+    const type = r.type != null ? String(r.type) : null;
+    const referenceId = r.referenceId != null ? String(r.referenceId) : null;
     return {
       ...r,
       id,
@@ -38,6 +40,8 @@ function mapNotificationRow(raw: unknown): NotificationInboxItem {
       title,
       body: bodyText,
       message: r.message != null ? String(r.message) : null,
+      type,
+      referenceId,
       createdAt,
       readAt,
     };

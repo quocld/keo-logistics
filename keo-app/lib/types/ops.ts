@@ -292,6 +292,9 @@ export type NotificationInboxItem = {
   title?: string | null;
   body?: string | null;
   message?: string | null;
+  type?: string | null;
+  /** ID của entity liên quan (vd: receiptId) — dùng để deep link từ inbox */
+  referenceId?: string | null;
   createdAt?: string | null;
   readAt?: string | null;
   [key: string]: unknown;
