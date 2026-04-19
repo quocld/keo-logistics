@@ -296,3 +296,15 @@ export type NotificationInboxItem = {
   readAt?: string | null;
   [key: string]: unknown;
 };
+
+export type HarvestAreaCostCategory = 'road' | 'loading' | 'labor' | 'commission' | 'other';
+
+export type HarvestAreaCostEntry = {
+  id: string;
+  harvestAreaId: string;
+  category: HarvestAreaCostCategory;
+  amount: string;
+  incurredAt: string;
+  notes: string | null;
+  createdAt: string;
+};

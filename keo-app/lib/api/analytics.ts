@@ -1,4 +1,3 @@
-import { extractFinanceReportBuckets } from '@/lib/analytics/owner-home-map';
 import type { FinanceReportResponse, OwnerDashboardSummary } from '@/lib/types/analytics';
 
 import { apiFetch } from './client';
@@ -51,8 +50,10 @@ export type FinanceReportResult =
 export async function getFinanceReport(params: {
   range: string;
   groupBy: 'day' | 'week' | 'month';
+  from?: string;
+  to?: string;
 }): Promise<FinanceReportResult> {
-  const qs = buildQuery({ range: params.range, groupBy: params.groupBy });
+  const qs = buildQuery({ range: params.range, groupBy: params.groupBy, from: params.from, to: params.to });
   const res = await apiFetch(`/analytics/reports/finance${qs}`);
 
   const text = await res.text();
@@ -78,33 +79,16 @@ export async function getFinanceReport(params: {
   return { ok: true, body: parsed as FinanceReportResponse };
 }
 
-/** Thử lần lượt các giá trị `range` phổ biến cho 7 ngày (backend có thể khác tên). */
-const FINANCE_RANGE_7D_CANDIDATES = [
-  'last_7_days',
-  'last7days',
-  'last7_days',
-  'last-7-days',
-  '7d',
-  '7_days',
-  'past_7_days',
-  'week',
-  'last_week',
-] as const;
-
-export async function getFinanceReportLast7Days(): Promise<FinanceReportResult> {
-  let lastMessage = 'Không tải được báo cáo tài chính';
-  let lastOk: FinanceReportResult | null = null;
-  for (const range of FINANCE_RANGE_7D_CANDIDATES) {
-    const r = await getFinanceReport({ range, groupBy: 'day' });
-    if (!r.ok) {
-      lastMessage = r.message;
-      continue;
-    }
-    if (extractFinanceReportBuckets(r.body).length > 0) {
-      return r;
-    }
-    lastOk = r;
-  }
-  if (lastOk) return lastOk;
-  return { ok: false, message: lastMessage };
+/** Lấy báo cáo tài chính 7 ngày gần nhất (custom range: từ 6 ngày trước đến hôm nay). */
+export function getFinanceReportLast7Days(): Promise<FinanceReportResult> {
+  const to = new Date();
+  const from = new Date(to);
+  from.setDate(to.getDate() - 6);
+  from.setHours(0, 0, 0, 0);
+  return getFinanceReport({
+    range: 'custom',
+    groupBy: 'day',
+    from: from.toISOString(),
+    to: to.toISOString(),
+  });
 }

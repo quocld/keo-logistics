@@ -10,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,10 +20,12 @@ import { Brand } from '@/constants/brand';
 import { useAuth } from '@/contexts/auth-context';
 import { getErrorMessage } from '@/lib/api/errors';
 import {
+  createHarvestAreaCostEntry,
   deleteHarvestArea,
   getHarvestArea,
   getHarvestAreaDrivers,
   getHarvestAreaReceiptSummary,
+  listHarvestAreaCostEntries,
   listHarvestAreaReceipts,
 } from '@/lib/api/harvest-areas';
 import {
@@ -33,11 +36,30 @@ import {
 import { aggregateDriversFromTrips, listTrips } from '@/lib/api/trips';
 import { formatReceiptDateAndTimeVi } from '@/lib/date/vi-receipt-time';
 import { formatVndShortVi } from '@/lib/format/vnd-vi';
-import type { HarvestArea, OwnerDriverUser, Receipt, Trip } from '@/lib/types/ops';
+import type { HarvestArea, HarvestAreaCostCategory, HarvestAreaCostEntry, OwnerDriverUser, Receipt, Trip } from '@/lib/types/ops';
 
 const S = Brand.stitch;
 
 const RECEIPTS_PAGE_SIZE = 10;
+
+const COST_CATEGORY_OPTIONS: { value: HarvestAreaCostCategory; label: string }[] = [
+  { value: 'road', label: 'Sửa đường' },
+  { value: 'loading', label: 'Bốc dỡ' },
+  { value: 'labor', label: 'Nhân công' },
+  { value: 'commission', label: 'Hoa hồng' },
+  { value: 'other', label: 'Khác' },
+];
+
+function costCategoryLabel(cat: string): string {
+  return COST_CATEGORY_OPTIONS.find((o) => o.value === cat)?.label ?? cat;
+}
+
+function localDateYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 const STATUS_LABELS: Record<string, string> = {
   inactive: 'Ngưng',
@@ -181,6 +203,15 @@ export default function HarvestAreaDetailScreen() {
   const [addDriverModalOpen, setAddDriverModalOpen] = useState(false);
   const [assigningDriverId, setAssigningDriverId] = useState<number | null>(null);
 
+  const [costEntries, setCostEntries] = useState<HarvestAreaCostEntry[]>([]);
+  const [costLoading, setCostLoading] = useState(false);
+  const [costModalVisible, setCostModalVisible] = useState(false);
+  const [costCategory, setCostCategory] = useState<HarvestAreaCostCategory>('other');
+  const [costAmount, setCostAmount] = useState('');
+  const [costDate, setCostDate] = useState(() => localDateYmd(new Date()));
+  const [costNotes, setCostNotes] = useState('');
+  const [costSubmitting, setCostSubmitting] = useState(false);
+
   const load = useCallback(async () => {
     if (!id) return;
     setError(null);
@@ -266,7 +297,8 @@ export default function HarvestAreaDetailScreen() {
   useFocusEffect(
     useCallback(() => {
       void loadReceiptAggregate();
-    }, [loadReceiptAggregate]),
+      void loadCostEntries();
+    }, [loadReceiptAggregate, loadCostEntries]),
   );
 
   const loadAssignedOwnerDrivers = useCallback(async () => {
@@ -290,6 +322,19 @@ export default function HarvestAreaDetailScreen() {
   useEffect(() => {
     if (item && user?.role === 'owner') void loadAssignedOwnerDrivers();
   }, [item, user?.role, loadAssignedOwnerDrivers]);
+
+  const loadCostEntries = useCallback(async () => {
+    if (!id || user?.role !== 'owner') return;
+    setCostLoading(true);
+    try {
+      const res = await listHarvestAreaCostEntries(id, { page: 1, limit: 10 });
+      setCostEntries(res.data);
+    } catch {
+      setCostEntries([]);
+    } finally {
+      setCostLoading(false);
+    }
+  }, [id, user?.role]);
 
   const onDelete = useCallback(() => {
     if (!id) return;
@@ -822,6 +867,156 @@ export default function HarvestAreaDetailScreen() {
                 onPress={() => setAddDriverModalOpen(false)}
                 style={({ pressed }) => [styles.modalCloseBtn, pressed && styles.modalCloseBtnPressed]}>
                 <Text style={styles.modalCloseBtnText}>Đóng</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {isOwner ? (
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle}>Chi phí vận hành</Text>
+              <Pressable
+                onPress={() => {
+                  setCostCategory('other');
+                  setCostAmount('');
+                  setCostDate(localDateYmd(new Date()));
+                  setCostNotes('');
+                  setCostModalVisible(true);
+                }}
+                style={({ pressed }) => [styles.createReceiptBtn, pressed && styles.createReceiptBtnPressed]}>
+                <Text style={styles.createReceiptBtnText}>+ Thêm</Text>
+              </Pressable>
+            </View>
+            {costLoading ? (
+              <ActivityIndicator color={S.primary} style={{ marginVertical: 8 }} />
+            ) : costEntries.length === 0 ? (
+              <Text style={styles.emptyInline}>Chưa có chi phí. Nhấn «+ Thêm» để ghi nhận.</Text>
+            ) : (
+              costEntries.map((entry) => (
+                <View key={entry.id} style={styles.costRow}>
+                  <View style={styles.costRowLeft}>
+                    <View style={styles.costCatPill}>
+                      <Text style={styles.costCatPillText}>{costCategoryLabel(entry.category)}</Text>
+                    </View>
+                    <Text style={styles.costDate} numberOfLines={1}>
+                      {entry.incurredAt ? entry.incurredAt.slice(0, 10) : '—'}
+                    </Text>
+                    {entry.notes ? (
+                      <Text style={styles.costNoteText} numberOfLines={1}>
+                        {entry.notes}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Text style={styles.costAmount}>{formatVndShortVi(Number(entry.amount))}</Text>
+                </View>
+              ))
+            )}
+          </View>
+        ) : null}
+
+        <Modal
+          visible={costModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setCostModalVisible(false)}>
+          <View style={[styles.modalRoot, { paddingBottom: insets.bottom }]}>
+            <Pressable style={styles.modalBackdropPress} onPress={() => setCostModalVisible(false)} />
+            <View style={styles.modalSheet}>
+              <View style={styles.modalGrab} />
+              <Text style={styles.modalTitle}>Thêm chi phí vận hành</Text>
+              <Text style={styles.costFieldLabel}>Loại chi phí</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.costCatRow}
+                style={{ marginBottom: 14 }}>
+                {COST_CATEGORY_OPTIONS.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setCostCategory(opt.value)}
+                    style={[
+                      styles.costCatChip,
+                      costCategory === opt.value && styles.costCatChipActive,
+                    ]}>
+                    <Text
+                      style={[
+                        styles.costCatChipText,
+                        costCategory === opt.value && styles.costCatChipTextActive,
+                      ]}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              <Text style={styles.costFieldLabel}>Số tiền (VNĐ) *</Text>
+              <TextInput
+                style={styles.costInput}
+                keyboardType="numeric"
+                placeholder="Ví dụ: 2000000"
+                placeholderTextColor={`${S.onSurfaceVariant}88`}
+                value={costAmount}
+                onChangeText={setCostAmount}
+              />
+              <Text style={styles.costFieldLabel}>Ngày phát sinh (YYYY-MM-DD) *</Text>
+              <TextInput
+                style={styles.costInput}
+                placeholder={localDateYmd(new Date())}
+                placeholderTextColor={`${S.onSurfaceVariant}88`}
+                value={costDate}
+                onChangeText={setCostDate}
+              />
+              <Text style={styles.costFieldLabel}>Ghi chú (tuỳ chọn)</Text>
+              <TextInput
+                style={[styles.costInput, { minHeight: 64 }]}
+                placeholder="Mô tả thêm..."
+                placeholderTextColor={`${S.onSurfaceVariant}88`}
+                multiline
+                value={costNotes}
+                onChangeText={setCostNotes}
+              />
+              <Pressable
+                disabled={costSubmitting || !costAmount.trim() || !costDate.trim()}
+                onPress={() => {
+                  if (!id || !costAmount.trim() || !costDate.trim()) return;
+                  const amount = parseFloat(costAmount.replace(/[^0-9.]/g, ''));
+                  if (!Number.isFinite(amount) || amount <= 0) {
+                    Alert.alert('Lỗi', 'Số tiền không hợp lệ.');
+                    return;
+                  }
+                  void (async () => {
+                    setCostSubmitting(true);
+                    try {
+                      await createHarvestAreaCostEntry(id, {
+                        category: costCategory,
+                        amount,
+                        incurredAt: `${costDate.trim()}T00:00:00.000Z`,
+                        notes: costNotes.trim() || undefined,
+                      });
+                      setCostModalVisible(false);
+                      await loadCostEntries();
+                    } catch (e) {
+                      Alert.alert('Lỗi', getErrorMessage(e, 'Không lưu được chi phí'));
+                    } finally {
+                      setCostSubmitting(false);
+                    }
+                  })();
+                }}
+                style={({ pressed }) => [
+                  styles.costSubmitBtn,
+                  pressed && { opacity: 0.88 },
+                  (costSubmitting || !costAmount.trim() || !costDate.trim()) && styles.disabled,
+                ]}>
+                {costSubmitting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.costSubmitBtnText}>Lưu chi phí</Text>
+                )}
+              </Pressable>
+              <Pressable
+                onPress={() => setCostModalVisible(false)}
+                style={({ pressed }) => [styles.modalCloseBtn, { marginTop: 8 }, pressed && styles.modalCloseBtnPressed]}>
+                <Text style={styles.modalCloseBtnText}>Huỷ</Text>
               </Pressable>
             </View>
           </View>
@@ -1444,5 +1639,104 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: S.onTertiaryFixed,
+  },
+  // --- Cost entries section ---
+  costRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: S.outlineVariant,
+    gap: 8,
+  },
+  costRowLeft: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  costCatPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: `${S.primary}18`,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  costCatPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: S.primary,
+  },
+  costDate: {
+    fontSize: 12,
+    color: S.onSurfaceVariant,
+  },
+  costNoteText: {
+    fontSize: 12,
+    color: S.onSurfaceVariant,
+    fontStyle: 'italic',
+  },
+  costAmount: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#c0392b',
+  },
+  // --- Cost modal form ---
+  costCatRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  costCatChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: S.surfaceContainerHigh,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: S.outlineVariant,
+  },
+  costCatChipActive: {
+    backgroundColor: `${S.primary}18`,
+    borderColor: S.primary,
+  },
+  costCatChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: S.onSurfaceVariant,
+  },
+  costCatChipTextActive: {
+    color: S.primary,
+  },
+  costFieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: S.onSurfaceVariant,
+    marginBottom: 6,
+    marginTop: 14,
+  },
+  costInput: {
+    backgroundColor: S.surfaceContainerHigh,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 15,
+    color: Brand.ink,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: S.outlineVariant,
+  },
+  costSubmitBtn: {
+    marginTop: 18,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: S.primary,
+  },
+  costSubmitBtnDisabled: {
+    opacity: 0.5,
+  },
+  costSubmitBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: S.onPrimary,
   },
 });

@@ -1,5 +1,7 @@
 import type {
   HarvestArea,
+  HarvestAreaCostCategory,
+  HarvestAreaCostEntry,
   HarvestAreaCreatePayload,
   HarvestAreaUpdatePayload,
   OwnerDriverUser,
@@ -128,5 +130,57 @@ export async function getHarvestAreaDrivers(
 ): Promise<OwnerDriverUser[]> {
   return apiFetchJson<OwnerDriverUser[]>(
     `/harvest-areas/${encodeURIComponent(String(id))}/drivers`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-resource: cost entries per harvest area
+// ---------------------------------------------------------------------------
+
+export async function listHarvestAreaCostEntries(
+  harvestAreaId: string | number,
+  params: {
+    page: number;
+    limit: number;
+    category?: string;
+    incurredFrom?: string;
+    incurredTo?: string;
+  },
+): Promise<PaginatedList<HarvestAreaCostEntry>> {
+  const qs = buildListQuery({
+    page: params.page,
+    limit: params.limit,
+    extra: {
+      ...(params.category ? { category: params.category } : {}),
+      ...(params.incurredFrom ? { incurredFrom: params.incurredFrom } : {}),
+      ...(params.incurredTo ? { incurredTo: params.incurredTo } : {}),
+    },
+  });
+  return apiFetchJson<PaginatedList<HarvestAreaCostEntry>>(
+    `/harvest-areas/${encodeURIComponent(String(harvestAreaId))}/cost-entries?${qs}`,
+  );
+}
+
+export async function createHarvestAreaCostEntry(
+  harvestAreaId: string | number,
+  body: { category: HarvestAreaCostCategory; amount: number; incurredAt: string; notes?: string },
+): Promise<HarvestAreaCostEntry> {
+  return apiFetchJson<HarvestAreaCostEntry>(
+    `/harvest-areas/${encodeURIComponent(String(harvestAreaId))}/cost-entries`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export async function deleteHarvestAreaCostEntry(
+  harvestAreaId: string | number,
+  entryId: string,
+): Promise<void> {
+  await apiFetchJson<Record<string, unknown>>(
+    `/harvest-areas/${encodeURIComponent(String(harvestAreaId))}/cost-entries/${encodeURIComponent(entryId)}`,
+    { method: 'DELETE' },
   );
 }

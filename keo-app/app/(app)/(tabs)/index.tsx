@@ -33,6 +33,7 @@ import {
   topDriverFromSummary,
   totalWeightFromSummary,
   trendFromPercent,
+  type ChartBarWithCosts,
 } from '@/lib/analytics/owner-home-map';
 import { getDashboardSummary, getFinanceReportLast7Days } from '@/lib/api/analytics';
 import { listHarvestAreas } from '@/lib/api/harvest-areas';
@@ -206,16 +207,6 @@ function localDateYmd(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** Fallback khi không có GET /analytics/reports/finance (7 ngày) */
-const DEMO_PERFORMANCE_BARS = [
-  { value: 45, label: 'CN' },
-  { value: 72, label: 'T2' },
-  { value: 55, label: 'T3' },
-  { value: 88, label: 'T4' },
-  { value: 62, label: 'T5' },
-  { value: 95, label: 'T6' },
-  { value: 70, label: 'T7' },
-] as const;
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -231,7 +222,7 @@ export default function HomeScreen() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summary, setSummary] = useState<OwnerDashboardSummary | null>(null);
   const [summaryFailed, setSummaryFailed] = useState(false);
-  const [performanceBars, setPerformanceBars] = useState<{ value: number; label: string }[] | null>(null);
+  const [performanceBars, setPerformanceBars] = useState<ChartBarWithCosts[] | null>(null);
   const [financeReportFailed, setFinanceReportFailed] = useState(false);
 
   const [approvedTodayCount, setApprovedTodayCount] = useState<number | null>(null);
@@ -353,32 +344,43 @@ export default function HomeScreen() {
 
   const chartBarsForRender = useMemo(() => {
     if (summaryLoading) return null;
-    if (performanceBars === null) return [...DEMO_PERFORMANCE_BARS];
-    if (performanceBars.length === 0) return [];
+    if (performanceBars === null) return [];
     return performanceBars;
   }, [summaryLoading, performanceBars]);
 
   const chartMax = chartMaxValue(
-    chartBarsForRender && chartBarsForRender.length > 0 ? chartBarsForRender : [...DEMO_PERFORMANCE_BARS],
+    chartBarsForRender && chartBarsForRender.length > 0 ? chartBarsForRender : [],
   );
 
   const financeChartData = useMemo(() => {
     const bars = chartBarsForRender && chartBarsForRender.length > 0 ? chartBarsForRender : null;
     if (!bars) return [];
-    const barW = Math.min(32, Math.floor((performanceChartWidth - 48) / 7 - 8));
-    return bars.map((d) => ({
-      value: d.value,
-      label: d.label,
-      barWidth: barW,
-      frontColor: Brand.forest,
-      showGradient: true,
-      gradientColor: `${Brand.forest}66`,
-      topLabelComponent: () => (
-        <Text style={st.chartBarTopLabel} numberOfLines={1}>
-          {formatVndShortVi(d.value)}
-        </Text>
-      ),
-    }));
+    const barW = Math.min(24, Math.floor((performanceChartWidth - 48) / 14 - 4));
+    return bars.flatMap((d) => [
+      {
+        value: d.value,
+        label: d.label,
+        barWidth: barW,
+        frontColor: Brand.forest,
+        showGradient: true,
+        gradientColor: `${Brand.forest}66`,
+        spacing: 2,
+        topLabelComponent: () => (
+          <Text style={st.chartBarTopLabel} numberOfLines={1}>
+            {formatVndShortVi(d.value)}
+          </Text>
+        ),
+      },
+      {
+        value: d.cost,
+        label: '',
+        barWidth: barW,
+        frontColor: '#e05c2a',
+        showGradient: true,
+        gradientColor: '#e05c2a66',
+        spacing: 14,
+      },
+    ]);
   }, [chartBarsForRender, performanceChartWidth]);
 
   const pendingLine =
@@ -527,12 +529,21 @@ export default function HomeScreen() {
 
         <View style={st.sectionCard}>
           <Text style={st.sectionTitle}>Doanh thu 7 ngày gần nhất</Text>
+          <View style={st.chartLegend}>
+            <View style={st.legendDot} />
+            <Text style={st.legendText}>Doanh thu</Text>
+            <View style={[st.legendDot, { backgroundColor: '#e05c2a' }]} />
+            <Text style={st.legendText}>Chi phí</Text>
+          </View>
+          {financeReportFailed && !summaryLoading ? (
+            <Text style={st.demoHint}>Không tải được dữ liệu 7 ngày.</Text>
+          ) : null}
           <View style={st.chartWrap}>
             {summaryLoading ? (
               <View style={st.chartLoading}>
                 <ActivityIndicator size="small" color={S.primary} />
               </View>
-            ) : performanceBars !== null && performanceBars.length === 0 ? null : (
+            ) : financeChartData.length === 0 ? null : (
               <BarChart
                 data={financeChartData}
                 width={performanceChartWidth}
@@ -942,6 +953,23 @@ const st = StyleSheet.create({
     fontWeight: '700',
     color: '#0d4a28',
     letterSpacing: -0.2,
+  },
+  chartLegend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Brand.forest,
+  },
+  legendText: {
+    fontSize: 11,
+    color: S.onSurfaceVariant,
+    marginRight: 10,
   },
   chartAxisText: {
     fontSize: 10,

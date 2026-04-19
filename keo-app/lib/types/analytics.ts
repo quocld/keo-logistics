@@ -5,8 +5,11 @@
 export type AnalyticsFleetStatus = {
   total?: number;
   totalVehicles?: number;
+  vehiclesTotalCount?: number;
   active?: number;
   activeCount?: number;
+  vehiclesActiveCount?: number;
+  onRoadCount?: number;
   running?: number;
   maintenance?: number;
   maintenanceCount?: number;
@@ -58,8 +61,13 @@ export type FinanceReportBucket = {
   label?: string | null;
   revenue?: number | null;
   totalRevenue?: number | null;
+  revenueSum?: number | null;
   profit?: number | null;
   amount?: number | null;
+  costDriverSum?: number | null;
+  costHarvestSum?: number | null;
+  otherCostSum?: number | null;
+  operatingCostSum?: number | null;
   [key: string]: unknown;
 };
 

@@ -70,13 +70,13 @@ export type FleetUi = {
 export function fleetFromStatus(fs: AnalyticsFleetStatus | null | undefined): FleetUi | null {
   if (!fs || typeof fs !== 'object') return null;
   const o = fs as Record<string, unknown>;
-  const active = Math.max(0, Math.round(firstNumber(o, ['active', 'activeCount', 'running']) ?? 0));
+  const active = Math.max(0, Math.round(firstNumber(o, ['vehiclesActiveCount', 'active', 'activeCount', 'running']) ?? 0));
   const maintenance = Math.max(
     0,
     Math.round(firstNumber(o, ['maintenance', 'maintenanceCount', 'inMaintenance']) ?? 0),
   );
   const idle = Math.max(0, Math.round(firstNumber(o, ['idle', 'idleCount', 'offDuty', 'rest']) ?? 0));
-  const totalExplicit = firstNumber(o, ['total', 'totalVehicles', 'count']);
+  const totalExplicit = firstNumber(o, ['vehiclesTotalCount', 'total', 'totalVehicles', 'count']);
   const sum = active + maintenance + idle;
   const total = totalExplicit != null && totalExplicit > 0 ? Math.round(totalExplicit) : sum;
   if (total <= 0 && sum <= 0) return null;
@@ -167,6 +167,7 @@ export function extractFinanceReportBuckets(body: FinanceReportResponse | null |
 function bucketTimestamp(b: FinanceReportBucket): number {
   const o = b as Record<string, unknown>;
   const raw =
+    o.group ??
     o.date ??
     o.bucketDate ??
     o.period ??
@@ -203,6 +204,7 @@ function bucketValue(b: FinanceReportBucket): number {
   if (cents != null && cents >= 0) return cents / 100;
 
   const direct = firstNumber(o, [
+    'revenueSum',
     'revenue',
     'totalRevenue',
     'grossRevenue',
@@ -226,8 +228,19 @@ function bucketValue(b: FinanceReportBucket): number {
 
 export type ChartBar = { value: number; label: string };
 
+export type ChartBarWithCosts = { value: number; cost: number; label: string };
+
+function costFromBucket(b: FinanceReportBucket): number {
+  const o = b as Record<string, unknown>;
+  const driver = pickNumber(o.costDriverSum) ?? 0;
+  const harvest = pickNumber(o.costHarvestSum) ?? 0;
+  const other = pickNumber(o.otherCostSum) ?? 0;
+  const operating = pickNumber(o.operatingCostSum) ?? 0;
+  return Math.max(0, driver + harvest + other + operating);
+}
+
 /** Chuẩn hoá báo cáo finance → tối đa 7 cột, nhãn theo thứ (VI). Trả về `[]` khi không có bucket (API hợp lệ nhưng không có dữ liệu). */
-export function buildPerformanceBarsFromFinanceReport(body: FinanceReportResponse | null | undefined): ChartBar[] {
+export function buildPerformanceBarsFromFinanceReport(body: FinanceReportResponse | null | undefined): ChartBarWithCosts[] {
   if (!body) return [];
   const buckets = extractFinanceReportBuckets(body);
   if (!buckets.length) return [];
@@ -239,8 +252,9 @@ export function buildPerformanceBarsFromFinanceReport(body: FinanceReportRespons
     : [...withIdx].sort((a, x) => a.i - x.i);
 
   const last = sorted.slice(-7);
-  const bars: ChartBar[] = last.map(({ b, t }) => {
+  const bars: ChartBarWithCosts[] = last.map(({ b, t }) => {
     const value = bucketValue(b);
+    const cost = costFromBucket(b);
     let label: string;
     if (t > 0) {
       label = shortWeekdayFromDate(new Date(t));
@@ -248,14 +262,14 @@ export function buildPerformanceBarsFromFinanceReport(body: FinanceReportRespons
       const lb = b.label != null ? String(b.label).trim() : '';
       label = lb || '?';
     }
-    return { value, label };
+    return { value, cost, label };
   });
 
   return bars;
 }
 
-export function chartMaxValue(bars: ChartBar[]): number {
-  const max = Math.max(...bars.map((x) => x.value), 0);
+export function chartMaxValue(bars: ChartBarWithCosts[]): number {
+  const max = Math.max(...bars.map((x) => x.value), ...bars.map((x) => x.cost), 0);
   if (max <= 0) return 100;
   return max * 1.12;
 }
