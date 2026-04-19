@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { stitchHarvestFormStyles as headerStyles } from '@/components/owner/stitch-harvest-form-styles';
 import { Brand } from '@/constants/brand';
+import { useAuth } from '@/contexts/auth-context';
 import { getErrorMessage } from '@/lib/api/errors';
 import { deleteWeighingStation, getWeighingStation } from '@/lib/api/weighing-stations';
 import type { WeighingStation } from '@/lib/types/ops';
@@ -58,6 +59,8 @@ export default function WeighingStationDetailScreen() {
   const id = typeof idParam === 'string' ? idParam : idParam?.[0];
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const isDriver = user?.role === 'driver';
   const [item, setItem] = useState<WeighingStation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -211,27 +214,29 @@ export default function WeighingStationDetailScreen() {
               {item.formattedAddress?.trim() ? item.formattedAddress : 'Chưa có địa chỉ'}
             </Text>
           </View>
-          <View style={styles.actionRow}>
-            <Pressable
-              onPress={() =>
-                router.push({ pathname: '/weighing-station/form', params: { id: String(id) } })
-              }
-              style={({ pressed }) => [styles.btnOutline, pressed && styles.btnOutlinePressed]}>
-              <MaterialIcons name="edit" size={18} color={S.primary} />
-              <Text style={styles.btnOutlineText}>Chỉnh sửa</Text>
-            </Pressable>
-            <Pressable
-              onPress={onDelete}
-              disabled={deleting}
-              style={({ pressed }) => [
-                styles.btnOutlineDanger,
-                pressed && styles.btnOutlineDangerPressed,
-                deleting && styles.disabled,
-              ]}>
-              <MaterialIcons name="delete-outline" size={18} color="#c62828" />
-              <Text style={styles.btnOutlineDangerText}>{deleting ? 'Đang xóa…' : 'Xóa trạm'}</Text>
-            </Pressable>
-          </View>
+          {!isDriver ? (
+            <View style={styles.actionRow}>
+              <Pressable
+                onPress={() =>
+                  router.push({ pathname: '/weighing-station/form', params: { id: String(id) } })
+                }
+                style={({ pressed }) => [styles.btnOutline, pressed && styles.btnOutlinePressed]}>
+                <MaterialIcons name="edit" size={18} color={S.primary} />
+                <Text style={styles.btnOutlineText}>Chỉnh sửa</Text>
+              </Pressable>
+              <Pressable
+                onPress={onDelete}
+                disabled={deleting}
+                style={({ pressed }) => [
+                  styles.btnOutlineDanger,
+                  pressed && styles.btnOutlineDangerPressed,
+                  deleting && styles.disabled,
+                ]}>
+                <MaterialIcons name="delete-outline" size={18} color="#c62828" />
+                <Text style={styles.btnOutlineDangerText}>{deleting ? 'Đang xóa…' : 'Xóa trạm'}</Text>
+              </Pressable>
+            </View>
+          ) : null}
         </View>
 
         <ScrollView
@@ -251,13 +256,15 @@ export default function WeighingStationDetailScreen() {
               <Text style={styles.metricHint}>Thống kê khi đồng bộ phiếu cân</Text>
             ) : null}
           </View>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricEyebrow}>Doanh thu dự kiến</Text>
-            <Text style={styles.metricValue}>{revenueText}</Text>
-            {revenueHint == null ? (
-              <Text style={styles.metricHint}>Ước tính theo đơn giá và khối lượng</Text>
-            ) : null}
-          </View>
+          {!isDriver ? (
+            <View style={styles.metricCard}>
+              <Text style={styles.metricEyebrow}>Doanh thu dự kiến</Text>
+              <Text style={styles.metricValue}>{revenueText}</Text>
+              {revenueHint == null ? (
+                <Text style={styles.metricHint}>Ước tính theo đơn giá và khối lượng</Text>
+              ) : null}
+            </View>
+          ) : null}
         </ScrollView>
 
         <View style={styles.sectionCard}>
@@ -297,49 +304,53 @@ export default function WeighingStationDetailScreen() {
           </View>
         </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionEyebrowSmall}>Thông tin đối tác</Text>
-          <View style={styles.partnerRow}>
-            <MaterialIcons name="account-circle" size={22} color={S.outline} />
-            <View style={styles.partnerBody}>
-              <Text style={styles.partnerLabel}>Đại diện</Text>
-              <Text style={styles.partnerValue}>{partnerName ?? '—'}</Text>
+        {!isDriver ? (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionEyebrowSmall}>Thông tin đối tác</Text>
+            <View style={styles.partnerRow}>
+              <MaterialIcons name="account-circle" size={22} color={S.outline} />
+              <View style={styles.partnerBody}>
+                <Text style={styles.partnerLabel}>Đại diện</Text>
+                <Text style={styles.partnerValue}>{partnerName ?? '—'}</Text>
+              </View>
+            </View>
+            <View style={styles.partnerRow}>
+              <MaterialIcons name="phone" size={22} color={S.outline} />
+              <View style={styles.partnerBody}>
+                <Text style={styles.partnerLabel}>Điện thoại</Text>
+                <Text style={styles.partnerValue}>{partnerPhone ?? '—'}</Text>
+              </View>
+            </View>
+            <View style={styles.partnerRow}>
+              <MaterialIcons name="verified-user" size={22} color={S.outline} />
+              <View style={styles.partnerBody}>
+                <Text style={styles.partnerLabel}>Kiểm định</Text>
+                <Text style={styles.partnerValue}>
+                  {calibration ? `Còn hạn đến ${calibration}` : '—'}
+                </Text>
+              </View>
             </View>
           </View>
-          <View style={styles.partnerRow}>
-            <MaterialIcons name="phone" size={22} color={S.outline} />
-            <View style={styles.partnerBody}>
-              <Text style={styles.partnerLabel}>Điện thoại</Text>
-              <Text style={styles.partnerValue}>{partnerPhone ?? '—'}</Text>
-            </View>
-          </View>
-          <View style={styles.partnerRow}>
-            <MaterialIcons name="verified-user" size={22} color={S.outline} />
-            <View style={styles.partnerBody}>
-              <Text style={styles.partnerLabel}>Kiểm định</Text>
-              <Text style={styles.partnerValue}>
-                {calibration ? `Còn hạn đến ${calibration}` : '—'}
-              </Text>
-            </View>
-          </View>
-        </View>
+        ) : null}
 
-        <Pressable
-          onPress={() =>
-            Alert.alert(
-              'Tạo lệnh cân mới',
-              'Tính năng sẽ gắn với vòng đời chuyến (trip) và phiếu cân trên KeoTram Ops.',
-            )
-          }
-          style={styles.ctaWrap}>
-          <LinearGradient
-            colors={[S.primary, S.primaryContainer]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.ctaGradient}>
-            <Text style={styles.ctaText}>Tạo lệnh cân mới</Text>
-          </LinearGradient>
-        </Pressable>
+        {!isDriver ? (
+          <Pressable
+            onPress={() =>
+              Alert.alert(
+                'Tạo lệnh cân mới',
+                'Tính năng sẽ gắn với vòng đời chuyến (trip) và phiếu cân trên KeoTram Ops.',
+              )
+            }
+            style={styles.ctaWrap}>
+            <LinearGradient
+              colors={[S.primary, S.primaryContainer]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.ctaGradient}>
+              <Text style={styles.ctaText}>Tạo lệnh cân mới</Text>
+            </LinearGradient>
+          </Pressable>
+        ) : null}
 
         {item.notes?.trim() ? (
           <View style={styles.noticeCard}>

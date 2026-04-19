@@ -86,8 +86,28 @@ function statusHeadlineVi(st: string): string {
   return st.replace(/_/g, ' ');
 }
 
-function formatAreaRegionCode(id: string | number): string {
-  return `KKT-${String(id).slice(-8).toUpperCase()}`;
+/** Tính thời gian hoạt động từ ngày bắt đầu đến hôm nay. */
+function activeDuration(startDateStr: string | null | undefined): string | null {
+  if (!startDateStr) return null;
+  const start = new Date(startDateStr);
+  if (!Number.isFinite(start.getTime())) return null;
+  const now = new Date();
+  if (start > now) return null;
+  let months =
+    (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+  let tmp = new Date(start);
+  tmp.setMonth(tmp.getMonth() + months);
+  let days = Math.floor((now.getTime() - tmp.getTime()) / 86_400_000);
+  if (days < 0) {
+    months -= 1;
+    tmp = new Date(start);
+    tmp.setMonth(tmp.getMonth() + months);
+    days = Math.floor((now.getTime() - tmp.getTime()) / 86_400_000);
+  }
+  if (months === 0 && days === 0) return 'Mới bắt đầu hôm nay';
+  if (months === 0) return `${days} ngày`;
+  if (days === 0) return `${months} tháng`;
+  return `${months} tháng ${days} ngày`;
 }
 
 function pillColorsForStatus(st: string): { bg: string; fg: string } {
@@ -204,6 +224,7 @@ export default function HarvestAreaDetailScreen() {
   const [assigningDriverId, setAssigningDriverId] = useState<number | null>(null);
 
   const [costEntries, setCostEntries] = useState<HarvestAreaCostEntry[]>([]);
+  const [costTotal, setCostTotal] = useState<number | null>(null);
   const [costLoading, setCostLoading] = useState(false);
   const [costModalVisible, setCostModalVisible] = useState(false);
   const [costCategory, setCostCategory] = useState<HarvestAreaCostCategory>('other');
@@ -327,10 +348,13 @@ export default function HarvestAreaDetailScreen() {
     if (!id || user?.role !== 'owner') return;
     setCostLoading(true);
     try {
-      const res = await listHarvestAreaCostEntries(id, { page: 1, limit: 10 });
+      // limit lớn để tính tổng chính xác (chi phí hiếm khi > vài chục mục)
+      const res = await listHarvestAreaCostEntries(id, { page: 1, limit: 500 });
       setCostEntries(res.data);
+      setCostTotal(res.data.reduce((sum, e) => sum + Number(e.amount ?? 0), 0));
     } catch {
       setCostEntries([]);
+      setCostTotal(null);
     } finally {
       setCostLoading(false);
     }
@@ -372,6 +396,7 @@ export default function HarvestAreaDetailScreen() {
   }, [trips]);
   const isOwner = user?.role === 'owner';
   const isAdmin = user?.role === 'admin';
+  const isDriver = user?.role === 'driver';
   const unassignedManagedDrivers = useMemo(() => {
     const ids = new Set(assignedOwnerDrivers.map((d) => d.id));
     return allManagedDrivers.filter((d) => !ids.has(d.id));
@@ -381,14 +406,17 @@ export default function HarvestAreaDetailScreen() {
     item?.areaHectares != null ? `${Number(item.areaHectares).toLocaleString('vi-VN')} ha` : '—';
   const currentYield =
     item?.currentTons != null ? Number(item.currentTons) : null;
-  const yieldText =
-    currentYield != null
-      ? `${currentYield.toLocaleString('vi-VN')} tấn`
-      : item?.targetTons != null
-        ? `${Number(item.targetTons).toLocaleString('vi-VN')} tấn (mục tiêu)`
-        : '—';
-  const yieldSubLabel =
-    currentYield != null ? 'Hiện tại' : item?.targetTons != null ? 'Ước tính (mục tiêu)' : '';
+  const targetYield =
+    item?.targetTons != null ? Number(item.targetTons) : null;
+  const yieldText = (() => {
+    if (currentYield != null && targetYield != null) {
+      return `${currentYield.toLocaleString('vi-VN')} tấn (${targetYield.toLocaleString('vi-VN')} tấn mục tiêu)`;
+    }
+    if (currentYield != null) return `${currentYield.toLocaleString('vi-VN')} tấn`;
+    if (targetYield != null) return `${targetYield.toLocaleString('vi-VN')} tấn (mục tiêu)`;
+    return '—';
+  })();
+  const duration = activeDuration(item?.sitePurchaseDate);
 
   if (!id) {
     return (
@@ -549,15 +577,15 @@ export default function HarvestAreaDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <View style={styles.heroTitleRow}>
-            <Text style={styles.heroTitle} numberOfLines={1}>
-              {item.name}
-            </Text>
-            <Text style={styles.heroCode} numberOfLines={1}>
-              {' '}
-              · {formatAreaRegionCode(item.id)}
-            </Text>
-          </View>
+          <Text style={styles.heroTitle} numberOfLines={2}>
+            {item.name}
+          </Text>
+          {duration ? (
+            <View style={styles.heroDurationRow}>
+              <MaterialIcons name="schedule" size={14} color={S.onSurfaceVariant} />
+              <Text style={styles.heroDuration}>Hoạt động {duration}</Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.statsGrid}>
@@ -573,33 +601,47 @@ export default function HarvestAreaDetailScreen() {
             <Text style={styles.statsLabel}>Tổng diện tích</Text>
             <Text style={styles.statsValue}>{areaHa}</Text>
           </View>
-          <View style={styles.statsCellFull}>
-            <Text style={styles.statsLabel}>
-              Sản lượng{yieldSubLabel ? ` (${yieldSubLabel})` : ''}
-            </Text>
-            <Text style={styles.statsValue} numberOfLines={2}>
-              {yieldText}
-            </Text>
-            {currentYield == null && item.targetTons == null ? (
-              <Text style={styles.statsHint}>Cập nhật khi đồng bộ sản lượng</Text>
-            ) : null}
-          </View>
-          <View style={styles.statsSubRow}>
-            <View style={styles.statsCell}>
-              <Text style={styles.statsLabel}>Tổng doanh thu (đã duyệt)</Text>
-              <Text style={styles.statsValue}>
-                {receiptApprovedAgg.loading ? '…' : formatVndShortVi(receiptApprovedAgg.totalVnd)}
+          {!isDriver ? (
+            <View style={styles.statsCellFull}>
+              <Text style={styles.statsLabel}>Sản lượng</Text>
+              <Text style={styles.statsValue} numberOfLines={2}>
+                {yieldText}
               </Text>
+              {currentYield == null && targetYield == null ? (
+                <Text style={styles.statsHint}>Cập nhật khi đồng bộ sản lượng</Text>
+              ) : null}
             </View>
-            <View style={styles.statsCell}>
-              <Text style={styles.statsLabel}>Phiếu đã duyệt</Text>
-              <Text style={styles.statsValue}>
-                {receiptApprovedAgg.loading ? '…' : String(receiptApprovedAgg.count)}
+          ) : null}
+          {!isDriver ? (
+            <View style={styles.statsSubRow}>
+              <View style={styles.statsCell}>
+                <Text style={styles.statsLabel}>Tổng doanh thu (đã duyệt)</Text>
+                <Text style={styles.statsValue}>
+                  {receiptApprovedAgg.loading ? '…' : formatVndShortVi(receiptApprovedAgg.totalVnd)}
+                </Text>
+              </View>
+              <View style={styles.statsCell}>
+                <Text style={styles.statsLabel}>Phiếu đã duyệt</Text>
+                <Text style={styles.statsValue}>
+                  {receiptApprovedAgg.loading ? '…' : String(receiptApprovedAgg.count)}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+          {isOwner ? (
+            <View style={[styles.statsCell, styles.statsCellCost]}>
+              <Text style={styles.statsLabel}>Tổng chi phí vận hành</Text>
+              <Text style={[styles.statsValue, styles.statsValueCost]}>
+                {costLoading ? '…' : costTotal != null ? formatVndShortVi(costTotal) : '—'}
               </Text>
+              {!costLoading && costTotal === 0 ? (
+                <Text style={styles.statsHint}>Chưa có chi phí được ghi nhận</Text>
+              ) : null}
             </View>
-          </View>
+          ) : null}
         </View>
 
+        {/* ── 1. Phiếu cân ── */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHead}>
             <Text style={styles.sectionTitle}>Các phiếu cân của khu</Text>
@@ -701,177 +743,7 @@ export default function HarvestAreaDetailScreen() {
           )}
         </View>
 
-        <View style={styles.mapCard}>
-          <Text style={styles.mapEyebrow}>Vị trí khu</Text>
-          <Pressable
-            onPress={hasMapCoords ? openHarvestOnMap : undefined}
-            disabled={!hasMapCoords}
-            style={({ pressed }) => [
-              styles.mapRow,
-              !hasMapCoords && styles.mapRowDisabled,
-              pressed && hasMapCoords && styles.mapRowPressed,
-            ]}>
-            <MaterialIcons name="map" size={22} color={hasMapCoords ? S.primary : S.outlineVariant} />
-            <Text style={styles.mapRowText}>
-              {hasMapCoords ? 'Mở vị trí trên bản đồ' : 'Chưa có vị trí — bổ sung trong form chỉnh sửa khu'}
-            </Text>
-            {hasMapCoords ? <MaterialIcons name="chevron-right" size={18} color={S.primary} /> : null}
-          </Pressable>
-        </View>
-
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>
-              Đội ngũ tài xế (
-              {isOwner ? assignedOwnerDrivers.length : driversFromTrips.length})
-            </Text>
-            <Pressable
-              onPress={onAddDriver}
-              disabled={isOwner && assignedDriversLoading}
-              style={({ pressed }) => [
-                styles.addDriverBtn,
-                pressed && styles.addDriverBtnPressed,
-                isOwner && assignedDriversLoading && styles.disabled,
-              ]}>
-              <MaterialIcons name="person-add" size={18} color={S.primary} />
-              <Text style={styles.addDriverText}>Thêm tài xế</Text>
-            </Pressable>
-          </View>
-          {isOwner ? (
-            <>
-              {assignedDriversLoading ? (
-                <ActivityIndicator color={S.primary} style={{ marginVertical: 12 }} />
-              ) : assignedOwnerDrivers.length === 0 ? (
-                <Text style={styles.emptyInline}>
-                  Chưa gán tài xế cho khu này. Nhấn «Thêm tài xế» để chọn tài xế managed — cần gán bãi
-                  trước khi tài xế tạo chuyến (PUT /owner/drivers/…/harvest-areas).
-                </Text>
-              ) : (
-                assignedOwnerDrivers.map((d) => {
-                  const tripsN = tripCountByDriverId.get(String(d.id));
-                  const busy = assigningDriverId === d.id;
-                  return (
-                    <View key={d.id} style={styles.driverCard}>
-                      <View style={styles.driverTop}>
-                        <View style={styles.driverNameBlock}>
-                          <Text style={styles.driverName}>{ownerDriverDisplayName(d)}</Text>
-                          <Text style={styles.driverMeta} numberOfLines={1}>
-                            {d.email}
-                            {tripsN != null ? ` • ${tripsN} chuyến gần đây` : ''}
-                          </Text>
-                        </View>
-                        <View style={styles.driverRowActions}>
-                          <View style={[styles.assignedPill, { backgroundColor: `${S.primary}18` }]}>
-                            <Text style={[styles.assignedPillText, { color: S.primary }]}>
-                              Đã gán khu
-                            </Text>
-                          </View>
-                          <Pressable
-                            hitSlop={10}
-                            disabled={busy}
-                            onPress={() => onUnassignDriver(d)}
-                            style={({ pressed }) => [
-                              styles.unassignBtn,
-                              pressed && styles.unassignBtnPressed,
-                              busy && styles.disabled,
-                            ]}>
-                            {busy ? (
-                              <ActivityIndicator size="small" color={S.onSurfaceVariant} />
-                            ) : (
-                              <MaterialIcons name="link-off" size={20} color={S.onSurfaceVariant} />
-                            )}
-                          </Pressable>
-                        </View>
-                      </View>
-                    </View>
-                  );
-                })
-              )}
-            </>
-          ) : driversFromTrips.length === 0 ? (
-            <Text style={styles.emptyInline}>
-              Chưa có chuyến gắn khu này — danh sách tài xế sẽ hiện khi có dữ liệu trip.
-            </Text>
-          ) : (
-            driversFromTrips.slice(0, 4).map((d) => {
-              const ui = tripStatusDriverUi(d.lastStatus);
-              return (
-                <View key={d.key} style={styles.driverCard}>
-                  <View style={styles.driverTop}>
-                    <Text style={styles.driverName}>{d.displayName}</Text>
-                    <View style={[styles.driverStatePill, { backgroundColor: ui.bg }]}>
-                      <Text style={[styles.driverStateText, { color: ui.fg }]}>{ui.label}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.driverMeta} numberOfLines={1}>
-                    {d.email ? `${d.email} • ` : ''}
-                    {d.tripCount} chuyến gần đây
-                  </Text>
-                </View>
-              );
-            })
-          )}
-        </View>
-
-        <Modal
-          visible={addDriverModalOpen}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setAddDriverModalOpen(false)}>
-          <View style={[styles.modalRoot, { paddingBottom: insets.bottom }]}>
-            <Pressable style={styles.modalBackdropPress} onPress={() => setAddDriverModalOpen(false)} />
-            <View style={styles.modalSheet}>
-              <View style={styles.modalGrab} />
-              <Text style={styles.modalTitle}>Gán tài xế vào khu</Text>
-              <Text style={styles.modalSubtitle}>
-                Chọn tài xế managed chưa được gán khu này. API sẽ cập nhật danh sách bãi của tài xế.
-              </Text>
-              <ScrollView
-                style={styles.modalList}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}>
-                {unassignedManagedDrivers.length === 0 ? (
-                  <Text style={styles.modalEmpty}>
-                    Tất cả tài xế đã được gán khu này hoặc chưa có tài xế managed.
-                  </Text>
-                ) : (
-                  unassignedManagedDrivers.map((d) => {
-                    const busy = assigningDriverId === d.id;
-                    return (
-                      <Pressable
-                        key={d.id}
-                        disabled={busy}
-                        onPress={() => onPickDriverToAssign(d)}
-                        style={({ pressed }) => [
-                          styles.modalRow,
-                          pressed && styles.modalRowPressed,
-                          busy && styles.disabled,
-                        ]}>
-                        <View style={styles.modalRowText}>
-                          <Text style={styles.modalRowTitle}>{ownerDriverDisplayName(d)}</Text>
-                          <Text style={styles.modalRowSub} numberOfLines={1}>
-                            {d.email}
-                          </Text>
-                        </View>
-                        {busy ? (
-                          <ActivityIndicator size="small" color={S.primary} />
-                        ) : (
-                          <MaterialIcons name="chevron-right" size={22} color={S.primary} />
-                        )}
-                      </Pressable>
-                    );
-                  })
-                )}
-              </ScrollView>
-              <Pressable
-                onPress={() => setAddDriverModalOpen(false)}
-                style={({ pressed }) => [styles.modalCloseBtn, pressed && styles.modalCloseBtnPressed]}>
-                <Text style={styles.modalCloseBtnText}>Đóng</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
-
+        {/* ── 2. Chi phí vận hành ── */}
         {isOwner ? (
           <View style={styles.sectionCard}>
             <View style={styles.sectionHead}>
@@ -888,6 +760,12 @@ export default function HarvestAreaDetailScreen() {
                 <Text style={styles.createReceiptBtnText}>+ Thêm</Text>
               </Pressable>
             </View>
+            {!costLoading && costTotal != null && costTotal > 0 ? (
+              <View style={styles.costTotalBanner}>
+                <Text style={styles.costTotalLabel}>Tổng chi phí</Text>
+                <Text style={styles.costTotalValue}>{formatVndShortVi(costTotal)}</Text>
+              </View>
+            ) : null}
             {costLoading ? (
               <ActivityIndicator color={S.primary} style={{ marginVertical: 8 }} />
             ) : costEntries.length === 0 ? (
@@ -1032,14 +910,18 @@ export default function HarvestAreaDetailScreen() {
             <Text style={styles.infoLabel}>SĐT</Text>
             <Text style={styles.infoValue}>{item.siteContactPhone ? String(item.siteContactPhone) : '—'}</Text>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Email</Text>
-            <Text style={styles.infoValue}>{item.siteContactEmail ? String(item.siteContactEmail) : '—'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Ngày mua/bắt đầu bãi</Text>
-            <Text style={styles.infoValue}>{item.sitePurchaseDate ? String(item.sitePurchaseDate) : '—'}</Text>
-          </View>
+          {!isDriver ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoValue}>{item.siteContactEmail ? String(item.siteContactEmail) : '—'}</Text>
+            </View>
+          ) : null}
+          {!isDriver ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Ngày mua/bắt đầu bãi</Text>
+              <Text style={styles.infoValue}>{item.sitePurchaseDate ? String(item.sitePurchaseDate) : '—'}</Text>
+            </View>
+          ) : null}
           {user?.role === 'admin' && item.ownerId != null ? (
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Owner ID</Text>
@@ -1048,7 +930,7 @@ export default function HarvestAreaDetailScreen() {
           ) : null}
         </View>
 
-        {item.siteNotes?.trim() ? (
+        {!isDriver && item.siteNotes?.trim() ? (
           <View style={styles.noticeCard}>
             <View style={styles.noticeHead}>
               <MaterialIcons name="sticky-note-2" size={20} color={S.tertiary} />
@@ -1058,30 +940,201 @@ export default function HarvestAreaDetailScreen() {
           </View>
         ) : null}
 
-        <View
-          style={[
-            styles.screenFooter,
-            { paddingBottom: Math.max(insets.bottom, 16) },
-          ]}>
+        {/* ── 5. Vị trí khu ── */}
+        <View style={styles.mapCard}>
+          <Text style={styles.mapEyebrow}>Vị trí khu</Text>
           <Pressable
-            onPress={() => router.push({ pathname: '/harvest-area/form', params: { id: String(id) } })}
-            style={({ pressed }) => [styles.footerBtn, styles.footerBtnPrimary, pressed && styles.footerBtnPressed]}>
-            <MaterialIcons name="edit" size={20} color={S.primary} />
-            <Text style={styles.footerBtnPrimaryText}>Chỉnh sửa khu</Text>
-          </Pressable>
-          <Pressable
-            onPress={onDelete}
-            disabled={deleting}
+            onPress={hasMapCoords ? openHarvestOnMap : undefined}
+            disabled={!hasMapCoords}
             style={({ pressed }) => [
-              styles.footerBtn,
-              styles.footerBtnDanger,
-              pressed && !deleting && styles.footerBtnDangerPressed,
-              deleting && styles.disabled,
+              styles.mapRow,
+              !hasMapCoords && styles.mapRowDisabled,
+              pressed && hasMapCoords && styles.mapRowPressed,
             ]}>
-            <MaterialIcons name="delete-outline" size={20} color="#c62828" />
-            <Text style={styles.footerBtnDangerText}>{deleting ? 'Đang xóa…' : 'Xóa khu'}</Text>
+            <MaterialIcons name="map" size={22} color={hasMapCoords ? S.primary : S.outlineVariant} />
+            <Text style={styles.mapRowText}>
+              {hasMapCoords ? 'Mở vị trí trên bản đồ' : 'Chưa có vị trí — bổ sung trong form chỉnh sửa khu'}
+            </Text>
+            {hasMapCoords ? <MaterialIcons name="chevron-right" size={18} color={S.primary} /> : null}
           </Pressable>
         </View>
+
+        {/* ── 6. Đội ngũ tài xế ── */}
+        {!isDriver ? <View style={styles.sectionCard}>
+          <View style={styles.sectionHead}>
+            <Text style={styles.sectionTitle}>
+              Đội ngũ tài xế ({isOwner ? assignedOwnerDrivers.length : driversFromTrips.length})
+            </Text>
+            <Pressable
+              onPress={onAddDriver}
+              disabled={isOwner && assignedDriversLoading}
+              style={({ pressed }) => [
+                styles.addDriverBtn,
+                pressed && styles.addDriverBtnPressed,
+                isOwner && assignedDriversLoading && styles.disabled,
+              ]}>
+              <MaterialIcons name="person-add" size={18} color={S.primary} />
+              <Text style={styles.addDriverText}>Thêm tài xế</Text>
+            </Pressable>
+          </View>
+          {isOwner ? (
+            <>
+              {assignedDriversLoading ? (
+                <ActivityIndicator color={S.primary} style={{ marginVertical: 12 }} />
+              ) : assignedOwnerDrivers.length === 0 ? (
+                <Text style={styles.emptyInline}>
+                  Chưa gán tài xế cho khu này. Nhấn «Thêm tài xế» để chọn tài xế managed.
+                </Text>
+              ) : (
+                assignedOwnerDrivers.map((d) => {
+                  const tripsN = tripCountByDriverId.get(String(d.id));
+                  const busy = assigningDriverId === d.id;
+                  return (
+                    <View key={d.id} style={styles.driverCard}>
+                      <View style={styles.driverTop}>
+                        <View style={styles.driverNameBlock}>
+                          <Text style={styles.driverName}>{ownerDriverDisplayName(d)}</Text>
+                          <Text style={styles.driverMeta} numberOfLines={1}>
+                            {d.email}
+                            {tripsN != null ? ` • ${tripsN} chuyến gần đây` : ''}
+                          </Text>
+                        </View>
+                        <View style={styles.driverRowActions}>
+                          <View style={[styles.assignedPill, { backgroundColor: `${S.primary}18` }]}>
+                            <Text style={[styles.assignedPillText, { color: S.primary }]}>Đã gán khu</Text>
+                          </View>
+                          <Pressable
+                            hitSlop={10}
+                            disabled={busy}
+                            onPress={() => onUnassignDriver(d)}
+                            style={({ pressed }) => [
+                              styles.unassignBtn,
+                              pressed && styles.unassignBtnPressed,
+                              busy && styles.disabled,
+                            ]}>
+                            {busy ? (
+                              <ActivityIndicator size="small" color={S.onSurfaceVariant} />
+                            ) : (
+                              <MaterialIcons name="link-off" size={20} color={S.onSurfaceVariant} />
+                            )}
+                          </Pressable>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </>
+          ) : driversFromTrips.length === 0 ? (
+            <Text style={styles.emptyInline}>
+              Chưa có chuyến gắn khu này — danh sách tài xế sẽ hiện khi có dữ liệu trip.
+            </Text>
+          ) : (
+            driversFromTrips.slice(0, 4).map((d) => {
+              const ui = tripStatusDriverUi(d.lastStatus);
+              return (
+                <View key={d.key} style={styles.driverCard}>
+                  <View style={styles.driverTop}>
+                    <Text style={styles.driverName}>{d.displayName}</Text>
+                    <View style={[styles.driverStatePill, { backgroundColor: ui.bg }]}>
+                      <Text style={[styles.driverStateText, { color: ui.fg }]}>{ui.label}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.driverMeta} numberOfLines={1}>
+                    {d.email ? `${d.email} • ` : ''}
+                    {d.tripCount} chuyến gần đây
+                  </Text>
+                </View>
+              );
+            })
+          )}
+        </View> : null}
+
+        <Modal
+          visible={addDriverModalOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setAddDriverModalOpen(false)}>
+          <View style={[styles.modalRoot, { paddingBottom: insets.bottom }]}>
+            <Pressable style={styles.modalBackdropPress} onPress={() => setAddDriverModalOpen(false)} />
+            <View style={styles.modalSheet}>
+              <View style={styles.modalGrab} />
+              <Text style={styles.modalTitle}>Gán tài xế vào khu</Text>
+              <Text style={styles.modalSubtitle}>
+                Chọn tài xế managed chưa được gán khu này. API sẽ cập nhật danh sách bãi của tài xế.
+              </Text>
+              <ScrollView
+                style={styles.modalList}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}>
+                {unassignedManagedDrivers.length === 0 ? (
+                  <Text style={styles.modalEmpty}>
+                    Tất cả tài xế đã được gán khu này hoặc chưa có tài xế managed.
+                  </Text>
+                ) : (
+                  unassignedManagedDrivers.map((d) => {
+                    const busy = assigningDriverId === d.id;
+                    return (
+                      <Pressable
+                        key={d.id}
+                        disabled={busy}
+                        onPress={() => onPickDriverToAssign(d)}
+                        style={({ pressed }) => [
+                          styles.modalRow,
+                          pressed && styles.modalRowPressed,
+                          busy && styles.disabled,
+                        ]}>
+                        <View style={styles.modalRowText}>
+                          <Text style={styles.modalRowTitle}>{ownerDriverDisplayName(d)}</Text>
+                          <Text style={styles.modalRowSub} numberOfLines={1}>
+                            {d.email}
+                          </Text>
+                        </View>
+                        {busy ? (
+                          <ActivityIndicator size="small" color={S.primary} />
+                        ) : (
+                          <MaterialIcons name="chevron-right" size={22} color={S.primary} />
+                        )}
+                      </Pressable>
+                    );
+                  })
+                )}
+              </ScrollView>
+              <Pressable
+                onPress={() => setAddDriverModalOpen(false)}
+                style={({ pressed }) => [styles.modalCloseBtn, pressed && styles.modalCloseBtnPressed]}>
+                <Text style={styles.modalCloseBtnText}>Đóng</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {!isDriver ? (
+          <View
+            style={[
+              styles.screenFooter,
+              { paddingBottom: Math.max(insets.bottom, 16) },
+            ]}>
+            <Pressable
+              onPress={() => router.push({ pathname: '/harvest-area/form', params: { id: String(id) } })}
+              style={({ pressed }) => [styles.footerBtn, styles.footerBtnPrimary, pressed && styles.footerBtnPressed]}>
+              <MaterialIcons name="edit" size={20} color={S.primary} />
+              <Text style={styles.footerBtnPrimaryText}>Chỉnh sửa khu</Text>
+            </Pressable>
+            <Pressable
+              onPress={onDelete}
+              disabled={deleting}
+              style={({ pressed }) => [
+                styles.footerBtn,
+                styles.footerBtnDanger,
+                pressed && !deleting && styles.footerBtnDangerPressed,
+                deleting && styles.disabled,
+              ]}>
+              <MaterialIcons name="delete-outline" size={20} color="#c62828" />
+              <Text style={styles.footerBtnDangerText}>{deleting ? 'Đang xóa…' : 'Xóa khu'}</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -1123,25 +1176,22 @@ const styles = StyleSheet.create({
   hero: {
     marginBottom: 16,
   },
-  heroTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 10,
-    gap: 4,
-  },
   heroTitle: {
-    flex: 1,
-    minWidth: 0,
     fontSize: 22,
     fontWeight: '700',
     letterSpacing: -0.4,
     color: Brand.ink,
+    marginBottom: 6,
   },
-  heroCode: {
-    fontSize: 15,
-    fontWeight: '600',
+  heroDurationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  heroDuration: {
+    fontSize: 13,
+    fontWeight: '500',
     color: S.onSurfaceVariant,
-    flexShrink: 0,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -1738,5 +1788,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: S.onPrimary,
+  },
+  // --- Stats cost tile ---
+  statsCellCost: {
+    width: '100%',
+    backgroundColor: '#fff5f0',
+    borderColor: `#e05c2a33`,
+  },
+  statsValueCost: {
+    color: '#c0392b',
+  },
+  // --- Cost total banner in section ---
+  costTotalBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff5f0',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#e05c2a44',
+  },
+  costTotalLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#9c3510',
+  },
+  costTotalValue: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#c0392b',
   },
 });
