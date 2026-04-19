@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -25,6 +26,7 @@ import { FormFieldLabel, FormSectionLabel } from '@/components/forms/FormFieldLa
 import { stitchHarvestFormStyles as styles } from '@/components/owner/stitch-harvest-form-styles';
 import { Brand } from '@/constants/brand';
 import { getErrorMessage } from '@/lib/api/errors';
+import { formatVndShortVi } from '@/lib/format/vnd-vi';
 import { uploadOpsFile } from '@/lib/api/files';
 import { normalizePickedImageForUpload } from '@/lib/images/normalize-picked-image';
 import { listHarvestAreas } from '@/lib/api/harvest-areas';
@@ -73,13 +75,6 @@ function FieldIconInput({
   );
 }
 
-function parseImageUrls(text: string): string[] {
-  return text
-    .split(/[\n,]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
 function parseNumber(s: string): number | undefined {
   const t = s.trim().replace(/\s/g, '').replace(',', '.');
   if (!t) return undefined;
@@ -87,10 +82,22 @@ function parseNumber(s: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+/** Format integer thành chuỗi vi-VN (dấu . phân nghìn): 10000000 → "10.000.000" */
+function fmtIntVN(digits: string): string {
+  if (!digits) return '';
+  const n = parseInt(digits, 10);
+  return Number.isFinite(n) ? n.toLocaleString('vi-VN') : digits;
+}
+
 function driverDisplayName(d: OwnerDriverUser): string {
   const parts = [d.firstName, d.lastName].filter(Boolean);
   if (parts.length) return parts.join(' ');
   return d.email;
+}
+
+function formatDateTimeVN(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}  ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 type ReceiptSubmitFormProps = {
@@ -112,14 +119,46 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
   const [driverUserId, setDriverUserId] = useState<string>('');
   const [areaId, setAreaId] = useState<string>('');
   const [stationId, setStationId] = useState<string>('');
-  const [tripId, setTripId] = useState('');
-  const [weight, setWeight] = useState('');
-  const [amount, setAmount] = useState('');
-  const [billCode, setBillCode] = useState('');
+  // weight: raw = chuỗi số chuẩn "12.5"; display = vi-VN "12,5" hoặc "1.500,5"
+  const [weightRaw, setWeightRaw] = useState('');
+  const [weightDisplay, setWeightDisplay] = useState('');
+  // amount: raw = chuỗi số nguyên "10000000"; display = vi-VN "10.000.000"
+  const [amountRaw, setAmountRaw] = useState('');
+  const [amountDisplay, setAmountDisplay] = useState('');
   const [notes, setNotes] = useState('');
-  const [imageUrlsText, setImageUrlsText] = useState('');
   const [picked, setPicked] = useState<PickedImage[]>([]);
   const [saving, setSaving] = useState(false);
+
+  const handleAmountChange = useCallback((text: string) => {
+    const digits = text.replace(/\D/g, '');
+    setAmountRaw(digits);
+    setAmountDisplay(fmtIntVN(digits));
+  }, []);
+
+  const handleWeightChange = useCallback((text: string) => {
+    // Xoá dấu . phân nghìn (vi-VN), chuẩn hoá , → . cho JS
+    const noThousands = text.replace(/\./g, '');
+    const normalized = noThousands.replace(',', '.');
+    // Chỉ cho phép số nguyên hoặc số thập phân hợp lệ
+    if (normalized !== '' && !/^\d*\.?\d*$/.test(normalized)) return;
+    setWeightRaw(normalized);
+    if (!normalized) { setWeightDisplay(''); return; }
+    const dotIdx = normalized.indexOf('.');
+    if (dotIdx === -1) {
+      setWeightDisplay(fmtIntVN(normalized));
+    } else {
+      const intStr = normalized.slice(0, dotIdx);
+      const decStr = normalized.slice(dotIdx + 1);
+      setWeightDisplay(`${fmtIntVN(intStr)},${decStr}`);
+    }
+  }, []);
+
+  // Owner-only: chọn ngày giờ phiếu (tuỳ chọn)
+  const [receiptDate, setReceiptDate] = useState<Date>(new Date());
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [timePickerVisible, setTimePickerVisible] = useState(false);
+  // Android dùng sequential date → time; iOS dùng datetime inline
+  const [pendingDate, setPendingDate] = useState<Date>(new Date());
 
   const [areaModal, setAreaModal] = useState(false);
   const [stationModal, setStationModal] = useState(false);
@@ -138,7 +177,6 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
         setStations(ws.body.data);
       } else if (ws.forbidden) {
         setStations([]);
-        setListsErr('Không tải được danh sách trạm (403). Vẫn có thể tạo phiếu nếu có tripId.');
       } else {
         setStations([]);
         setListsErr(ws.message);
@@ -178,22 +216,42 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
 
   const stationLabel = useCallback(() => {
     const s = stations.find((x) => String(x.id) === stationId);
-    return s ? `${s.name}` : 'Chọn trạm cân';
+    return s ? `${s.name}` : 'Chọn trạm cân (tuỳ chọn)';
   }, [stations, stationId]);
 
   const driverLabel = useCallback(() => {
     const d = drivers.find((x) => String(x.id) === driverUserId);
-    return d ? driverDisplayName(d) : 'Chọn tài xế (managed)';
+    return d ? driverDisplayName(d) : 'Chọn tài xế';
   }, [drivers, driverUserId]);
 
-  const pickImages = useCallback(async () => {
-    if (!isNative) {
-      Alert.alert('Web', 'Trên web hãy dán URL ảnh vào ô bên dưới (imageUrls).');
+  // --- Chụp hình ---
+  const takePhoto = useCallback(async () => {
+    if (!isNative) return;
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (perm.status !== 'granted') {
+      Alert.alert('Quyền truy cập', 'Cần quyền camera để chụp hình.');
       return;
     }
+    const res = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.85,
+    });
+    if (res.canceled) return;
+    const a = res.assets[0];
+    try {
+      const normalized = await normalizePickedImageForUpload({ uri: a.uri, index: picked.length, width: a.width });
+      setPicked((prev) => [...prev, { uri: normalized.uri, name: normalized.name, mime: normalized.mimeType }]);
+    } catch (e) {
+      Alert.alert('Ảnh', getErrorMessage(e, 'Không xử lý được ảnh'));
+    }
+  }, [picked.length]);
+
+  // --- Thêm từ thư viện ---
+  const pickImages = useCallback(async () => {
+    if (!isNative) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== 'granted') {
-      Alert.alert('Quyền truy cập', 'Cần quyền thư viện ảnh để đính kèm bill.');
+      Alert.alert('Quyền truy cập', 'Cần quyền thư viện ảnh.');
       return;
     }
     const res = await ImagePicker.launchImageLibraryAsync({
@@ -207,16 +265,8 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
     for (let i = 0; i < res.assets.length; i++) {
       const a = res.assets[i];
       try {
-        const normalized = await normalizePickedImageForUpload({
-          uri: a.uri,
-          index: i,
-          width: a.width,
-        });
-        batch.push({
-          uri: normalized.uri,
-          name: normalized.name,
-          mime: normalized.mimeType,
-        });
+        const normalized = await normalizePickedImageForUpload({ uri: a.uri, index: i, width: a.width });
+        batch.push({ uri: normalized.uri, name: normalized.name, mime: normalized.mimeType });
       } catch (e) {
         Alert.alert('Ảnh', getErrorMessage(e, 'Không xử lý được ảnh'));
         return;
@@ -229,38 +279,65 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
     setPicked((prev) => prev.filter((p) => p.uri !== uri));
   }, []);
 
+  // --- Date picker handlers ---
+  const onDateChange = useCallback(
+    (_event: DateTimePickerEvent, selected?: Date) => {
+      if (Platform.OS === 'android') {
+        setDatePickerVisible(false);
+        if (selected) {
+          setPendingDate(selected);
+          setTimePickerVisible(true);
+        }
+      } else {
+        if (selected) setReceiptDate(selected);
+      }
+    },
+    [],
+  );
+
+  const onTimeChange = useCallback(
+    (_event: DateTimePickerEvent, selected?: Date) => {
+      if (Platform.OS === 'android') {
+        setTimePickerVisible(false);
+        if (selected) setReceiptDate(selected);
+        else setReceiptDate(pendingDate);
+      } else {
+        if (selected) setReceiptDate(selected);
+      }
+    },
+    [pendingDate],
+  );
+
+  const openDatePicker = useCallback(() => {
+    setPendingDate(receiptDate);
+    if (Platform.OS === 'android') {
+      setDatePickerVisible(true);
+    } else {
+      setDatePickerVisible((v) => !v);
+    }
+  }, [receiptDate]);
+
   const onSubmit = useCallback(async () => {
     if (variant === 'owner' && !driverUserId) {
-      Alert.alert('Thiếu dữ liệu', 'Chọn tài xế managed (bắt buộc khi owner tạo phiếu).');
+      Alert.alert('Thiếu dữ liệu', 'Chọn tài xế (bắt buộc khi owner tạo phiếu).');
       return;
     }
-
     if (!areaId) {
       Alert.alert('Thiếu dữ liệu', 'Chọn khu khai thác.');
       return;
     }
-    const w = parseNumber(weight);
+    const w = parseNumber(weightRaw);
     if (w == null || w <= 0) {
       Alert.alert('Thiếu dữ liệu', 'Nhập khối lượng (tấn) hợp lệ.');
       return;
     }
-    const amt = parseNumber(amount);
+    const amt = parseNumber(amountRaw);
     if (amt == null || amt < 0) {
       Alert.alert('Thiếu dữ liệu', 'Nhập số tiền (VND) hợp lệ.');
       return;
     }
-
-    const urls = parseImageUrls(imageUrlsText);
-    const hasTrip = tripId.trim().length > 0;
-    if (!hasTrip && !stationId) {
-      Alert.alert('Thiếu dữ liệu', 'Chọn trạm cân hoặc nhập tripId (chuyến đang chạy) theo Postman.');
-      return;
-    }
-    if (!picked.length && !urls.length) {
-      Alert.alert(
-        'Ảnh bill',
-        'API bắt buộc ít nhất một ảnh: thêm ảnh từ thư viện hoặc nhập imageUrls (URL công khai).',
-      );
+    if (variant !== 'owner' && !picked.length) {
+      Alert.alert('Ảnh bill', 'Thêm ít nhất một ảnh bill.');
       return;
     }
 
@@ -276,58 +353,26 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
         harvestAreaId: areaId,
         weight: w,
         amount: amt,
-        receiptDate: new Date().toISOString(),
+        receiptDate: (variant === 'owner' ? receiptDate : new Date()).toISOString(),
+        imageFileIds,
       };
       if (variant === 'owner') {
         body.driverUserId = Number(driverUserId);
       }
       if (stationId) body.weighingStationId = stationId;
-      if (hasTrip) body.tripId = tripId.trim();
-      const bc = billCode.trim();
-      if (bc) body.billCode = bc;
       const n = notes.trim();
       if (n) body.notes = n;
-      if (imageFileIds.length) body.imageFileIds = imageFileIds;
-      if (urls.length) body.imageUrls = urls;
 
       await createReceipt(body);
-      Alert.alert('Đã tạo', 'Phiếu đã gửi lên server.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      Alert.alert('Đã tạo', 'Phiếu đã gửi lên server.', [{ text: 'OK', onPress: () => router.back() }]);
     } catch (e) {
-      const msg = getErrorMessage(e, 'Không tạo được phiếu');
-      const is403 = /\b403\b/i.test(msg) || /forbidden/i.test(msg);
-      const hint =
-        is403 && variant === 'owner'
-          ? `${msg}\n\nGợi ý: tài xế phải là managed driver; bãi đã PUT gán cho tài xế; trạm thuộc owner.`
-          : is403 && variant === 'driver'
-            ? `${msg}\n\nGợi ý: kiểm tra khu đã gán, trạm/trip khớp quyền tài xế.`
-            : msg;
-      Alert.alert('Lỗi', hint);
+      Alert.alert('Lỗi', getErrorMessage(e, 'Không tạo được phiếu'));
     } finally {
       setSaving(false);
     }
-  }, [
-    variant,
-    driverUserId,
-    areaId,
-    stationId,
-    tripId,
-    weight,
-    amount,
-    billCode,
-    notes,
-    imageUrlsText,
-    picked,
-    router,
-  ]);
+  }, [variant, driverUserId, areaId, stationId, weightRaw, amountRaw, notes, picked, receiptDate, router]);
 
   const headerTitle = variant === 'owner' ? 'Tạo phiếu cân' : 'Gửi phiếu cân';
-
-  const helpBody =
-    variant === 'owner'
-      ? 'Owner: bắt buộc driverUserId (tài xế managed). harvestAreaId, weight, amount, receiptDate; ảnh imageUrls/imageFileIds. Trạm owner nếu có weighingStationId; tripId tùy chọn.'
-      : 'Driver: không gửi driverUserId. harvestAreaId, weight, amount, receiptDate; ảnh bắt buộc. tripId hoặc weighingStationId theo Postman.';
 
   return (
     <KeyboardAvoidingView
@@ -344,12 +389,6 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
             {headerTitle}
           </Text>
         </View>
-        <View style={styles.headerRight}>
-          <Pressable style={styles.helpBtn} hitSlop={8} onPress={() => Alert.alert('POST /receipts', helpBody)}>
-            <MaterialIcons name="help-outline" size={20} color={Brand.ink} />
-            <Text style={styles.helpBtnText}>Hỗ trợ</Text>
-          </Pressable>
-        </View>
       </View>
       <View style={styles.headerHairline} />
 
@@ -363,18 +402,14 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          {listsErr ? (
-            <Text style={localStyles.warn}>{listsErr}</Text>
-          ) : null}
+          {listsErr ? <Text style={localStyles.warn}>{listsErr}</Text> : null}
 
           <View style={styles.sectionCard}>
             <Text style={styles.sectionEyebrow}>Khu & trạm</Text>
+
             {variant === 'owner' ? (
               <>
                 <FormFieldLabel required>Tài xế</FormFieldLabel>
-                <Text style={styles.fieldApiHint}>
-                  Postman: <Text style={styles.fieldApiMono}>driverUserId</Text> — tài xế do owner quản lý, đã gán bãi.
-                </Text>
                 <Pressable onPress={() => setDriverModal(true)} style={localStyles.selectBtn}>
                   <Text style={localStyles.selectBtnText} numberOfLines={2}>
                     {driverLabel()}
@@ -382,9 +417,7 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
                   <MaterialIcons name="expand-more" size={22} color={S.primary} />
                 </Pressable>
                 {drivers.length === 0 ? (
-                  <Text style={localStyles.warn}>
-                    Chưa có tài xế managed. Tạo tài xế trong mục Tài xế (owner) và gán bãi (PUT harvest-areas).
-                  </Text>
+                  <Text style={localStyles.warn}>Chưa có tài xế managed. Tạo tài xế trong mục Tài xế.</Text>
                 ) : null}
               </>
             ) : null}
@@ -400,74 +433,127 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
             </Pressable>
 
             <FormFieldLabel style={{ marginTop: 16 }}>Trạm cân</FormFieldLabel>
-            <Text style={styles.fieldApiHint}>
-              Bắt buộc nếu không gửi <Text style={styles.fieldApiMono}>tripId</Text> (chuyến in_progress).
-            </Text>
             <Pressable onPress={() => setStationModal(true)} style={localStyles.selectBtn}>
               <Text style={localStyles.selectBtnText} numberOfLines={2}>
                 {stationLabel()}
               </Text>
               <MaterialIcons name="expand-more" size={22} color={S.primary} />
             </Pressable>
-
-            <FormFieldLabel style={{ marginTop: 16 }}>Trip ID (tùy chọn)</FormFieldLabel>
-            <FieldIconInput
-              icon="local-shipping"
-              value={tripId}
-              onChangeText={setTripId}
-              placeholder="UUID trip đang chạy — có thể bỏ trạm"
-            />
           </View>
 
           <View style={styles.sectionCard}>
             <Text style={styles.sectionEyebrow}>Số liệu phiếu</Text>
-            <FormFieldLabel required>Khối lượng (tấn)</FormFieldLabel>
+            {(() => {
+              const w = parseNumber(weightRaw);
+              const amt = parseNumber(amountRaw);
+              if (w == null || w <= 0 || amt == null || amt < 0) return null;
+              const unitPrice = w > 0 ? amt / w : 0;
+              const weightStr = w.toLocaleString('vi-VN', { maximumFractionDigits: 3 });
+              return (
+                <View style={localStyles.summaryRow}>
+                  <MaterialIcons name="summarize" size={15} color={S.primary} />
+                  <Text style={localStyles.summaryText}>
+                    {weightStr} tấn — {formatVndShortVi(amt)}{' '}
+                    <Text style={localStyles.summaryUnit}>(đơn giá: {formatVndShortVi(unitPrice)}/tấn)</Text>
+                  </Text>
+                </View>
+              );
+            })()}
+            <FormFieldLabel required style={parseNumber(weightRaw) != null && parseNumber(amountRaw) != null ? { marginTop: 12 } : {}}>Khối lượng (tấn)</FormFieldLabel>
             <FieldIconInput
               icon="scale"
-              value={weight}
-              onChangeText={setWeight}
-              placeholder="12.5"
-              keyboardType="decimal-pad"
+              value={weightDisplay}
+              onChangeText={handleWeightChange}
+              placeholder="12,5"
+              keyboardType="default"
             />
             <FormFieldLabel style={{ marginTop: 16 }} required>
               Số tiền (VND)
+              {parseNumber(amountRaw) != null ? (
+                <Text style={localStyles.amountPreview}> · {formatVndShortVi(parseNumber(amountRaw)!)}</Text>
+              ) : null}
             </FormFieldLabel>
             <FieldIconInput
               icon="payments"
-              value={amount}
-              onChangeText={setAmount}
-              placeholder="15000000"
+              value={amountDisplay}
+              onChangeText={handleAmountChange}
+              placeholder="15.000.000"
               keyboardType="number-pad"
             />
-            <FormFieldLabel>Mã bill</FormFieldLabel>
-            <FieldIconInput
-              icon="confirmation-number"
-              value={billCode}
-              onChangeText={setBillCode}
-              placeholder="BILL-2026-0001"
-            />
-            <FormFieldLabel>Ghi chú</FormFieldLabel>
+            <FormFieldLabel style={{ marginTop: 16 }}>Ghi chú</FormFieldLabel>
             <FieldIconInput
               icon="notes"
               value={notes}
               onChangeText={setNotes}
-              placeholder="Ghi chú tùy chọn"
+              placeholder="Ghi chú tuỳ chọn"
               multiline
             />
           </View>
 
+          {/* Ngày giờ phiếu — chỉ owner */}
+          {variant === 'owner' ? (
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionEyebrow}>Ngày giờ phiếu</Text>
+              <FormFieldLabel>Ngày giờ (tuỳ chọn)</FormFieldLabel>
+              <Pressable onPress={openDatePicker} style={localStyles.selectBtn}>
+                <MaterialIcons name="event" size={20} color={`${S.outline}99`} style={{ marginRight: 10 }} />
+                <Text style={[localStyles.selectBtnText, { color: S.primary }]}>
+                  {formatDateTimeVN(receiptDate)}
+                </Text>
+                <MaterialIcons name="edit" size={18} color={S.primary} />
+              </Pressable>
+
+              {/* iOS: picker inline toggle */}
+              {Platform.OS === 'ios' && datePickerVisible ? (
+                <View style={localStyles.iosPickerWrap}>
+                  <DateTimePicker
+                    value={receiptDate}
+                    mode="datetime"
+                    display="spinner"
+                    onChange={onDateChange}
+                    locale="vi-VN"
+                    style={localStyles.iosPicker}
+                  />
+                  <Pressable onPress={() => setDatePickerVisible(false)} style={localStyles.iosPickerDone}>
+                    <Text style={localStyles.iosPickerDoneText}>Xong</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              {/* Android: date picker dialog */}
+              {Platform.OS === 'android' && datePickerVisible ? (
+                <DateTimePicker
+                  value={pendingDate}
+                  mode="date"
+                  display="default"
+                  onChange={onDateChange}
+                />
+              ) : null}
+
+              {/* Android: time picker dialog (shown after date) */}
+              {Platform.OS === 'android' && timePickerVisible ? (
+                <DateTimePicker
+                  value={pendingDate}
+                  mode="time"
+                  display="default"
+                  onChange={onTimeChange}
+                />
+              ) : null}
+            </View>
+          ) : null}
+
           <View style={styles.sectionCard}>
             <FormSectionLabel required>Ảnh bill</FormSectionLabel>
-            <Text style={styles.fieldApiHint}>
-              Postman: ít nhất một trong <Text style={styles.fieldApiMono}>imageUrls</Text>,{' '}
-              <Text style={styles.fieldApiMono}>imageFileIds</Text>.
-            </Text>
-            {isNative ? (
-              <Pressable onPress={() => void pickImages()} style={localStyles.pickBtn}>
-                <MaterialIcons name="add-photo-alternate" size={22} color={S.primary} />
-                <Text style={localStyles.pickBtnText}>Thêm ảnh từ thư viện</Text>
+            <View style={localStyles.imageActions}>
+              <Pressable onPress={() => void pickImages()} style={[localStyles.imgBtn, { flex: 1 }]}>
+                <MaterialIcons name="add-photo-alternate" size={20} color={S.primary} />
+                <Text style={localStyles.imgBtnText}>Thư viện</Text>
               </Pressable>
-            ) : null}
+              <Pressable onPress={() => void takePhoto()} style={[localStyles.imgBtn, { flex: 1 }]}>
+                <MaterialIcons name="camera-alt" size={20} color={S.primary} />
+                <Text style={localStyles.imgBtnText}>Chụp hình</Text>
+              </Pressable>
+            </View>
             {picked.length > 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={localStyles.thumbRow}>
                 {picked.map((p) => (
@@ -480,17 +566,6 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
                 ))}
               </ScrollView>
             ) : null}
-            <FormFieldLabel style={{ marginTop: 12 }}>
-              Hoặc URL ảnh (mỗi dòng / cách nhau dấu phẩy)
-            </FormFieldLabel>
-            <TextInput
-              value={imageUrlsText}
-              onChangeText={setImageUrlsText}
-              placeholder="https://..."
-              placeholderTextColor={`${S.outline}80`}
-              style={[styles.inputSoft, localStyles.urlArea]}
-              multiline
-            />
           </View>
 
           <TouchableOpacity
@@ -504,7 +579,7 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
               end={{ x: 1, y: 1 }}
               style={[styles.saveGradient, saving && { opacity: 0.65 }]}>
               <MaterialIcons name="send" size={22} color="#fff" />
-              <Text style={styles.saveText}>{saving ? 'Đang gửi…' : 'Gửi phiếu (POST /receipts)'}</Text>
+              <Text style={styles.saveText}>{saving ? 'Đang gửi…' : 'Gửi phiếu'}</Text>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -543,7 +618,7 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
           <Pressable style={localStyles.modalSheet} onPress={(e) => e.stopPropagation()}>
             <Text style={localStyles.modalTitle}>Chọn khu</Text>
             <FlatList
-              data={areas}
+              data={areas.filter((a) => a.status === 'active')}
               keyExtractor={(item) => String(item.id)}
               renderItem={({ item }) => (
                 <Pressable
@@ -555,7 +630,7 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
                   <Text style={localStyles.modalRowText}>{item.name}</Text>
                 </Pressable>
               )}
-              ListEmptyComponent={<Text style={localStyles.emptyModal}>Chưa có khu.</Text>}
+              ListEmptyComponent={<Text style={localStyles.emptyModal}>Chưa có khu đang hoạt động.</Text>}
             />
           </Pressable>
         </Pressable>
@@ -578,7 +653,7 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
                   <Text style={localStyles.modalRowText}>{item.name}</Text>
                 </Pressable>
               )}
-              ListEmptyComponent={<Text style={localStyles.emptyModal}>Chưa có trạm hoặc không có quyền tải.</Text>}
+              ListEmptyComponent={<Text style={localStyles.emptyModal}>Chưa có trạm.</Text>}
             />
           </Pressable>
         </Pressable>
@@ -588,6 +663,34 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
 }
 
 const localStyles = StyleSheet.create({
+  amountPreview: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: S.primary,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: `${S.primary}10`,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: `${S.primary}28`,
+  },
+  summaryText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    color: S.primary,
+  },
+  summaryUnit: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: S.onSurfaceVariant,
+  },
   warn: {
     color: '#b45309',
     fontSize: 13,
@@ -611,23 +714,28 @@ const localStyles = StyleSheet.create({
     color: Brand.ink,
     fontWeight: '500',
   },
-  pickBtn: {
+  imageActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  imgBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'center',
+    gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderRadius: 10,
     backgroundColor: `${S.primary}12`,
-    marginBottom: 12,
   },
-  pickBtnText: {
+  imgBtnText: {
     fontSize: 15,
     fontWeight: '600',
     color: S.primary,
   },
   thumbRow: {
-    marginBottom: 8,
+    marginTop: 4,
   },
   thumbWrap: {
     marginRight: 10,
@@ -650,9 +758,24 @@ const localStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  urlArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
+  iosPickerWrap: {
+    marginTop: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Brand.surfaceQuiet,
+  },
+  iosPicker: {
+    width: '100%',
+  },
+  iosPickerDone: {
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  iosPickerDoneText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: S.primary,
   },
   modalBackdrop: {
     flex: 1,
