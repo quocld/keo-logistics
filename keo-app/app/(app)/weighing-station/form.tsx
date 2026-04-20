@@ -28,6 +28,7 @@ import {
   getWeighingStation,
   updateWeighingStation,
 } from '@/lib/api/weighing-stations';
+import { formatVndShortVi } from '@/lib/format/vnd-vi';
 import type { WeighingStationCreatePayload, WeighingStationUpdatePayload } from '@/lib/types/ops';
 
 const S = Brand.stitch;
@@ -121,6 +122,12 @@ export default function WeighingStationFormScreen() {
     if (lat === undefined || lng === undefined) return 'Chưa chọn vị trí trên bản đồ';
     return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
   }, [latitude, longitude]);
+
+  const unitPriceReadbackVi = useMemo(() => {
+    const up = parseOptionalNumber(unitPrice);
+    if (up === undefined || up <= 0) return null;
+    return formatVndShortVi(up);
+  }, [unitPrice]);
 
   const buildPayload = useCallback((): WeighingStationCreatePayload => {
     const body: WeighingStationCreatePayload = {
@@ -263,6 +270,11 @@ export default function WeighingStationFormScreen() {
             placeholder="1250"
             keyboardType="decimal-pad"
           />
+          {unitPriceReadbackVi ? (
+            <Text style={localStyles.unitPriceReadback}>
+              ≈ {unitPriceReadbackVi} / tấn
+            </Text>
+          ) : null}
 
           <FormFieldLabel style={{ marginTop: 18 }}>Trạng thái</FormFieldLabel>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
@@ -395,6 +407,12 @@ export default function WeighingStationFormScreen() {
 }
 
 const localStyles = StyleSheet.create({
+  unitPriceReadback: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: S.primary,
+    marginTop: 8,
+  },
   locationCard: {
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,

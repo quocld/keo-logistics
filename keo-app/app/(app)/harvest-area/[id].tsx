@@ -233,6 +233,14 @@ export default function HarvestAreaDetailScreen() {
   const [costNotes, setCostNotes] = useState('');
   const [costSubmitting, setCostSubmitting] = useState(false);
 
+  const costAmountPreviewVnd = useMemo(() => {
+    const raw = costAmount.trim();
+    if (!raw) return null;
+    const amount = Number(raw.replace(/[^0-9.]/g, ''));
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+    return amount;
+  }, [costAmount]);
+
   const load = useCallback(async () => {
     if (!id) return;
     setError(null);
@@ -836,6 +844,11 @@ export default function HarvestAreaDetailScreen() {
                 value={costAmount}
                 onChangeText={setCostAmount}
               />
+              {costAmountPreviewVnd != null ? (
+                <Text style={styles.costAmountPreviewText}>
+                  ≈ {formatVndShortVi(costAmountPreviewVnd)}
+                </Text>
+              ) : null}
               <Text style={styles.costFieldLabel}>Ngày phát sinh (YYYY-MM-DD) *</Text>
               <TextInput
                 style={styles.costInput}
@@ -1763,6 +1776,12 @@ const styles = StyleSheet.create({
     color: S.onSurfaceVariant,
     marginBottom: 6,
     marginTop: 14,
+  },
+  costAmountPreviewText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: S.primary,
+    marginTop: 8,
   },
   costInput: {
     backgroundColor: S.surfaceContainerHigh,
