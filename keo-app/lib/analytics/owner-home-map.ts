@@ -273,3 +273,64 @@ export function chartMaxValue(bars: ChartBarWithCosts[]): number {
   if (max <= 0) return 100;
   return max * 1.12;
 }
+
+/** Chuẩn hoá báo cáo finance → tối đa 31 cột theo ngày, nhãn DD mỗi 5 ngày. */
+export function buildDailyChartBars(body: FinanceReportResponse | null | undefined): ChartBarWithCosts[] {
+  if (!body) return [];
+  const buckets = extractFinanceReportBuckets(body);
+  if (!buckets.length) return [];
+
+  const withIdx = buckets.map((b, i) => ({ b, i, t: bucketTimestamp(b) }));
+  const hasDates = withIdx.some((x) => x.t > 0);
+  const sorted = hasDates
+    ? [...withIdx].sort((a, x) => a.t - x.t)
+    : [...withIdx].sort((a, x) => a.i - x.i);
+
+  return sorted.map(({ b, t }, sortedIdx) => {
+    const value = bucketValue(b);
+    const cost = costFromBucket(b);
+    let label: string;
+    if (t > 0) {
+      const day = new Date(t).getDate();
+      label = sortedIdx % 5 === 0 ? String(day).padStart(2, '0') : '';
+    } else {
+      label = sortedIdx % 5 === 0 ? String(sortedIdx + 1).padStart(2, '0') : '';
+    }
+    return { value, cost, label };
+  });
+}
+
+export type CostTotals = { driver: number; harvest: number; other: number; operating: number };
+
+/** Tổng hợp chi phí từ toàn bộ buckets trong báo cáo tài chính. */
+export function aggregateCostTotals(body: FinanceReportResponse | null | undefined): CostTotals {
+  const buckets = extractFinanceReportBuckets(body);
+  let driver = 0;
+  let harvest = 0;
+  let other = 0;
+  let operating = 0;
+  for (const b of buckets) {
+    const o = b as Record<string, unknown>;
+    driver += pickNumber(o.costDriverSum) ?? 0;
+    harvest += pickNumber(o.costHarvestSum) ?? 0;
+    other += pickNumber(o.otherCostSum) ?? 0;
+    operating += pickNumber(o.operatingCostSum) ?? 0;
+  }
+  return { driver, harvest, other, operating };
+}
+
+export function profitAfterOperatingFromSummary(s: OwnerDashboardSummary): number | null {
+  return firstNumber(s as Record<string, unknown>, ['profitAfterOperatingCosts', 'netProfit', 'profitNet']);
+}
+
+export function marginPercentAfterOperatingFromSummary(s: OwnerDashboardSummary): number | null {
+  return firstNumber(s as Record<string, unknown>, ['marginPercentAfterOperating', 'netMarginPercent']);
+}
+
+export function operatingCostTotalFromSummary(s: OwnerDashboardSummary): number | null {
+  return firstNumber(s as Record<string, unknown>, ['operatingCostSumTotal', 'operatingCostTotal', 'totalOperatingCost']);
+}
+
+export function pendingReceiptsCountFromSummary(s: OwnerDashboardSummary): number | null {
+  return firstNumber(s as Record<string, unknown>, ['pendingReceiptsCount', 'pendingCount', 'pendingReceipts']);
+}

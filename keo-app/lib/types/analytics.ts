@@ -36,6 +36,17 @@ export type AnalyticsTopDriver = {
   [key: string]: unknown;
 };
 
+export type HarvestAreaSummaryItem = {
+  harvestAreaId?: number | string | null;
+  name?: string | null;
+  revenue?: number | null;
+  profit?: number | null;
+  profitAfterOperatingCosts?: number | null;
+  operatingCost?: number | null;
+  marginPercent?: number | null;
+  [key: string]: unknown;
+};
+
 export type OwnerDashboardSummary = {
   revenue?: number | null;
   totalRevenue?: number | null;
@@ -50,6 +61,11 @@ export type OwnerDashboardSummary = {
   transportGrowthPercent30d?: number | null;
   fleetStatus?: AnalyticsFleetStatus | null;
   topDrivers?: AnalyticsTopDriver[] | null;
+  harvestAreaSummaries?: HarvestAreaSummaryItem[] | null;
+  pendingReceiptsCount?: number | null;
+  operatingCostSumTotal?: number | null;
+  profitAfterOperatingCosts?: number | null;
+  marginPercentAfterOperating?: number | null;
   [key: string]: unknown;
 };
 

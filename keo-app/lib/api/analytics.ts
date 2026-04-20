@@ -16,8 +16,8 @@ export type DashboardSummaryResult =
   | { ok: true; body: OwnerDashboardSummary }
   | { ok: false; message: string };
 
-export async function getDashboardSummary(params: { range: string }): Promise<DashboardSummaryResult> {
-  const qs = buildQuery({ range: params.range });
+export async function getDashboardSummary(params: { range: string; from?: string; to?: string }): Promise<DashboardSummaryResult> {
+  const qs = buildQuery({ range: params.range, from: params.from, to: params.to });
   const res = await apiFetch(`/analytics/dashboard/summary${qs}`);
 
   const text = await res.text();
