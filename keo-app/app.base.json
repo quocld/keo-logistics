@@ -4,7 +4,7 @@
     "slug": "keo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./new icons/keotram.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "keo",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -18,7 +18,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./new icons/keotram.png"
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -62,7 +62,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./new icons/keotram.png",
+          "icon": "./assets/images/icon.png",
           "color": "#E6F4FE",
           "defaultChannel": "default",
           "sounds": [],

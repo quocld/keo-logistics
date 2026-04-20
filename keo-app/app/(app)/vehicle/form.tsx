@@ -8,7 +8,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -177,8 +176,3 @@ export default function VehicleCreateFormScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const local = StyleSheet.create({
-  mono: { fontVariant: ['tabular-nums'] },
-});
-

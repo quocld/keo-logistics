@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * Dynamic Expo config: Google Maps native keys from env (EAS secret or .env.local).
- * Static fields live in app.json.
+ * Static fields live in app.base.json (we avoid app.json to satisfy Expo Doctor checks).
  */
-const appJson = require('./app.json');
+const appJson = require('./app.base.json');
 
 const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY ?? '';
 

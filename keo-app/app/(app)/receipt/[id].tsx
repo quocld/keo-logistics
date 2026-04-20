@@ -24,7 +24,7 @@ import { getErrorMessage } from '@/lib/api/errors';
 import { approveReceipt, getReceipt, rejectReceipt } from '@/lib/api/receipts';
 import { prefetchReceiptImages } from '@/lib/images/receipt-image-cache';
 import { collectReceiptImageSources } from '@/lib/receipt/receipt-image-urls';
-import type { Receipt, TripDriverRef } from '@/lib/types/ops';
+import type { Receipt } from '@/lib/types/ops';
 
 /** Khớp token từ Stitch export (Chi tiết Phiếu cân - Redesign) */
 const C = {
@@ -74,17 +74,6 @@ function driverName(r: Receipt): string {
   }
   if (r.driverId != null && r.driverId !== '') return `Tài xế #${r.driverId}`;
   return '—';
-}
-
-function driverInitials(r: Receipt): string {
-  const d = r.driver as TripDriverRef | null | undefined;
-  if (d && typeof d === 'object') {
-    const a = (d.firstName ?? '').trim().slice(0, 1);
-    const b = (d.lastName ?? '').trim().slice(0, 1);
-    if (a || b) return `${a}${b}`.toUpperCase() || '?';
-    if (d.email) return d.email.slice(0, 2).toUpperCase();
-  }
-  return '?';
 }
 
 function driverPhotoUrl(r: Receipt): string | null {

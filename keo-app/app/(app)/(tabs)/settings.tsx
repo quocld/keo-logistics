@@ -33,7 +33,7 @@ export default function SettingsScreen() {
     if (user) {
       setAvatar(avatarPickerValueFromUser(user));
     }
-  }, [user?.id, user?.isCustomAvatar, user?.appAvatar, user?.photoUrl]);
+  }, [user]);
 
   const [savingAvatar, setSavingAvatar] = useState(false);
 

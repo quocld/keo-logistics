@@ -63,60 +63,6 @@ function statusUi(s: OwnerVehicleStatus): { accent: string; pillBg: string; pill
   }
 }
 
-/** Minh họa theo flow quản lý đội xe — GET /owner/vehicles (hoặc tương đương) sẽ thay thế. */
-const DEMO_VEHICLES: OwnerVehicleRow[] = [
-  {
-    id: 'v1',
-    plate: '51H-812.34',
-    modelLabel: 'Howo T5G · 3 chân',
-    status: 'running',
-    driverName: 'Trần Văn Hùng',
-    driverId: 12,
-    capacityTons: 15,
-    note: 'Đang chuyến — khai thác Bắc Tân',
-  },
-  {
-    id: 'v2',
-    plate: '51H-445.91',
-    modelLabel: 'Chenglong H7 · Mooc lùn',
-    status: 'running',
-    driverName: 'Lê Thị Mai',
-    driverId: 18,
-    capacityTons: 18,
-    note: 'Chờ dỡ tại trạm Phú Mỹ',
-  },
-  {
-    id: 'v3',
-    plate: '47B-102.33',
-    modelLabel: 'Fuso Fighter',
-    status: 'maintenance',
-    driverName: null,
-    driverId: null,
-    capacityTons: 8,
-    note: 'Bảo dưỡng định kỳ — dự kiến 02/04',
-  },
-  {
-    id: 'v4',
-    plate: '51H-200.77',
-    modelLabel: 'Howo A7',
-    status: 'idle',
-    driverName: 'Phạm Quốc Anh',
-    driverId: 9,
-    capacityTons: 16,
-    note: 'Xe rảnh — có thể điều phối',
-  },
-  {
-    id: 'v5',
-    plate: '51F-909.05',
-    modelLabel: 'Daewoo Prima',
-    status: 'idle',
-    driverName: null,
-    driverId: null,
-    capacityTons: 12,
-    note: 'Chưa gán tài xế',
-  },
-];
-
 const screenStyles = StyleSheet.create({
   listContentFab: {
     paddingBottom: 140,
