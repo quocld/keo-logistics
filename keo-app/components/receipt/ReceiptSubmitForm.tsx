@@ -543,7 +543,9 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
           ) : null}
 
           <View style={styles.sectionCard}>
-            <FormSectionLabel required>Ảnh bill</FormSectionLabel>
+            <FormSectionLabel required={variant !== 'owner'}>
+              Ảnh bill{variant === 'owner' ? ' (tuỳ chọn)' : ''}
+            </FormSectionLabel>
             <View style={localStyles.imageActions}>
               <Pressable onPress={() => void pickImages()} style={[localStyles.imgBtn, { flex: 1 }]}>
                 <MaterialIcons name="add-photo-alternate" size={20} color={S.primary} />
