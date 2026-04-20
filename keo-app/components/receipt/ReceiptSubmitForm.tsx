@@ -104,9 +104,11 @@ type ReceiptSubmitFormProps = {
   variant: ReceiptSubmitVariant;
   /** Khi mở từ màn khu — gán sẵn khu khai thác */
   initialHarvestAreaId?: string;
+  /** Khi mở từ màn trạm cân — gán sẵn trạm cân */
+  initialWeighingStationId?: string;
 };
 
-export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubmitFormProps) {
+export function ReceiptSubmitForm({ variant, initialHarvestAreaId, initialWeighingStationId }: ReceiptSubmitFormProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -208,6 +210,14 @@ export function ReceiptSubmitForm({ variant, initialHarvestAreaId }: ReceiptSubm
       setAreaId(key);
     }
   }, [initialHarvestAreaId, areas]);
+
+  useEffect(() => {
+    if (!initialWeighingStationId?.trim()) return;
+    const key = String(initialWeighingStationId).trim();
+    if (stations.some((s) => String(s.id) === key)) {
+      setStationId(key);
+    }
+  }, [initialWeighingStationId, stations]);
 
   const areaLabel = useCallback(() => {
     const a = areas.find((x) => String(x.id) === areaId);

@@ -1,5 +1,6 @@
 import type {
   PaginatedList,
+  Receipt,
   WeighingStation,
   WeighingStationCreatePayload,
   WeighingStationUpdatePayload,
@@ -8,6 +9,7 @@ import type {
 import { apiFetch, apiFetchJson } from './client';
 import { formatApiErrorFromJsonText, formatApiErrorPayload } from './errors';
 import { buildListQuery } from './list-query';
+import type { ListReceiptsResult } from './receipts';
 
 export async function createWeighingStation(body: WeighingStationCreatePayload): Promise<WeighingStation> {
   return apiFetchJson<WeighingStation>('/weighing-stations', {
@@ -81,4 +83,36 @@ export async function listWeighingStations(params: {
   }
 
   return { ok: true, body: parsed as PaginatedList<WeighingStation> };
+}
+
+export async function listWeighingStationReceipts(
+  stationId: string | number,
+  params: { page: number; limit: number },
+): Promise<ListReceiptsResult> {
+  const qs = buildListQuery({ page: params.page, limit: params.limit });
+  const res = await apiFetch(
+    `/weighing-stations/${encodeURIComponent(String(stationId))}/receipts?${qs}`,
+  );
+  if (res.status === 403) return { ok: false, forbidden: true };
+  const text = await res.text();
+  let parsed: unknown = {};
+  if (text) {
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return {
+        ok: false,
+        forbidden: false,
+        message: formatApiErrorFromJsonText(text, res.statusText, res.status),
+      };
+    }
+  }
+  if (!res.ok) {
+    return {
+      ok: false,
+      forbidden: false,
+      message: formatApiErrorPayload(parsed, res.statusText, res.status),
+    };
+  }
+  return { ok: true, body: parsed as PaginatedList<Receipt> };
 }

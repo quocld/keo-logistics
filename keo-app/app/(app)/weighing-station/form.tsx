@@ -99,12 +99,10 @@ export default function WeighingStationFormScreen() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState('');
-  const [code, setCode] = useState('');
   const [unitPrice, setUnitPrice] = useState('');
   const [status, setStatus] = useState('active');
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
-  const [placeSearch, setPlaceSearch] = useState('');
   const [formattedAddress, setFormattedAddress] = useState('');
   const [notes, setNotes] = useState('');
   const [ownerIdStr, setOwnerIdStr] = useState('');
@@ -129,8 +127,6 @@ export default function WeighingStationFormScreen() {
       name: name.trim(),
       status,
     };
-    const c = optionalString(code);
-    if (c !== undefined) body.code = c;
     const up = parseOptionalNumber(unitPrice);
     if (up !== undefined) body.unitPrice = up;
     const lat = parseOptionalNumber(latitude);
@@ -146,7 +142,7 @@ export default function WeighingStationFormScreen() {
       if (Number.isFinite(oid)) body.ownerId = oid;
     }
     return body;
-  }, [name, code, unitPrice, status, latitude, longitude, formattedAddress, notes, ownerIdStr, user?.role]);
+  }, [name, unitPrice, status, latitude, longitude, formattedAddress, notes, ownerIdStr, user?.role]);
 
   const load = useCallback(async () => {
     if (!editId) return;
@@ -154,12 +150,10 @@ export default function WeighingStationFormScreen() {
     try {
       const w = await getWeighingStation(editId);
       setName(w.name ?? '');
-      setCode(w.code ?? '');
       setUnitPrice(w.unitPrice != null ? String(w.unitPrice) : '');
       setStatus(coerceWeighingStatus(w.status));
       setLatitude(w.latitude != null ? String(w.latitude) : '');
       setLongitude(w.longitude != null ? String(w.longitude) : '');
-      setPlaceSearch('');
       setFormattedAddress(w.formattedAddress ?? '');
       setNotes(w.notes != null ? String(w.notes) : '');
       const oid = w.ownerId;
@@ -226,10 +220,6 @@ export default function WeighingStationFormScreen() {
           </Text>
         </View>
         <View style={styles.headerRight}>
-          <Pressable style={styles.headerIconBtn} hitSlop={8}>
-            <MaterialIcons name="notifications-none" size={22} color={Brand.ink} />
-          </Pressable>
-          <View style={styles.headerDivider} />
           <Pressable
             style={styles.helpBtn}
             hitSlop={8}
@@ -265,14 +255,6 @@ export default function WeighingStationFormScreen() {
             style={styles.inputSoft}
           />
 
-          <FormFieldLabel>Mã trạm</FormFieldLabel>
-          <FieldIconInput
-            icon="local-offer"
-            value={code}
-            onChangeText={setCode}
-            placeholder="TRM-001"
-          />
-
           <FormFieldLabel>Đơn giá (VND/tấn)</FormFieldLabel>
           <FieldIconInput
             icon="payments"
@@ -298,40 +280,8 @@ export default function WeighingStationFormScreen() {
           </ScrollView>
         </View>
 
-        <View style={styles.mapCard}>
-          <View style={styles.mapCardHeader}>
-            <Text style={styles.sectionEyebrowMap}>Vị trí bản đồ</Text>
-            <View style={styles.gpsPill}>
-              <Text style={styles.gpsPillText}>BẢN ĐỒ</Text>
-            </View>
-          </View>
-          <View style={styles.mapVisual}>
-            <LinearGradient
-              colors={['#e3f2fd', S.surfaceContainerLow, '#bbdefb']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.mapPinWrap}>
-              <MaterialIcons name="scale" size={36} color={S.primary} />
-            </View>
-            <View style={styles.mapSearchOverlay}>
-              <MaterialIcons name="search" size={18} color={S.primary} />
-              <TextInput
-                value={placeSearch}
-                onChangeText={setPlaceSearch}
-                placeholder="Tìm kiếm tọa độ/địa danh…"
-                placeholderTextColor={`${S.outline}99`}
-                style={styles.mapSearchInput}
-              />
-            </View>
-          </View>
-          <Text style={styles.fieldApiHint}>
-            Chọn điểm trên bản đồ để gửi <Text style={styles.fieldApiMono}>latitude</Text> /{' '}
-            <Text style={styles.fieldApiMono}>longitude</Text>. Ô tìm kiếm chỉ hỗ trợ UI. Thêm{' '}
-            <Text style={styles.fieldApiMono}>formattedAddress</Text> nếu cần mô tả.
-          </Text>
-          <Text style={styles.coordEyebrow}>Tọa độ GPS</Text>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionEyebrow}>Vị trí</Text>
           {Platform.OS === 'web' ? (
             <View style={styles.coordRow}>
               <TextInput
@@ -352,17 +302,23 @@ export default function WeighingStationFormScreen() {
               />
             </View>
           ) : (
-            <>
-              <View style={localStyles.coordReadout}>
-                <Text style={localStyles.coordReadoutText}>{coordSummary}</Text>
+            <View style={localStyles.locationCard}>
+              <View style={localStyles.locationRow}>
+                <MaterialIcons name="place" size={22} color={S.primary} />
+                <Text style={localStyles.locationSummary} numberOfLines={2}>
+                  {coordSummary}
+                </Text>
+                <Pressable
+                  onPress={() => setPickerOpen(true)}
+                  style={({ pressed }) => [
+                    localStyles.locationMapChip,
+                    pressed && localStyles.locationMapChipPressed,
+                  ]}>
+                  <MaterialIcons name="map" size={18} color="#fff" />
+                  <Text style={localStyles.locationMapChipText}>Bản đồ</Text>
+                </Pressable>
               </View>
-              <Pressable
-                onPress={() => setPickerOpen(true)}
-                style={({ pressed }) => [localStyles.pickMapBtn, pressed && { opacity: 0.9 }]}>
-                <MaterialIcons name="map" size={20} color="#fff" />
-                <Text style={localStyles.pickMapBtnText}>Chọn trên bản đồ</Text>
-              </Pressable>
-            </>
+            </View>
           )}
           <FormFieldLabel style={{ marginTop: 12 }}>Địa chỉ đầy đủ</FormFieldLabel>
           <TextInput
@@ -439,31 +395,42 @@ export default function WeighingStationFormScreen() {
 }
 
 const localStyles = StyleSheet.create({
-  coordReadout: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+  locationCard: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: `${S.outlineVariant}aa`,
     backgroundColor: S.surfaceContainerLow,
-    borderWidth: 1,
-    borderColor: S.outlineVariant,
+    overflow: 'hidden',
   },
-  coordReadoutText: {
-    fontSize: 14,
-    color: S.onSurfaceVariant,
-  },
-  pickMapBtn: {
-    marginTop: 10,
+  locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    gap: 10,
     paddingVertical: 12,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+  },
+  locationSummary: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+    color: Brand.ink,
+  },
+  locationMapChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     backgroundColor: S.primary,
   },
-  pickMapBtnText: {
+  locationMapChipPressed: {
+    opacity: 0.9,
+  },
+  locationMapChipText: {
     color: '#fff',
     fontWeight: '700',
-    fontSize: 15,
+    fontSize: 13,
   },
 });

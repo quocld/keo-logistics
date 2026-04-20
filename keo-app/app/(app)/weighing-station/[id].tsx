@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -9,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,10 +19,18 @@ import { stitchHarvestFormStyles as headerStyles } from '@/components/owner/stit
 import { Brand } from '@/constants/brand';
 import { useAuth } from '@/contexts/auth-context';
 import { getErrorMessage } from '@/lib/api/errors';
-import { deleteWeighingStation, getWeighingStation } from '@/lib/api/weighing-stations';
-import type { WeighingStation } from '@/lib/types/ops';
+import {
+  deleteWeighingStation,
+  getWeighingStation,
+  listWeighingStationReceipts,
+} from '@/lib/api/weighing-stations';
+import { formatReceiptDateAndTimeVi } from '@/lib/date/vi-receipt-time';
+import { formatVndShortVi } from '@/lib/format/vnd-vi';
+import type { Receipt, TripDriverRef, WeighingStation } from '@/lib/types/ops';
 
 const S = Brand.stitch;
+
+const RECEIPTS_PAGE_SIZE = 10;
 
 function normalizeStationStatus(raw: unknown): string {
   if (raw == null) return '';
@@ -42,16 +52,31 @@ function formatStationCode(id: string | number): string {
   return `#TCN-${n}`;
 }
 
-function formatVndPerTon(n: number): string {
-  return `${Number(n).toLocaleString('vi-VN')} VNĐ/Tấn`;
+function driverDisplayName(d: TripDriverRef | null | undefined): string {
+  if (!d) return '—';
+  const parts = [d.firstName, d.lastName].filter(Boolean);
+  if (parts.length) return parts.join(' ');
+  return d.email ?? '—';
 }
 
-function pickStr(item: WeighingStation, keys: string[]): string | null {
-  for (const k of keys) {
-    const v = item[k];
-    if (v != null && String(v).trim() !== '') return String(v);
-  }
-  return null;
+function receiptStatusUi(raw: unknown): { label: string; bg: string; fg: string } {
+  const s = String(raw ?? '').toLowerCase().trim();
+  if (s.includes('approved')) return { label: 'Đã duyệt', bg: `${S.primary}22`, fg: S.primary };
+  if (s.includes('pending')) return { label: 'Chờ duyệt', bg: `${Brand.ink}0f`, fg: Brand.inkMuted };
+  if (s.includes('reject')) return { label: 'Từ chối', bg: '#ffebee', fg: '#b71c1c' };
+  return { label: s || '—', bg: S.surfaceContainerHigh, fg: S.onSurfaceVariant };
+}
+
+function receiptWeightLine(r: Receipt): string {
+  const w = r.weight;
+  if (w != null && Number.isFinite(Number(w))) return `${Number(w).toLocaleString('vi-VN')} tấn`;
+  return '—';
+}
+
+function receiptAmountStr(r: Receipt): string {
+  const a = r.amount;
+  if (a == null || !Number.isFinite(Number(a))) return '—';
+  return formatVndShortVi(Number(a));
 }
 
 export default function WeighingStationDetailScreen() {
@@ -61,10 +86,17 @@ export default function WeighingStationDetailScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const isDriver = user?.role === 'driver';
+  const isOwner = user?.role === 'owner';
+
   const [item, setItem] = useState<WeighingStation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [receiptsLoading, setReceiptsLoading] = useState(false);
+  const [receiptPage, setReceiptPage] = useState(1);
+  const [receiptHasNext, setReceiptHasNext] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -81,9 +113,45 @@ export default function WeighingStationDetailScreen() {
     }
   }, [id]);
 
+  const loadReceipts = useCallback(
+    async (page: number) => {
+      if (!id) return;
+      setReceiptsLoading(true);
+      try {
+        const res = await listWeighingStationReceipts(id, { page, limit: RECEIPTS_PAGE_SIZE });
+        if (!res.ok) {
+          setReceipts([]);
+          setReceiptHasNext(false);
+          return;
+        }
+        setReceipts(res.body.data);
+        setReceiptHasNext(res.body.hasNextPage);
+        setReceiptPage(page);
+      } catch {
+        setReceipts([]);
+        setReceiptHasNext(false);
+      } finally {
+        setReceiptsLoading(false);
+      }
+    },
+    [id],
+  );
+
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (item) void loadReceipts(1);
+  }, [item, loadReceipts]);
+
+  // Reload receipts khi quay về từ màn receipt detail
+  useFocusEffect(
+    useCallback(() => {
+      if (item && id) void loadReceipts(receiptPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id, item]),
+  );
 
   const onDelete = useCallback(() => {
     if (!id) return;
@@ -124,10 +192,6 @@ export default function WeighingStationDetailScreen() {
     ? (typeof item.expectedMonthlyRevenue === 'number' ? item.expectedMonthlyRevenue : null)
     : null;
 
-  const partnerName = item ? pickStr(item, ['contactName', 'siteContactName', 'representativeName']) : null;
-  const partnerPhone = item ? pickStr(item, ['contactPhone', 'siteContactPhone', 'phone']) : null;
-  const calibration = item ? pickStr(item, ['calibrationValidUntil', 'calibrationExpiry', 'inspectionValidUntil']) : null;
-
   if (!id) {
     return (
       <View style={styles.centered}>
@@ -156,16 +220,17 @@ export default function WeighingStationDetailScreen() {
   }
 
   const priceText =
-    item.unitPrice != null ? formatVndPerTon(Number(item.unitPrice)) : 'Chưa cấu hình';
+    item.unitPrice != null
+      ? `${Number(item.unitPrice).toLocaleString('vi-VN')} VNĐ/Tấn`
+      : 'Chưa cấu hình';
   const monthlyText =
     monthlyCount != null ? `${monthlyCount.toLocaleString('vi-VN')} lượt` : '—';
   const revenueText =
-    revenueHint != null
-      ? `${(revenueHint / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}M VNĐ`
-      : '—';
+    revenueHint != null ? formatVndShortVi(revenueHint) : '—';
 
   return (
     <View style={styles.flex}>
+      {/* ── Header ── */}
       <View style={[headerStyles.header, { paddingTop: Math.max(insets.top, 12) }]}>
         <View style={headerStyles.headerLeft}>
           <Pressable onPress={() => router.back()} hitSlop={12} style={headerStyles.backBtn}>
@@ -176,21 +241,6 @@ export default function WeighingStationDetailScreen() {
             Chi tiết trạm cân
           </Text>
         </View>
-        <View style={headerStyles.headerRight}>
-          <Pressable style={headerStyles.headerIconBtn} hitSlop={8}>
-            <MaterialIcons name="notifications-none" size={22} color={Brand.ink} />
-          </Pressable>
-          <View style={headerStyles.headerDivider} />
-          <Pressable
-            style={headerStyles.helpBtn}
-            hitSlop={8}
-            onPress={() =>
-              Alert.alert('Hỗ trợ', 'GET/PATCH/DELETE /weighing-stations/:id — KeoTram Ops Postman.')
-            }>
-            <MaterialIcons name="help-outline" size={20} color={Brand.ink} />
-            <Text style={headerStyles.helpBtnText}>Hỗ trợ</Text>
-          </Pressable>
-        </View>
       </View>
       <View style={headerStyles.headerHairline} />
 
@@ -198,6 +248,8 @@ export default function WeighingStationDetailScreen() {
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 28 }]}
         showsVerticalScrollIndicator={false}>
+
+        {/* ── Hero ── */}
         <View style={styles.hero}>
           <View style={styles.heroTopRow}>
             <View style={[styles.statusPill, { backgroundColor: S.secondaryContainer }]}>
@@ -239,6 +291,7 @@ export default function WeighingStationDetailScreen() {
           ) : null}
         </View>
 
+        {/* ── Metrics ── */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -250,10 +303,10 @@ export default function WeighingStationDetailScreen() {
             </Text>
           </View>
           <View style={styles.metricCard}>
-            <Text style={styles.metricEyebrow}>Tổng lượt cân (Tháng)</Text>
+            <Text style={styles.metricEyebrow}>Lượt cân (tháng)</Text>
             <Text style={styles.metricValue}>{monthlyText}</Text>
             {monthlyCount == null ? (
-              <Text style={styles.metricHint}>Thống kê khi đồng bộ phiếu cân</Text>
+              <Text style={styles.metricHint}>Đồng bộ từ phiếu cân</Text>
             ) : null}
           </View>
           {!isDriver ? (
@@ -261,31 +314,158 @@ export default function WeighingStationDetailScreen() {
               <Text style={styles.metricEyebrow}>Doanh thu dự kiến</Text>
               <Text style={styles.metricValue}>{revenueText}</Text>
               {revenueHint == null ? (
-                <Text style={styles.metricHint}>Ước tính theo đơn giá và khối lượng</Text>
+                <Text style={styles.metricHint}>Ước tính theo đơn giá & KL</Text>
               ) : null}
             </View>
           ) : null}
         </ScrollView>
 
+        {/* ── CTA Tạo phiếu cân (owner only) ── */}
+        {isOwner ? (
+          <TouchableOpacity
+            onPress={() =>
+              router.push({
+                pathname: '/receipt/form',
+                params: { weighingStationId: String(id) },
+              })
+            }
+            activeOpacity={0.88}
+            style={styles.ctaWrap}>
+            <LinearGradient
+              colors={[S.primary, S.primaryContainer]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.ctaGradient}>
+              <MaterialIcons name="add-circle-outline" size={20} color="#fff" />
+              <Text style={styles.ctaText}>Tạo phiếu cân tại trạm này</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        ) : null}
+
+        {/* ── Lịch sử cân ── */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHead}>
             <Text style={styles.sectionTitle}>Lịch sử cân gần đây</Text>
-            <Pressable hitSlop={8} onPress={() => Alert.alert('Phiếu cân', 'Danh sách phiếu sẽ mở từ API receipts/trips.')}>
-              <Text style={styles.linkText}>Xem tất cả</Text>
-            </Pressable>
+            {isOwner ? (
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: '/receipt/form',
+                    params: { weighingStationId: String(id) },
+                  })
+                }
+                style={({ pressed }) => [styles.createBtn, pressed && styles.createBtnPressed]}>
+                <Text style={styles.createBtnText}>Tạo phiếu</Text>
+              </Pressable>
+            ) : null}
           </View>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.th, styles.thPlate]}>Biển số xe</Text>
-            <Text style={[styles.th, styles.thMid]}>Khối lượng</Text>
-            <Text style={[styles.th, styles.thMid]}>Loại hàng</Text>
-            <Text style={[styles.th, styles.thMoney]}>Thành tiền</Text>
-          </View>
-          <View style={styles.tableEmpty}>
-            <MaterialIcons name="receipt-long" size={36} color={`${S.outline}66`} />
-            <Text style={styles.tableEmptyText}>Chưa có phiếu cân gần đây trên thiết bị.</Text>
-          </View>
+
+          {receiptsLoading ? (
+            <ActivityIndicator color={S.primary} style={{ marginVertical: 12 }} />
+          ) : receipts.length === 0 ? (
+            <View style={styles.tableEmpty}>
+              <MaterialIcons name="receipt-long" size={36} color={`${S.outline}66`} />
+              <Text style={styles.tableEmptyText}>Chưa có phiếu cân nào tại trạm này.</Text>
+            </View>
+          ) : (
+            <>
+              <ScrollView horizontal showsHorizontalScrollIndicator>
+                <View>
+                  {/* Table header */}
+                  <View style={styles.receiptTableHeader}>
+                    <Text style={[styles.receiptTh, styles.colDate]}>Ngày & giờ</Text>
+                    <Text style={[styles.receiptTh, styles.colDriver]}>Tài xế</Text>
+                    <Text style={[styles.receiptTh, styles.colWeight]}>KL (tấn)</Text>
+                    <Text style={[styles.receiptTh, styles.colStatus]}>Trạng thái</Text>
+                    <Text style={[styles.receiptTh, styles.colAmount]}>Số tiền</Text>
+                  </View>
+                  {/* Rows */}
+                  {receipts.map((r) => {
+                    const { dateLine, timeLine } = formatReceiptDateAndTimeVi(r.receiptDate);
+                    const stUi = receiptStatusUi(r.status);
+                    return (
+                      <Pressable
+                        key={String(r.id)}
+                        onPress={() => router.push(`/receipt/${String(r.id)}`)}
+                        style={({ pressed }) => [
+                          styles.receiptTableRow,
+                          pressed && styles.receiptTableRowPressed,
+                        ]}>
+                        <View style={[styles.colDate, styles.colDateWrap]}>
+                          <Text style={styles.receiptTdDate}>{dateLine}</Text>
+                          {timeLine ? (
+                            <Text style={styles.receiptTdTime}>{timeLine}</Text>
+                          ) : null}
+                        </View>
+                        <Text style={[styles.receiptTd, styles.colDriver]} numberOfLines={2}>
+                          {driverDisplayName(r.driver)}
+                        </Text>
+                        <Text style={[styles.receiptTd, styles.colWeight]} numberOfLines={1}>
+                          {receiptWeightLine(r)}
+                        </Text>
+                        <View style={[styles.colStatus, styles.colStatusWrap]}>
+                          <View style={[styles.statusBadge, { backgroundColor: stUi.bg }]}>
+                            <Text style={[styles.statusBadgeText, { color: stUi.fg }]} numberOfLines={1}>
+                              {stUi.label}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={[styles.receiptTd, styles.colAmount]} numberOfLines={1}>
+                          {receiptAmountStr(r)}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+
+              {/* Pagination */}
+              <View style={styles.pager}>
+                <Pressable
+                  disabled={receiptPage <= 1 || receiptsLoading}
+                  onPress={() => void loadReceipts(receiptPage - 1)}
+                  style={({ pressed }) => [
+                    styles.pagerBtn,
+                    (receiptPage <= 1 || receiptsLoading) && styles.pagerBtnDisabled,
+                    pressed && receiptPage > 1 && styles.pagerBtnPressed,
+                  ]}>
+                  <MaterialIcons
+                    name="chevron-left"
+                    size={20}
+                    color={receiptPage <= 1 ? S.outlineVariant : S.primary}
+                  />
+                  <Text style={[styles.pagerBtnText, receiptPage <= 1 && styles.pagerBtnTextDisabled]}>
+                    Trước
+                  </Text>
+                </Pressable>
+                <Text style={styles.pagerInfo}>
+                  Trang {receiptPage}
+                  {receiptHasNext || receiptPage > 1 ? ` · ${receipts.length} phiếu` : ''}
+                </Text>
+                <Pressable
+                  disabled={!receiptHasNext || receiptsLoading}
+                  onPress={() => void loadReceipts(receiptPage + 1)}
+                  style={({ pressed }) => [
+                    styles.pagerBtn,
+                    (!receiptHasNext || receiptsLoading) && styles.pagerBtnDisabled,
+                    pressed && receiptHasNext && styles.pagerBtnPressed,
+                  ]}>
+                  <Text
+                    style={[styles.pagerBtnText, !receiptHasNext && styles.pagerBtnTextDisabled]}>
+                    Sau
+                  </Text>
+                  <MaterialIcons
+                    name="chevron-right"
+                    size={20}
+                    color={!receiptHasNext ? S.outlineVariant : S.primary}
+                  />
+                </Pressable>
+              </View>
+            </>
+          )}
         </View>
 
+        {/* ── Vị trí bản đồ ── */}
         <View style={styles.mapCard}>
           <Text style={styles.mapEyebrow}>Vị trí trạm cân</Text>
           <View style={styles.mapVisual}>
@@ -304,54 +484,7 @@ export default function WeighingStationDetailScreen() {
           </View>
         </View>
 
-        {!isDriver ? (
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionEyebrowSmall}>Thông tin đối tác</Text>
-            <View style={styles.partnerRow}>
-              <MaterialIcons name="account-circle" size={22} color={S.outline} />
-              <View style={styles.partnerBody}>
-                <Text style={styles.partnerLabel}>Đại diện</Text>
-                <Text style={styles.partnerValue}>{partnerName ?? '—'}</Text>
-              </View>
-            </View>
-            <View style={styles.partnerRow}>
-              <MaterialIcons name="phone" size={22} color={S.outline} />
-              <View style={styles.partnerBody}>
-                <Text style={styles.partnerLabel}>Điện thoại</Text>
-                <Text style={styles.partnerValue}>{partnerPhone ?? '—'}</Text>
-              </View>
-            </View>
-            <View style={styles.partnerRow}>
-              <MaterialIcons name="verified-user" size={22} color={S.outline} />
-              <View style={styles.partnerBody}>
-                <Text style={styles.partnerLabel}>Kiểm định</Text>
-                <Text style={styles.partnerValue}>
-                  {calibration ? `Còn hạn đến ${calibration}` : '—'}
-                </Text>
-              </View>
-            </View>
-          </View>
-        ) : null}
-
-        {!isDriver ? (
-          <Pressable
-            onPress={() =>
-              Alert.alert(
-                'Tạo lệnh cân mới',
-                'Tính năng sẽ gắn với vòng đời chuyến (trip) và phiếu cân trên KeoTram Ops.',
-              )
-            }
-            style={styles.ctaWrap}>
-            <LinearGradient
-              colors={[S.primary, S.primaryContainer]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.ctaGradient}>
-              <Text style={styles.ctaText}>Tạo lệnh cân mới</Text>
-            </LinearGradient>
-          </Pressable>
-        ) : null}
-
+        {/* ── Ghi chú / Bảo trì ── */}
         {item.notes?.trim() ? (
           <View style={styles.noticeCard}>
             <View style={styles.noticeHead}>
@@ -367,8 +500,8 @@ export default function WeighingStationDetailScreen() {
               <Text style={styles.noticeTitle}>Lưu ý bảo trì</Text>
             </View>
             <Text style={styles.noticeBody}>
-              Kiểm tra định kỳ thiết bị cảm biến và hiệu chuẩn theo quy định. Thêm ghi chú tại trạm để nhắc nhở đội
-              kỹ thuật.
+              Kiểm tra định kỳ thiết bị cảm biến và hiệu chuẩn theo quy định. Thêm ghi chú tại
+              trạm để nhắc nhở đội kỹ thuật.
             </Text>
           </View>
         )}
@@ -378,17 +511,9 @@ export default function WeighingStationDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-    backgroundColor: Brand.canvas,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
+  flex: { flex: 1, backgroundColor: Brand.canvas },
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -396,24 +521,12 @@ const styles = StyleSheet.create({
     padding: 24,
     backgroundColor: Brand.canvas,
   },
-  err: {
-    color: '#ba1a1a',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  retry: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: S.primary,
-    borderRadius: 10,
-  },
-  retryText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  hero: {
-    marginBottom: 20,
-  },
+  err: { color: '#ba1a1a', textAlign: 'center', marginBottom: 12 },
+  retry: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: S.primary, borderRadius: 10 },
+  retryText: { color: '#fff', fontWeight: '600' },
+
+  // Hero
+  hero: { marginBottom: 20 },
   heroTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -421,22 +534,9 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 10,
   },
-  statusPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  statusPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-  },
-  idMuted: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: S.onSurfaceVariant,
-  },
+  statusPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  statusPillText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.3, textTransform: 'uppercase' },
+  idMuted: { fontSize: 13, fontWeight: '500', color: S.onSurfaceVariant },
   heroTitle: {
     fontSize: 26,
     fontWeight: '700',
@@ -444,26 +544,10 @@ const styles = StyleSheet.create({
     color: Brand.ink,
     marginBottom: 12,
   },
-  addrRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    marginBottom: 18,
-  },
-  addrIcon: {
-    marginTop: 1,
-  },
-  addrText: {
-    flex: 1,
-    fontSize: 15,
-    lineHeight: 22,
-    color: S.onSurfaceVariant,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
+  addrRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 18 },
+  addrIcon: { marginTop: 1 },
+  addrText: { flex: 1, fontSize: 15, lineHeight: 22, color: S.onSurfaceVariant },
+  actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   btnOutline: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -475,14 +559,8 @@ const styles = StyleSheet.create({
     borderColor: S.primary,
     backgroundColor: Brand.surface,
   },
-  btnOutlinePressed: {
-    backgroundColor: `${S.primary}12`,
-  },
-  btnOutlineText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: S.primary,
-  },
+  btnOutlinePressed: { backgroundColor: `${S.primary}12` },
+  btnOutlineText: { fontSize: 14, fontWeight: '600', color: S.primary },
   btnOutlineDanger: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -494,22 +572,12 @@ const styles = StyleSheet.create({
     borderColor: '#ffcdd2',
     backgroundColor: '#fff5f5',
   },
-  btnOutlineDangerPressed: {
-    backgroundColor: '#ffebee',
-  },
-  btnOutlineDangerText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#c62828',
-  },
-  disabled: {
-    opacity: 0.55,
-  },
-  metricsScroll: {
-    gap: 12,
-    paddingBottom: 4,
-    marginBottom: 20,
-  },
+  btnOutlineDangerPressed: { backgroundColor: '#ffebee' },
+  btnOutlineDangerText: { fontSize: 14, fontWeight: '600', color: '#c62828' },
+  disabled: { opacity: 0.55 },
+
+  // Metrics
+  metricsScroll: { gap: 12, paddingBottom: 4, marginBottom: 20 },
   metricCard: {
     width: 200,
     backgroundColor: Brand.surface,
@@ -532,18 +600,30 @@ const styles = StyleSheet.create({
     color: S.onSurfaceVariant,
     marginBottom: 8,
   },
-  metricValue: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: Brand.ink,
-    letterSpacing: -0.2,
+  metricValue: { fontSize: 17, fontWeight: '700', color: Brand.ink, letterSpacing: -0.2 },
+  metricHint: { marginTop: 6, fontSize: 11, lineHeight: 15, color: `${S.outline}b3` },
+
+  // CTA
+  ctaWrap: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 18,
+    shadowColor: S.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 5,
   },
-  metricHint: {
-    marginTop: 6,
-    fontSize: 11,
-    lineHeight: 15,
-    color: `${S.outline}b3`,
+  ctaGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 16,
   },
+  ctaText: { fontSize: 16, fontWeight: '700', color: '#fff', letterSpacing: 0.2 },
+
+  // Section
   sectionCard: {
     backgroundColor: Brand.surface,
     borderRadius: 14,
@@ -563,47 +643,85 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 14,
   },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: Brand.ink,
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: Brand.ink },
+  createBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: `${S.primary}18`,
   },
-  linkText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: S.primary,
-  },
-  tableHeader: {
+  createBtnPressed: { backgroundColor: `${S.primary}28` },
+  createBtnText: { fontSize: 13, fontWeight: '700', color: S.primary },
+
+  // Receipt table
+  receiptTableHeader: {
     flexDirection: 'row',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: S.outlineVariant,
     paddingBottom: 8,
-    marginBottom: 12,
+    marginBottom: 2,
   },
-  th: {
+  receiptTh: {
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
     color: S.onSurfaceVariant,
   },
-  thPlate: { flex: 1.1 },
-  thMid: { flex: 1 },
-  thMoney: { flex: 1, textAlign: 'right' },
-  tableEmpty: {
+  receiptTableRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 28,
-    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: `${S.outlineVariant}55`,
   },
-  tableEmptyText: {
-    fontSize: 14,
-    color: S.onSurfaceVariant,
-    textAlign: 'center',
-    paddingHorizontal: 12,
+  receiptTableRowPressed: { backgroundColor: `${S.primary}08` },
+  receiptTd: { fontSize: 13, color: Brand.ink },
+  receiptTdDate: { fontSize: 13, fontWeight: '600', color: Brand.ink },
+  receiptTdTime: { fontSize: 11, color: S.onSurfaceVariant, marginTop: 2 },
+
+  // Fixed column widths
+  colDate: { width: 110 },
+  colDateWrap: { justifyContent: 'center' },
+  colDriver: { width: 120, paddingRight: 8 },
+  colWeight: { width: 90, textAlign: 'right' },
+  colStatus: { width: 100, paddingHorizontal: 8 },
+  colStatusWrap: { justifyContent: 'center', alignItems: 'flex-start' },
+  colAmount: { width: 100, textAlign: 'right' },
+
+  statusBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'flex-start' },
+  statusBadgeText: { fontSize: 11, fontWeight: '700' },
+
+  tableEmpty: { alignItems: 'center', paddingVertical: 28, gap: 10 },
+  tableEmptyText: { fontSize: 14, color: S.onSurfaceVariant, textAlign: 'center', paddingHorizontal: 12 },
+
+  // Pagination
+  pager: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: `${S.outlineVariant}66`,
   },
-  mapCard: {
-    marginBottom: 18,
+  pagerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: `${S.primary}12`,
   },
+  pagerBtnDisabled: { backgroundColor: 'transparent' },
+  pagerBtnPressed: { backgroundColor: `${S.primary}20` },
+  pagerBtnText: { fontSize: 13, fontWeight: '600', color: S.primary },
+  pagerBtnTextDisabled: { color: S.outlineVariant },
+  pagerInfo: { fontSize: 13, color: S.onSurfaceVariant, fontWeight: '500' },
+
+  // Map
+  mapCard: { marginBottom: 18 },
   mapEyebrow: {
     fontSize: 12,
     fontWeight: '700',
@@ -620,60 +738,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: S.surfaceContainerLow,
   },
-  mapCoord: {
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: '500',
-    color: S.onSurfaceVariant,
-  },
-  sectionEyebrowSmall: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: S.onSurfaceVariant,
-    marginBottom: 14,
-  },
-  partnerRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 16,
-  },
-  partnerBody: {
-    flex: 1,
-  },
-  partnerLabel: {
-    fontSize: 12,
-    color: S.onSurfaceVariant,
-    marginBottom: 2,
-  },
-  partnerValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Brand.ink,
-  },
-  ctaWrap: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 18,
-    shadowColor: S.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
-    shadowRadius: 14,
-    elevation: 6,
-  },
-  ctaGradient: {
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ctaText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.2,
-  },
+  mapCoord: { marginTop: 8, fontSize: 12, fontWeight: '500', color: S.onSurfaceVariant },
+
+  // Notice
   noticeCard: {
     backgroundColor: S.tertiaryFixed,
     borderRadius: 12,
@@ -681,21 +748,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: `${S.tertiary}33`,
   },
-  noticeHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  noticeTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: S.onTertiaryFixed,
-  },
-  noticeBody: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: S.onTertiaryFixed,
-    opacity: 0.95,
-  },
+  noticeHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  noticeTitle: { fontSize: 14, fontWeight: '700', color: S.onTertiaryFixed },
+  noticeBody: { fontSize: 14, lineHeight: 21, color: S.onTertiaryFixed, opacity: 0.95 },
 });
