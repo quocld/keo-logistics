@@ -30,3 +30,16 @@ export function formatVndShortVi(amount: number): string {
   }
   return `${fmtNum(n / NGHIN, 1)} nghìn`;
 }
+
+/**
+ * Rất rút gọn cho nhãn trên cột chart (không thêm đơn vị đ/VND):
+ * 5.200.000 → "5,2tr" | 73.000.000 → "73tr" | 1.200.000.000 → "1,2t" | 500.000 → "500k"
+ */
+export function formatVndMiniChart(amount: number): string {
+  if (!Number.isFinite(amount) || amount <= 0) return '';
+  const n = Math.round(amount);
+  if (n >= TY) return `${fmtNum(n / TY, 1)}t`;
+  if (n >= TRIEU) return `${fmtNum(n / TRIEU, 1)}tr`;
+  if (n >= NGHIN) return `${fmtNum(n / NGHIN, 0)}k`;
+  return `${n}`;
+}

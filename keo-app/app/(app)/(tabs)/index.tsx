@@ -38,7 +38,7 @@ import {
 import { getDashboardSummary, getFinanceReportLast7Days } from '@/lib/api/analytics';
 import { listHarvestAreas } from '@/lib/api/harvest-areas';
 import { listReceipts } from '@/lib/api/receipts';
-import { formatVndShortVi } from '@/lib/format/vnd-vi';
+import { formatVndMiniChart, formatVndShortVi } from '@/lib/format/vnd-vi';
 import type { OwnerDashboardSummary } from '@/lib/types/analytics';
 
 const S = Brand.stitch;
@@ -355,8 +355,18 @@ export default function HomeScreen() {
   const financeChartData = useMemo(() => {
     const bars = chartBarsForRender && chartBarsForRender.length > 0 ? chartBarsForRender : null;
     if (!bars) return [];
-    const barW = Math.min(24, Math.floor((performanceChartWidth - 48) / 14 - 4));
+    // Mỗi ngày gồm 2 cột sát nhau (cặp): doanh thu + chi phí.
+    // Gap trong cặp nhỏ (1px), gap giữa các cặp lớn hơn để phân biệt nhóm.
+    const innerPairGap = 1;
+    const interGroupGap = 12;
+    const overhead = 12 + bars.length * (innerPairGap + interGroupGap);
+    const barW = Math.max(10, Math.floor((performanceChartWidth - overhead) / (bars.length * 2)));
+    // Label container đủ rộng để hiện text mà không bị cắt
+    const labelW = Math.max(barW + 22, 42);
+    const labelOffset = -Math.floor((labelW - barW) / 2);
+
     return bars.flatMap((d) => [
+      // ── Cột doanh thu (trái) ──
       {
         value: d.value,
         label: d.label,
@@ -364,13 +374,19 @@ export default function HomeScreen() {
         frontColor: Brand.forest,
         showGradient: true,
         gradientColor: `${Brand.forest}66`,
-        spacing: 2,
+        spacing: innerPairGap,
         topLabelComponent: () => (
           <Text style={st.chartBarTopLabel} numberOfLines={1}>
-            {formatVndShortVi(d.value)}
+            {formatVndMiniChart(d.value)}
           </Text>
         ),
+        topLabelContainerStyle: {
+          width: labelW,
+          marginLeft: labelOffset,
+          alignItems: 'center' as const,
+        },
       },
+      // ── Cột chi phí (phải) ──
       {
         value: d.cost,
         label: '',
@@ -378,7 +394,21 @@ export default function HomeScreen() {
         frontColor: '#e05c2a',
         showGradient: true,
         gradientColor: '#e05c2a66',
-        spacing: 14,
+        spacing: interGroupGap,
+        topLabelComponent: d.cost > 0
+          ? () => (
+              <Text style={st.chartBarTopLabelCost} numberOfLines={1}>
+                {formatVndMiniChart(d.cost)}
+              </Text>
+            )
+          : undefined,
+        topLabelContainerStyle: d.cost > 0
+          ? {
+              width: labelW,
+              marginLeft: labelOffset,
+              alignItems: 'center' as const,
+            }
+          : undefined,
       },
     ]);
   }, [chartBarsForRender, performanceChartWidth]);
@@ -547,16 +577,14 @@ export default function HomeScreen() {
               <BarChart
                 data={financeChartData}
                 width={performanceChartWidth}
-                height={216}
-                barWidth={Math.min(32, Math.floor((performanceChartWidth - 48) / 7 - 8))}
-                spacing={12}
+                height={220}
                 roundedTop
                 roundedBottom
                 isAnimated
                 animationDuration={550}
                 noOfSections={4}
                 maxValue={chartMax}
-                yAxisExtraHeight={32}
+                yAxisExtraHeight={36}
                 hideRules={false}
                 rulesType="solid"
                 rulesColor={`${S.outline}33`}
@@ -567,6 +595,7 @@ export default function HomeScreen() {
                 xAxisColor="transparent"
                 yAxisTextStyle={st.chartAxisText}
                 xAxisLabelTextStyle={st.chartAxisText}
+                formatYLabel={(val) => formatVndMiniChart(Number(val))}
                 disableScroll
                 initialSpacing={6}
                 endSpacing={6}
@@ -952,6 +981,12 @@ const st = StyleSheet.create({
     fontSize: 9,
     fontWeight: '700',
     color: '#0d4a28',
+    letterSpacing: -0.2,
+  },
+  chartBarTopLabelCost: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#9c3510',
     letterSpacing: -0.2,
   },
   chartLegend: {
