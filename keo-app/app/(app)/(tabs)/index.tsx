@@ -108,6 +108,7 @@ function StatTile({
   variant = 'default',
   compact,
   valueLoading,
+  style,
 }: {
   label: string;
   value: string;
@@ -121,13 +122,14 @@ function StatTile({
   compact?: boolean;
   /** Chỉ thay số liệu bằng spinner — giữ layout ô cố định */
   valueLoading?: boolean;
+  style?: object;
 }) {
   const trendColor =
     trend === 'up' ? S.primary : trend === 'down' ? '#c62828' : S.onSurfaceVariant;
   const hero = variant === 'hero';
   const isCompact = Boolean(compact && !hero);
   return (
-    <View style={[st.tile, hero && st.tileHero, isCompact && st.tileCompact]}>
+    <View style={[st.tile, hero && st.tileHero, isCompact && st.tileCompact, style]}>
       <View>
         <View style={[st.tileLabelRow, isCompact && st.tileLabelRowCompact]}>
           {isCompact ? (
@@ -322,7 +324,15 @@ export default function HomeScreen() {
 
   const greeting = user ? displayName(user) : 'bạn';
 
-  const performanceChartWidth = Math.max(260, windowWidth - 40 - 36);
+  // Owner scroll paddingHorizontal = 20, sectionCard paddingHorizontal = 18 => available = window - 40 - 36
+  const performanceChartWidth = Math.max(260, Math.floor(windowWidth - 40 - 36));
+
+  // Stats grid: lock to 2 columns on native to avoid Android percent/flexWrap quirks.
+  const statGap = 12;
+  const statCols = 2;
+  const statInnerWidth = Math.max(0, Math.floor(windowWidth - 40)); // scroll paddingHorizontal = 20*2
+  const statTileWidth =
+    statInnerWidth > 0 ? Math.floor((statInnerWidth - statGap * (statCols - 1)) / statCols) : 0;
 
   /** Lưới 4 cột: scroll padding 20×2 + card paddingHorizontal 4×2 */
   const quickActionGap = 8;
@@ -481,6 +491,7 @@ export default function HomeScreen() {
             valueLoading={summaryLoading}
             trend={revTrendLabel ? revTrend : undefined}
             trendLabel={revTrendLabel ?? undefined}
+            style={statTileWidth ? { width: statTileWidth } : undefined}
           />
           <StatTile
             variant="hero"
@@ -492,6 +503,7 @@ export default function HomeScreen() {
                 ? `Trung bình ngày: ${dailyAvg.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tấn`
                 : 'Trung bình ngày'
             }
+            style={statTileWidth ? { width: statTileWidth } : undefined}
           />
           <StatTile
             compact
@@ -502,6 +514,7 @@ export default function HomeScreen() {
               label: 'Danh sách',
               onPress: () => router.push('/receipt-approval?tab=approved' as Href),
             }}
+            style={statTileWidth ? { width: statTileWidth } : undefined}
           />
           <StatTile
             compact
@@ -512,6 +525,7 @@ export default function HomeScreen() {
               label: 'Danh sách',
               onPress: () => router.push('/harvest-areas?status=active' as Href),
             }}
+            style={statTileWidth ? { width: statTileWidth } : undefined}
           />
         </View>
 
@@ -749,14 +763,15 @@ const st = StyleSheet.create({
   statGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    // Use margin-based spacing to be consistent across Android/iOS.
+    // "gap" can behave inconsistently depending on RN/renderer.
+    marginHorizontal: -6,
     marginBottom: 18,
     alignItems: 'stretch',
   },
   tile: {
-    width: '48%',
-    maxWidth: '48%',
-    flexGrow: 1,
+    // width is injected at render-time for stable 2-column layout on Android
+    marginHorizontal: 6,
     backgroundColor: Brand.surface,
     borderRadius: 14,
     padding: 16,
@@ -767,7 +782,6 @@ const st = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 12,
     elevation: 2,
-    minWidth: 156,
     justifyContent: 'flex-start',
   },
   tileHero: {
@@ -960,6 +974,7 @@ const st = StyleSheet.create({
     alignItems: 'center',
     minHeight: 240,
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   chartLoading: {
     paddingVertical: 48,

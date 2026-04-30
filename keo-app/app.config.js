@@ -6,6 +6,25 @@
 const appJson = require('./app.base.json');
 
 const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY ?? '';
+const easProfile = (process.env.EAS_BUILD_PROFILE || '').trim();
+
+// Fail fast for release-like builds: a missing key produces a blank/grey Google Map on Android.
+if (!googleMapsApiKey) {
+  const isReleaseLike = easProfile === 'preview' || easProfile === 'production';
+  if (isReleaseLike) {
+    throw new Error(
+      [
+        'Missing GOOGLE_MAPS_API_KEY for EAS build profile:',
+        easProfile,
+        '',
+        'Set it via EAS secret (recommended):',
+        '  eas secret:create --name GOOGLE_MAPS_API_KEY --value <YOUR_KEY>',
+        '',
+        'Or export it in the shell for local builds.',
+      ].join('\n'),
+    );
+  }
+}
 
 /** Expo Push / EAS: cần để `getExpoPushTokenAsync` chạy. Lấy từ expo.dev → Project settings → Project ID, hoặc sau `eas init`. */
 const easProjectId =
@@ -26,6 +45,7 @@ module.exports = {
     ...appJson.expo,
     extra: {
       ...(appJson.expo.extra ?? {}),
+      googleMapsApiKeyConfigured: Boolean(googleMapsApiKey),
       eas: {
         ...(appJson.expo.extra?.eas ?? {}),
         ...(easProjectId ? { projectId: easProjectId } : {}),
