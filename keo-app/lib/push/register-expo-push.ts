@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import {
@@ -19,6 +18,22 @@ type StoredRegistration = {
 
 let androidChannelReady = false;
 
+async function getNotificationsModule() {
+  // Expo Go (Android) removed remote push in SDK 53+ and can throw at import time.
+  // We lazy-load and no-op in Expo Go so the app can still run for local development.
+  const appOwnership = (Constants as unknown as { appOwnership?: string }).appOwnership;
+  if (Platform.OS === 'android' && appOwnership === 'expo') {
+    return null;
+  }
+
+  try {
+    return await import('expo-notifications');
+  } catch (e) {
+    console.warn('[push] expo-notifications unavailable', e);
+    return null;
+  }
+}
+
 function getEasProjectId(): string | undefined {
   const fromEnv = process.env.EXPO_PUBLIC_EAS_PROJECT_ID?.trim();
   if (fromEnv) {
@@ -28,8 +43,13 @@ function getEasProjectId(): string | undefined {
   return extra?.eas?.projectId ?? Constants.easConfig?.projectId;
 }
 
-async function ensureAndroidNotificationChannel(): Promise<void> {
+async function ensureAndroidNotificationChannel(
+  Notifications: Awaited<ReturnType<typeof getNotificationsModule>>,
+): Promise<void> {
   if (Platform.OS !== 'android' || androidChannelReady) {
+    return;
+  }
+  if (!Notifications) {
     return;
   }
   await Notifications.setNotificationChannelAsync('default', {
@@ -78,7 +98,12 @@ export async function registerPushForCurrentSession(): Promise<void> {
   }
 
   try {
-    await ensureAndroidNotificationChannel();
+    const Notifications = await getNotificationsModule();
+    if (!Notifications) {
+      return;
+    }
+
+    await ensureAndroidNotificationChannel(Notifications);
 
     const existing = await Notifications.getPermissionsAsync();
     let granted = existing.status === 'granted';
